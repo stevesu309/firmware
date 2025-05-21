@@ -14,7 +14,8 @@
 #include "WVariant.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif // __cplusplus
 
 #define PINS_COUNT (33)
@@ -22,7 +23,7 @@ extern "C" {
 #define NUM_ANALOG_INPUTS (8) // A6 is used for battery, A7 is analog reference
 #define NUM_ANALOG_OUTPUTS (0)
 
-// LEDs
+    // LEDs
 
 #define LED_RED 11
 #define LED_BLUE 12
@@ -69,12 +70,12 @@ extern "C" {
 #define PIN_VBAT (32)
 #define VBAT_ENABLE (14)
 
-static const uint8_t A0 = PIN_A0;
-static const uint8_t A1 = PIN_A1;
-static const uint8_t A2 = PIN_A2;
-static const uint8_t A3 = PIN_A3;
-static const uint8_t A4 = PIN_A4;
-static const uint8_t A5 = PIN_A5;
+    static const uint8_t A0 = PIN_A0;
+    static const uint8_t A1 = PIN_A1;
+    static const uint8_t A2 = PIN_A2;
+    static const uint8_t A3 = PIN_A3;
+    static const uint8_t A4 = PIN_A4;
+    static const uint8_t A5 = PIN_A5;
 #define ADC_RESOLUTION 12
 
 // Other pins
@@ -99,10 +100,10 @@ static const uint8_t A5 = PIN_A5;
 #define PIN_SPI_MOSI (10)
 #define PIN_SPI_SCK (8)
 
-static const uint8_t SS = D0;
-static const uint8_t MOSI = PIN_SPI_MOSI;
-static const uint8_t MISO = PIN_SPI_MISO;
-static const uint8_t SCK = PIN_SPI_SCK;
+    static const uint8_t SS = D0;
+    static const uint8_t MOSI = PIN_SPI_MOSI;
+    static const uint8_t MISO = PIN_SPI_MISO;
+    static const uint8_t SCK = PIN_SPI_SCK;
 
 // supported modules list
 #define USE_SX1262
@@ -113,29 +114,29 @@ static const uint8_t SCK = PIN_SPI_SCK;
 #define SX126X_BUSY D2
 #define SX126X_RESET D3
 
-// ----------------------------------------------------------------
+    // ----------------------------------------------------------------
 
-// E22 Tx/Rx control options:
+    // E22 Tx/Rx control options:
 
-// 1. Let the E22 control Tx and Rx automagically via DIO2.
+    // 1. Let the E22 control Tx and Rx automagically via DIO2.
 
-//  * The E22's TXEN and DIO2 pins are connected to each other, but not to the MCU.
-//  * The E22's RXEN pin *is* connected to the MCU.
-//  * E22_TXEN_CONNECTED_TO_DIO2 is defined so the logic in SX126XInterface.cpp handles this configuration correctly.
+    //  * The E22's TXEN and DIO2 pins are connected to each other, but not to the MCU.
+    //  * The E22's RXEN pin *is* connected to the MCU.
+    //  * E22_TXEN_CONNECTED_TO_DIO2 is defined so the logic in SX126XInterface.cpp handles this configuration correctly.
 
 #define SX126X_TXEN RADIOLIB_NC
 #define SX126X_RXEN D7
 
-// ------------------------------ OR ------------------------------
+    // ------------------------------ OR ------------------------------
 
-// 2. Control Tx and Rx manually.
+    // 2. Control Tx and Rx manually.
 
-//  * The E22's TXEN and RXEN pins are both connected to the MCU.
+    //  * The E22's TXEN and RXEN pins are both connected to the MCU.
 
-// #define SX126X_TXEN D6
-// #define SX126X_RXEN D7
+    // #define SX126X_TXEN D6
+    // #define SX126X_RXEN D7
 
-// ----------------------------------------------------------------
+    // ----------------------------------------------------------------
 
 #ifdef EBYTE_E22
 // Internally the TTGO module hooks the SX126x-DIO2 in to control the TX/RX switch
@@ -162,8 +163,8 @@ static const uint8_t SCK = PIN_SPI_SCK;
 #define PIN_WIRE_SDA (4)
 #define PIN_WIRE_SCL (5)
 
-static const uint8_t SDA = PIN_WIRE_SDA;
-static const uint8_t SCL = PIN_WIRE_SCL;
+    static const uint8_t SDA = PIN_WIRE_SDA;
+    static const uint8_t SCL = PIN_WIRE_SCL;
 
 #define PIN_LSM6DS3TR_C_POWER (15)
 #define PIN_LSM6DS3TR_C_INT1 (18)
@@ -186,9 +187,9 @@ static const uint8_t SCL = PIN_WIRE_SCL;
 #define EXTERNAL_FLASH_DEVICES P25Q16H
 #define EXTERNAL_FLASH_USE_QSPI
 
-// Battery
+    // Battery
 
-#define BAT_READ                                                                                                                 \
+#define BAT_READ \
     14 // P0_14 = 14  Reads battery voltage from divider on signal board. (PIN_VBAT is reading voltage divider on XIAO and is
        // program pin 32 / or P0.31)
 #define BATTERY_SENSE_RESOLUTION_BITS 10
