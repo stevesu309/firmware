@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #if !MESHTASTIC_EXCLUDE_GPS
 #include "GPS.h"
 #endif
+#include "ButtonThread.h"
 #include "MeshService.h"
 #include "NodeDB.h"
 #include "error.h"
@@ -50,9 +51,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "modules/WaypointModule.h"
 #include "sleep.h"
 #include "target_specific.h"
-#include "main.h"
+
 int currentPageIndex = 0;
 int selectedLine = 0;
+
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
 #include "mesh/wifi/WiFiAPClient.h"
 #endif
@@ -281,15 +283,12 @@ namespace graphics
             display->drawString(x, y + FONT_HEIGHT_SMALL * 2 - 3, "Set the region using the");
             display->drawString(x, y + FONT_HEIGHT_SMALL * 3 - 3, "Meshtastic Android, iOS,");
             display->drawString(x, y + FONT_HEIGHT_SMALL * 4 - 3, "Web or CLI clients.");
-            display->drawString(x, y + FONT_HEIGHT_SMALL * 5 - 3, "Select the address as your own location");
         }
         else
         {
             display->drawString(x, y + FONT_HEIGHT_SMALL * 2 - 3, "Visit meshtastic.org");
             display->drawString(x, y + FONT_HEIGHT_SMALL * 3 - 3, "for more information.");
-            display->drawString(x, y + FONT_HEIGHT_SMALL * 4 - 3, "nnnnnnnnnn");
-
-            // display->drawString(x, y + FONT_HEIGHT_SMALL * 4 - 3, "");
+            display->drawString(x, y + FONT_HEIGHT_SMALL * 4 - 3, "");
         }
 
 #ifdef ARCH_ESP32
@@ -1011,13 +1010,10 @@ namespace graphics
     /// Draw the last text message we received
     static void drawTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-        if (redBankController->isMeshPacketListEmpty())
-            redBankController->saveMeshPacket(devicestate.rx_text_message);
-
         // the max length of this buffer is much longer than we can possibly print
         static char tempBuf[237];
 
-        const meshtastic_MeshPacket &mp = redBankController->getCurrentMeshPacket();
+        const meshtastic_MeshPacket &mp = devicestate.rx_text_message;
         meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(getFrom(&mp));
         // LOG_DEBUG("Draw text message from 0x%x: %s", mp.from,
         // mp.decoded.variant.data.decoded.bytes);
@@ -1205,7 +1201,7 @@ namespace graphics
         char usersString[20];
         snprintf(usersString, sizeof(usersString), "%d/%d", nodeStatus->getNumOnline(), nodeStatus->getNumTotal());
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS)) &&                                                    \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(HX8357_CS)) &&                             \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
         display->drawFastImage(x, y + 3, 8, 8, imgUser);
 #else
@@ -1800,7 +1796,7 @@ namespace graphics
         dispdev = new SSD1306Wire(address.address, -1, -1, geometry,
                                   (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE);
 #elif defined(ST7735_CS) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7789_CS) || \
-    defined(RAK14014) || defined(HX8357_CS)
+    defined(RAK14014) || defined(HX8357_CS) || defined(ILI9488_CS)
         dispdev = new TFTDisplay(address.address, -1, -1, geometry,
                                  (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE);
 #elif defined(USE_EINK) && !defined(USE_EINK_DYNAMICDISPLAY)
@@ -1867,9 +1863,13 @@ namespace graphics
             if (on)
             {
                 LOG_INFO("Turn on screen");
+                buttonThread->setScreenFlag(true);
                 powerMon->setState(meshtastic_PowerMon_State_Screen_On);
 #ifdef T_WATCH_S3
                 PMU->enablePowerOutput(XPOWERS_ALDO2);
+#endif
+#ifdef HELTEC_TRACKER_V1_X
+                uint8_t tft_vext_enabled = digitalRead(VEXT_ENABLE);
 #endif
 #if !ARCH_PORTDUINO
                 dispdev->displayOn();
@@ -1881,6 +1881,13 @@ namespace graphics
 #endif
 
                 dispdev->displayOn();
+#ifdef HELTEC_TRACKER_V1_X
+                // If the TFT VEXT power is not enabled, initialize the UI.
+                if (!tft_vext_enabled)
+                {
+                    ui->init();
+                }
+#endif
 #ifdef USE_ST7789
                 pinMode(VTFT_CTRL, OUTPUT);
                 digitalWrite(VTFT_CTRL, LOW);
@@ -1904,6 +1911,13 @@ namespace graphics
                 setScreensaverFrames(einkScreensaver);
 #endif
                 LOG_INFO("Turn off screen");
+                buttonThread->setScreenFlag(false);
+#ifdef ELECROW_ThinkNode_M1
+                if (digitalRead(PIN_EINK_EN) == HIGH)
+                {
+                    digitalWrite(PIN_EINK_EN, LOW);
+                }
+#endif
                 dispdev->displayOff();
 #ifdef USE_ST7789
                 SPI1.end();
@@ -2010,7 +2024,7 @@ namespace graphics
         if (!config.display.flip_screen)
         {
 #if defined(ST7701_CS) || defined(ST7735_CS) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || \
-    defined(ST7789_CS) || defined(RAK14014) || defined(HX8357_CS)
+    defined(ST7789_CS) || defined(RAK14014) || defined(HX8357_CS) || defined(ILI9488_CS)
             static_cast<TFTDisplay *>(dispdev)->flipScreenVertically();
 #elif defined(USE_ST7789)
             static_cast<ST7789Spi *>(dispdev)->flipScreenVertically();
@@ -2056,7 +2070,9 @@ namespace graphics
         powerStatusObserver.observe(&powerStatus->onNewStatus);
         gpsStatusObserver.observe(&gpsStatus->onNewStatus);
         nodeStatusObserver.observe(&nodeStatus->onNewStatus);
+#if !MESHTASTIC_EXCLUDE_ADMIN
         adminMessageObserver.observe(adminModule);
+#endif
         if (textMessageModule)
             textMessageObserver.observe(textMessageModule);
         if (inputBroker)
@@ -2448,7 +2464,7 @@ namespace graphics
 
         // then the node info for our node
 
-        // normalFrames[numframes++] = drawTestFrame;
+        normalFrames[numframes++] = drawTestFrame;
 
         normalFrames[numframes++] = drawNodeListFrame;
         // normalFrames[numframes++] = drawNodeInfoFrame;
@@ -2815,7 +2831,7 @@ namespace graphics
                                               (storeForwardModule->heartbeatInterval * 1200)))
             { // no heartbeat, overlap a bit
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || ARCH_PORTDUINO) &&                                  \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || ARCH_PORTDUINO) &&           \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
                 display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
                                        imgQuestionL1);
@@ -2829,7 +2845,7 @@ namespace graphics
             else
             {
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS)) &&                                                    \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(HX8357_CS)) &&                             \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
                 display->drawFastImage(x + SCREEN_WIDTH - 18 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 16, 8,
                                        imgSFL1);
@@ -2846,7 +2862,7 @@ namespace graphics
         {
             // TODO: Raspberry Pi supports more than just the one screen size
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || ARCH_PORTDUINO) &&                                  \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || ARCH_PORTDUINO) &&           \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
             display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
                                    imgInfoL1);
@@ -3021,13 +3037,18 @@ namespace graphics
         // minutes %= 60;
         // hours %= 24;
 
+        // Show uptime as days, hours, minutes OR seconds
+        std::string uptime = screen->drawTimeDelta(days, hours, minutes, seconds);
+
+        // Line 1 (Still)
+        display->drawString(x + SCREEN_WIDTH - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
+        if (config.display.heading_bold)
+            display->drawString(x - 1 + SCREEN_WIDTH - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
+
         display->setColor(WHITE);
 
         // Setup string to assemble analogClock string
         std::string analogClock = "";
-
-        // Show uptime as days, hours, minutes OR seconds
-        std::string uptime = screen->drawTimeDelta(days, hours, minutes, seconds);
 
         uint32_t rtc_sec = getValidTime(RTCQuality::RTCQualityDevice, true); // Display local timezone
         if (rtc_sec > 0)
@@ -3067,9 +3088,6 @@ namespace graphics
             analogClock += timebuf;
         }
 
-        // Line 1
-        display->drawString(x + SCREEN_WIDTH - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
-
         // Line 2
         display->drawString(x, y + FONT_HEIGHT_SMALL * 1, analogClock.c_str());
 
@@ -3094,7 +3112,7 @@ namespace graphics
             drawGPSpowerstat(display, x, y + FONT_HEIGHT_SMALL * 2, gpsStatus);
         }
 #endif
-        /* Display a heartbeat pixel that blinks every time the frame is redrawn */
+/* Display a heartbeat pixel that blinks every time the frame is redrawn */
 #ifdef SHOW_REDRAWS
         if (heartbeat)
             display->setPixel(0, 0);
@@ -3202,9 +3220,6 @@ namespace graphics
 
     int Screen::handleAdminMessage(const meshtastic_AdminMessage *arg)
     {
-        // Note: only selected admin messages notify this observer
-        // If you wish to handle a new type of message, you should modify AdminModule.cpp first
-
         switch (arg->which_payload_variant)
         {
         // Node removed manually (i.e. via app)
