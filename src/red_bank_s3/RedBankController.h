@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "mesh/generated/meshtastic/mesh.pb.h"
+#include "NodeDB.h"
 
 namespace RedBankS3
 {
@@ -14,19 +15,27 @@ namespace RedBankS3
         void setup();
         void loop();
 
-        bool isMeshPacketListEmpty();
+        bool isMeshPacketListEmpty(uint8_t channel);
         void saveMeshPacket(const meshtastic_MeshPacket &mp);
-        meshtastic_MeshPacket getCurrentMeshPacket();
+        meshtastic_MeshPacket getRecentMeshPacket(uint8_t channel, uint8_t recent_index);
+        int _getMeshPacketListSize(uint8_t channel);
+        uint8_t getDirection(void);
+
+        void push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp);
+        void restoreChannelPackets(void);
 
     private:
         // 消息列表容量
         static const int MESH_PACKET_LIST_CAPCITY = 10;
         // 消息列表
-        std::vector<meshtastic_MeshPacket> *m_meshPacketList;
+        // std::vector<meshtastic_MeshPacket> *m_meshPacketList;
+        std::vector<meshtastic_MeshPacket> channelPackets[8];
+
         // 当前消息索引
         int m_currentMeshPacketIndex;
 
-        int _getMeshPacketListSize();
+        uint8_t direction;
+
         void _previousMeshPacket();
         void _nextMeshPacket();
         void _handlePreMeshPacketButtonPress();
@@ -34,6 +43,6 @@ namespace RedBankS3
         void _handleShuttingDownButtonPress();
         void _handlePrePageButtonPress();
         void _handleNextPageButtonPress();
-        void _handleNextPages();
+        // void _handleNextPages();
     };
 }

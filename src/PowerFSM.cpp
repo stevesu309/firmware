@@ -28,7 +28,7 @@
 #endif
 #if EXCLUDE_POWER_FSM
 FakeFsm powerFSM;
-void PowerFSM_setup(){};
+void PowerFSM_setup() {};
 #else
 /// Should we behave as if we have AC power now?
 static bool isPowered()
@@ -95,9 +95,11 @@ static void lsIdle()
 #ifdef ARCH_ESP32
 
     // Do we have more sleeping to do?
-    if (secsSlept < config.power.ls_secs) {
+    if (secsSlept < config.power.ls_secs)
+    {
         // If some other service would stall sleep, don't let sleep happen yet
-        if (doPreflightSleep()) {
+        if (doPreflightSleep())
+        {
             // Briefly come out of sleep long enough to blink the led once every few seconds
             uint32_t sleepTime = SLEEP_TIME;
 
@@ -106,7 +108,8 @@ static void lsIdle()
             esp_sleep_source_t wakeCause2 = doLightSleep(sleepTime * 1000LL);
             powerMon->clearState(meshtastic_PowerMon_State_CPU_LightSleep);
 
-            switch (wakeCause2) {
+            switch (wakeCause2)
+            {
             case ESP_SLEEP_WAKEUP_TIMER:
                 // Normal case: timer expired, we should just go back to sleep ASAP
 
@@ -130,20 +133,27 @@ static void lsIdle()
 #else
                 bool pressed = false;
 #endif
-                if (pressed) { // If we woke because of press, instead generate a PRESS event.
+                if (pressed)
+                { // If we woke because of press, instead generate a PRESS event.
                     powerFSM.trigger(EVENT_PRESS);
-                } else {
+                }
+                else
+                {
                     // Otherwise let the NB state handle the IRQ (and that state will handle stuff like IRQs etc)
                     // we lie and say "wake timer" because the interrupt will be handled by the regular IRQ code
                     powerFSM.trigger(EVENT_WAKE_TIMER);
                 }
                 break;
             }
-        } else {
+        }
+        else
+        {
             // Someone says we can't sleep now, so just save some power by sleeping the CPU for 100ms or so
             delay(100);
         }
-    } else {
+    }
+    else
+    {
         // Time to stop sleeping!
         ledBlink.set(false);
         LOG_INFO("Reached ls_secs, service loop()");
@@ -171,6 +181,7 @@ static void nbEnter()
 
 static void darkEnter()
 {
+    LOG_INFO("darkEnter");
     setBluetoothEnable(true);
     screen->setOn(false);
 }
@@ -193,11 +204,14 @@ static void serialExit()
 static void powerEnter()
 {
     // LOG_DEBUG("State: POWER");
-    if (!isPowered()) {
+    if (!isPowered())
+    {
         // If we got here, we are in the wrong state - we should be in powered, let that state handle things
         LOG_INFO("Loss of power in Powered");
         powerFSM.trigger(EVENT_POWER_DISCONNECTED);
-    } else {
+    }
+    else
+    {
         screen->setOn(true);
         setBluetoothEnable(true);
         // within enter() the function getState() returns the state we came from
@@ -212,7 +226,8 @@ static void powerEnter()
 
 static void powerIdle()
 {
-    if (!isPowered()) {
+    if (!isPowered())
+    {
         // If we got here, we are in the wrong state
         LOG_INFO("Loss of power in Powered");
         powerFSM.trigger(EVENT_POWER_DISCONNECTED);
@@ -238,7 +253,8 @@ static void onEnter()
 
 static void onIdle()
 {
-    if (isPowered()) {
+    if (isPowered())
+    {
         // If we got here, we are in the wrong state - we should be in powered, let that state handle things
         powerFSM.trigger(EVENT_POWER_CONNECTED);
     }
@@ -324,7 +340,8 @@ void PowerFSM_setup()
     powerFSM.add_transition(&stateON, &stateON, EVENT_BLUETOOTH_PAIR, NULL, "Bluetooth pairing");
 
     // if we are a router we don't turn the screen on for these things
-    if (!isRouter) {
+    if (!isRouter)
+    {
         // if any packet destined for phone arrives, turn on bluetooth at least
         powerFSM.add_transition(&stateNB, &stateDARK, EVENT_PACKET_FOR_PHONE, NULL, "Packet for phone");
 
@@ -386,7 +403,8 @@ void PowerFSM_setup()
                              config.device.role == meshtastic_Config_DeviceConfig_Role_TAK_TRACKER ||
                              config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR;
 
-    if ((isRouter || config.power.is_power_saving) && !isWifiAvailable() && !isTrackerOrSensor) {
+    if ((isRouter || config.power.is_power_saving) && !isWifiAvailable() && !isTrackerOrSensor)
+    {
         powerFSM.add_timed_transition(&stateNB, &stateLS,
                                       Default::getConfiguredOrDefaultMs(config.power.min_wake_secs, default_min_wake_secs), NULL,
                                       "Min wake timeout");
@@ -397,7 +415,9 @@ void PowerFSM_setup()
             &stateDARK, &stateLS,
             Default::getConfiguredOrDefaultMs(config.power.wait_bluetooth_secs, default_wait_bluetooth_secs), NULL,
             "Bluetooth timeout");
-    } else {
+    }
+    else
+    {
         // If ESP32, but not using power-saving, check periodically if config has drifted out of stateDark
         powerFSM.add_timed_transition(&stateDARK, &stateDARK,
                                       Default::getConfiguredOrDefaultMs(config.display.screen_on_secs, default_screen_on_secs),

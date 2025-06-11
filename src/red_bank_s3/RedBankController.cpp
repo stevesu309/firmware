@@ -10,12 +10,13 @@ namespace RedBankS3
 {
     RedBankController::RedBankController()
     {
-        m_meshPacketList = new std::vector<meshtastic_MeshPacket>();
+        // m_meshPacketList = new std::vector<meshtastic_MeshPacket>();
         m_currentMeshPacketIndex = -1;
+        restoreChannelPackets();
     }
     RedBankController::~RedBankController()
     {
-        delete m_meshPacketList;
+        // delete m_meshPacketList;
         m_currentMeshPacketIndex = -1;
     }
 
@@ -35,46 +36,89 @@ namespace RedBankS3
         // _handleShuttingDownButtonPress();
         _handlePrePageButtonPress();
         _handleNextPageButtonPress();
-        _handleNextPages();
+        // _handleNextPages();
     }
 
-    bool RedBankController::isMeshPacketListEmpty()
+    bool RedBankController::isMeshPacketListEmpty(uint8_t channel)
     {
-        return m_meshPacketList->empty();
+        if (channel >= 8)
+        {
+            LOG_INFO("RedBankController: incorrect channel num = 0x%x!", channel);
+            return (false);
+        }
+
+        return channelPackets[channel].empty();
+    }
+
+    void RedBankController::push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp)
+    {
+        if (channelPackets[channel_index].size() >= MESH_PACKET_LIST_CAPCITY)
+        {
+            channelPackets[channel_index].erase(channelPackets[channel_index].begin());
+        }
+
+        channelPackets[channel_index].push_back(mp);
     }
 
     void RedBankController::saveMeshPacket(const meshtastic_MeshPacket &mp)
     {
-        // 如果消息列表已满，删除最早的消息
-        if (m_meshPacketList->size() >= MESH_PACKET_LIST_CAPCITY)
+        uint8_t i;
+
+        if (mp.channel >= 8)
         {
-            m_meshPacketList->erase(m_meshPacketList->begin());
+            LOG_INFO("RedBankController: incorrect mp.channel = 0x%x!", mp.channel);
+            return;
         }
-        // 添加新消息到列表
-        m_meshPacketList->push_back(mp);
-        // 更新当前消息索引
-        m_currentMeshPacketIndex = _getMeshPacketListSize() - 1;
+
+        push_packet(mp.channel, mp);
+
+        for (i = 0; i < channelPackets[mp.channel].size(); ++i)
+        {
+            nodeDB->saveChannelPacketToDisk(mp.channel, i, channelPackets[mp.channel].at(i));
+        }
     }
 
-    meshtastic_MeshPacket RedBankController::getCurrentMeshPacket()
+    void RedBankController::restoreChannelPackets(void)
     {
-        // 如果消息列表为空，返回空消息
-        if (isMeshPacketListEmpty())
+        uint8_t i = 0, j = 0;
+        meshtastic_MeshPacket mp;
+
+        for (i = 0; i < 8; ++i)
         {
+            LOG_INFO("restoring channel %d packets...", i);
+            channelPackets[i].erase(channelPackets[i].begin(), channelPackets[i].end());
+
+            for (j = 0; j < 10; ++j)
+            {
+                if (nodeDB->restoreMeshPacket(i, j, mp))
+                {
+                    push_packet(i, mp);
+                }
+            }
+        }
+    }
+
+    meshtastic_MeshPacket RedBankController::getRecentMeshPacket(uint8_t channel, uint8_t recent_index)
+    {
+        if ((channel >= 8) || (recent_index >= channelPackets[channel].size()))
+        {
+            LOG_INFO("RedBankController: invalid argument, channel num = 0x%x, recent_index = %d!", channel, recent_index);
+
             meshtastic_MeshPacket emptyPacket;
             return emptyPacket;
         }
-        // 返回当前消息
-        return m_meshPacketList->at(m_currentMeshPacketIndex);
+
+        return (channelPackets[channel].at(recent_index));
     }
 
-    int RedBankController::_getMeshPacketListSize()
+    int RedBankController::_getMeshPacketListSize(uint8_t channel)
     {
-        return m_meshPacketList->size();
+        return (channelPackets[channel].size());
     }
 
     void RedBankController::_previousMeshPacket()
     {
+        /*
         if (m_currentMeshPacketIndex > 0)
         {
             m_currentMeshPacketIndex--;
@@ -83,10 +127,15 @@ namespace RedBankS3
         {
             m_currentMeshPacketIndex = _getMeshPacketListSize() - 1;
         }
+        */
+        screen->showPrevPacket();
+
+        direction = 0;
     }
 
     void RedBankController::_nextMeshPacket()
     {
+        /*
         if (m_currentMeshPacketIndex < _getMeshPacketListSize() - 1)
         {
             m_currentMeshPacketIndex++;
@@ -95,6 +144,15 @@ namespace RedBankS3
         {
             m_currentMeshPacketIndex = 0;
         }
+        */
+        screen->showNextPacket();
+
+        direction = 1;
+    }
+
+    uint8_t RedBankController::getDirection(void)
+    {
+        return (direction);
     }
 
     void RedBankController::_handlePreMeshPacketButtonPress() // 上一条信息
@@ -125,7 +183,6 @@ namespace RedBankS3
         bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
         if (lastShuttingDownButtonState != curState && curState == HIGH)
         {
-            // 执行关机流程
             if (screen)
                 screen->startAlert("Shutting down...");
             shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
@@ -133,48 +190,76 @@ namespace RedBankS3
         lastShuttingDownButtonState = curState;
     }
 
-    void RedBankController::_handlePrePageButtonPress() // 上一个channel
+    // void RedBankController::_handlePrePageButtonPress() // 上一页
+    // {
+    //     // static bool lastButtonState = HIGH;
+    //     // bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
+    //     // if (lastButtonState != curState && curState == HIGH)
+    //     // {
+    //     //     selectedLine = max(0, selectedLine - 1);
+    //     // }
+    //     // lastButtonState = curState;
+    //     // printf("selectedLine: %d\n", selectedLine);
+    // }
+
+    // void RedBankController::_handleNextPageButtonPress() // 下一页
+    // {
+    //     // static bool lastButtonState = HIGH;
+    //     // bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
+    //     // if (lastButtonState != curState && curState == HIGH)
+    //     // {
+    //     //     int totalNodes = nodeDB->getNumMeshNodes();
+    //     //     int lastVisible = min(nodesPerPage - 1, totalNodes - currentPageIndex - 1);
+    //     //     selectedLine = min(lastVisible, selectedLine + 1);
+    //     // }
+    //     // lastButtonState = curState;
+    //     // printf("selectedLine: %d\n", selectedLine);
+    // }
+    void RedBankController::_handlePrePageButtonPress() // 上一帧
     {
         static bool lastButtonState = HIGH;
         bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
         if (lastButtonState != curState && curState == HIGH)
         {
-            selectedLine = max(0, selectedLine - 1);
+            if (screen)
+            {
+                screen->showPrevFrame();
+            }
         }
+
         lastButtonState = curState;
-        printf("selectedLine: %d\n", selectedLine);
     }
 
-    void RedBankController::_handleNextPageButtonPress() // 下一个channel
+    void RedBankController::_handleNextPageButtonPress() // 下一帧
     {
-        static bool lastButtonState = HIGH;
+        static bool lastNextMeshPacketButtonState = HIGH;
         bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
-        if (lastButtonState != curState && curState == HIGH)
+        if (lastNextMeshPacketButtonState != curState && curState == HIGH)
         {
-            int totalNodes = nodeDB->getNumMeshNodes();
-            int lastVisible = min(nodesPerPage - 1, totalNodes - currentPageIndex - 1);
-            selectedLine = min(lastVisible, selectedLine + 1);
+            if (screen)
+            {
+                screen->showNextFrame();
+            }
         }
-        lastButtonState = curState;
-        printf("selectedLine: %d\n", selectedLine);
+        lastNextMeshPacketButtonState = curState;
     }
 
-    void RedBankController::_handleNextPages() // Node列表翻页
-    {
-        static bool lastButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_NEX_PAGE_PACKET);
+    // void RedBankController::_handleNextPages() // Node列表翻页
+    // {
+    //     static bool lastButtonState = HIGH;
+    //     bool curState = digitalRead(BUTTON_NEX_PAGE_PACKET);
 
-        if (lastButtonState != curState && curState == HIGH)
-        {
-            int totalNodes = nodeDB->getNumMeshNodes();
+    //     if (lastButtonState != curState && curState == HIGH)
+    //     {
+    //         int totalNodes = nodeDB->getNumMeshNodes();
 
-            currentPageIndex += nodesPerPage;
+    //         currentPageIndex += nodesPerPage;
 
-            if (currentPageIndex >= totalNodes)
-                currentPageIndex = 0;
-        }
+    //         if (currentPageIndex >= totalNodes)
+    //             currentPageIndex = 0;
+    //     }
 
-        lastButtonState = curState;
-    }
+    //     lastButtonState = curState;
+    // }
 
 }

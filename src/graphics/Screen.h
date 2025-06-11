@@ -236,6 +236,8 @@ namespace graphics
         void onPress() { enqueueCmd(ScreenCmd{.cmd = Cmd::ON_PRESS}); }
         void showPrevFrame() { enqueueCmd(ScreenCmd{.cmd = Cmd::SHOW_PREV_FRAME}); }
         void showNextFrame() { enqueueCmd(ScreenCmd{.cmd = Cmd::SHOW_NEXT_FRAME}); }
+        void showPrevPacket() { enqueueCmd(ScreenCmd{.cmd = Cmd::SHOW_PREV_PACKET}); }
+        void showNextPacket() { enqueueCmd(ScreenCmd{.cmd = Cmd::SHOW_NEXT_PACKET}); }
 
         // generic alert start
         void startAlert(FrameCallback _alertFrame)
@@ -616,6 +618,8 @@ namespace graphics
         void handleOnPress();
         void handleShowNextFrame();
         void handleShowPrevFrame();
+        void handleShowNextPacket();
+        void handleShowPrevPacket();
         void handlePrint(const char *text);
         void handleStartFirmwareUpdateScreen();
 
@@ -629,6 +633,7 @@ namespace graphics
             {
                 uint8_t fault = 0;
                 uint8_t textMessage = 0;
+                uint8_t channelMessage = 0;
                 uint8_t waypoint = 0;
                 uint8_t focusedModule = 0;
                 uint8_t log = 0;
@@ -715,6 +720,8 @@ namespace graphics
 
         /// UI helper for rendering to frames and switching between them
         OLEDDisplayUi *ui;
+
+        uint8_t textMessageChannel;
     };
 
 } // namespace graphics

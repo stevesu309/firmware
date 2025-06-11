@@ -52,8 +52,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sleep.h"
 #include "target_specific.h"
 
+#include "modules/ChannelMessageStore.h"
+#include "red_bank_s3/RedBankController.h"
+
 int currentPageIndex = 0;
 int selectedLine = 0;
+int actualChannelIndex = 0;
+bool isInChannelFrame = false;
+static uint16_t channelFrameBeginIndex;
+static uint16_t channelPacketBrowseIndex;
+// int validChannelCount = 0;
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
 #include "mesh/wifi/WiFiAPClient.h"
@@ -1426,6 +1434,11 @@ namespace graphics
     /// nodes
     static size_t nodeIndex;
     static int8_t prevFrame = -1;
+#define MAX_VALID_CHANNELS 8
+
+    static int validChannelIndices[MAX_VALID_CHANNELS]; // 有效频道在 channelFile.channels[] 中的索引
+    static int validChannelCount = 0;
+    static size_t channelIndex;
 
     // Draw the arrow pointing to a node's location
     void Screen::drawNodeHeading(OLEDDisplay *display, int16_t compassX, int16_t compassY, uint16_t compassDiam, float headingRadian)
@@ -1686,92 +1699,362 @@ namespace graphics
 
     static void drawTestFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-        // display->drawXbm(0, 0, 50, 28, icon_bits); // bitmap is 128x64
-        display->drawXbm(0, 0, 128, 64, manbo); // bitmap is 128x64
+        return; // This is just a placeholder for testing purposes
     }
 
-    static void drawNodeListFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+    // static void drawNodeListFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+    // {
+    //     int totalNodes = nodeDB->getNumMeshNodes(); // 获取总节点数
+    //     char nodeInfoStr[128];
+
+    //     display->setTextAlignment(TEXT_ALIGN_LEFT);
+    //     display->setFont(ArialMT_Plain_10);
+
+    //     for (int i = 0; i < nodesPerPage; i++)
+    //     {
+    //         int nodeIndex = currentPageIndex + i;
+    //         if (nodeIndex >= totalNodes)
+    //             break;
+
+    //         meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
+    //         if (node)
+    //         {
+    //             const char *name = node->has_user ? node->user.short_name : "Unknown";
+    //             char truncated[8] = {0};
+
+    //             strncpy(truncated, name, 7);
+
+    //             if (i == selectedLine)
+    //                 snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s<", truncated);
+    //             else
+    //                 snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s ", truncated);
+
+    //             display->drawString(x, y + i * 10, nodeInfoStr);
+    //         }
+    //     }
+    //     display->setTextAlignment(TEXT_ALIGN_RIGHT);
+
+    //     // 显示页码
+    //     char pageInfo[32];
+    //     snprintf(pageInfo, sizeof(pageInfo), "Page: %d/%d", currentPageIndex / nodesPerPage + 1,
+    //              (totalNodes + nodesPerPage - 1) / nodesPerPage);
+    //     display->drawString(128, y + nodesPerPage * 10, pageInfo);
+    // }
+
+    // static void drawNodeInfoFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+    // {
+    //     display->setTextAlignment(TEXT_ALIGN_LEFT);
+
+    //     meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(selectedLine + currentPageIndex);
+    //     if (node)
+    //     {
+    //         char nodeInfoStr[128];
+    //         snprintf(nodeInfoStr, sizeof(nodeInfoStr), "Node: %s", node->has_user ? node->user.short_name : "Unknown");
+    //         display->drawString(x, y, nodeInfoStr);
+    //         display->drawString(x, y + 10, "Signal: ");
+    //         display->drawString(x + 60, y + 10, String(clamp((int)((node->snr + 10) * 5), 0, 100)) + "%");
+    //         display->drawString(x, y + 20, "Hops Away: ");
+    //         display->drawString(x + 60, y + 20, String(node->hops_away));
+    //         display->drawString(x, y + 30, "Last Seen: "); // 显示最后看到的时间
+    //         char lastSeenStr[32];
+    //         screen->getTimeAgoStr(sinceLastSeen(node), lastSeenStr, sizeof(lastSeenStr));
+    //         display->drawString(x + 60, y + 30, lastSeenStr);
+    //         display->drawString(x, y + 40, "Distance: ");
+    //         char distanceStr[32];
+    //         meshtastic_NodeInfoLite *ourNode = nodeDB->getMeshNode(nodeDB->getNodeNum()); // 获取本地节点信息
+    //         if (ourNode && nodeDB->hasValidPosition(ourNode))
+    //         {
+    //             const meshtastic_PositionLite &op = ourNode->position;
+    //             const meshtastic_PositionLite &p = node->position;
+    //             float d = GeoCoord::latLongToMeter(DegD(p.latitude_i), DegD(p.longitude_i), DegD(op.latitude_i), DegD(op.longitude_i));
+    //             if (config.display.units == meshtastic_Config_DisplayConfig_DisplayUnits_IMPERIAL)
+    //                 snprintf(distanceStr, sizeof(distanceStr), "%.1f mi", d * METERS_TO_FEET / MILES_TO_FEET);
+    //             else
+    //                 snprintf(distanceStr, sizeof(distanceStr), "%.1f km", d / 1000);
+    //         }
+    //         else
+    //         {
+    //             snprintf(distanceStr, sizeof(distanceStr), "?");
+    //         }
+    //         display->drawString(x + 60, y + 40, distanceStr);
+    //     }
+    // }
+
+    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
     {
-        int totalNodes = nodeDB->getNumMeshNodes(); // 获取总节点数
-        char nodeInfoStr[128];
+        return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
+    }
 
-        display->setTextAlignment(TEXT_ALIGN_LEFT);
-        display->setFont(ArialMT_Plain_10);
+    bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex)
+    {
+        uint8_t i = 0;
+        uint8_t channelCnt = sizeof(validChannelIndices) / sizeof(validChannelIndices[0]);
 
-        for (int i = 0; i < nodesPerPage; i++)
+        for (i = 0; i < channelCnt; ++i)
         {
-            int nodeIndex = currentPageIndex + i;
-            if (nodeIndex >= totalNodes)
-                break;
-
-            meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
-            if (node)
+            if (validChannelIndices[i] == channelIndex)
             {
-                const char *name = node->has_user ? node->user.short_name : "Unknown";
-                char truncated[8] = {0};
-
-                strncpy(truncated, name, 7);
-
-                if (i == selectedLine)
-                    snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s<", truncated);
-                else
-                    snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s ", truncated);
-
-                display->drawString(x, y + i * 10, nodeInfoStr);
+                break;
             }
         }
-        display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
-        // 显示页码
-        char pageInfo[32];
-        snprintf(pageInfo, sizeof(pageInfo), "Page: %d/%d", currentPageIndex / nodesPerPage + 1,
-                 (totalNodes + nodesPerPage - 1) / nodesPerPage);
-        display->drawString(128, y + nodesPerPage * 10, pageInfo);
+        if (i >= channelCnt)
+        {
+            return (false);
+        }
+
+        *frameIndex = i;
+        return (true);
     }
 
-    static void drawNodeInfoFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+    bool isBrowsingChannelPacketFrame(uint8_t currentFrame)
     {
-        display->setTextAlignment(TEXT_ALIGN_LEFT);
-
-        meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(selectedLine + currentPageIndex);
-        if (node)
+        if (validChannelCount == 0)
         {
-            char nodeInfoStr[128];
-            snprintf(nodeInfoStr, sizeof(nodeInfoStr), "Node: %s", node->has_user ? node->user.short_name : "Unknown");
-            display->drawString(x, y, nodeInfoStr);
-            display->drawString(x, y + 10, "Signal: ");
-            display->drawString(x + 60, y + 10, String(clamp((int)((node->snr + 10) * 5), 0, 100)) + "%");
-            display->drawString(x, y + 20, "Hops Away: ");
-            display->drawString(x + 60, y + 20, String(node->hops_away));
-            display->drawString(x, y + 30, "Last Seen: "); // 显示最后看到的时间
-            char lastSeenStr[32];
-            screen->getTimeAgoStr(sinceLastSeen(node), lastSeenStr, sizeof(lastSeenStr));
-            display->drawString(x + 60, y + 30, lastSeenStr);
-            display->drawString(x, y + 40, "Distance: ");
-            char distanceStr[32];
-            meshtastic_NodeInfoLite *ourNode = nodeDB->getMeshNode(nodeDB->getNodeNum()); // 获取本地节点信息
-            if (ourNode && nodeDB->hasValidPosition(ourNode))
+            return (false);
+        }
+
+        if ((currentFrame >= channelFrameBeginIndex) &&
+            (currentFrame < (channelFrameBeginIndex + validChannelCount)))
+        {
+            return (true);
+        }
+
+        return (false);
+    }
+
+    void onFrameFixed(uint8_t currentFrame)
+    {
+        if (!isBrowsingChannelPacketFrame(currentFrame))
+        {
+            return;
+        }
+
+        channelIndex = getBrowsingChannelIndex(currentFrame);
+
+        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (packetListSize == 0)
+        {
+            LOG_INFO("packetListSize = %d\n", packetListSize);
+            channelPacketBrowseIndex = 0;
+            return;
+        }
+
+        channelPacketBrowseIndex = packetListSize - 1;
+    }
+
+    /// Draw the last text message we received
+    static void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+    {
+        // the max length of this buffer is much longer than we can possibly print
+        static char tempBuf[237];
+
+        // LOG_DEBUG("Draw text message from 0x%x: %s", mp.from,
+        // mp.decoded.variant.data.decoded.bytes);
+
+        // Demo for drawStringMaxWidth:
+        // with the third parameter you can define the width after which words will
+        // be wrapped. Currently only spaces and "-" are allowed for wrapping
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
+        display->setFont(FONT_SMALL);
+        if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
+        {
+            display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + FONT_HEIGHT_SMALL);
+            display->setColor(BLACK);
+        }
+
+        // added by QCB begin
+        if (validChannelCount == 0)
+            return;
+
+        actualChannelIndex = getBrowsingChannelIndex(state->currentFrame);
+        if (actualChannelIndex >= 8)
+        {
+            LOG_INFO("Error actualChannelIndex = %d >=  validChannelCount = %d\n",
+                     actualChannelIndex, validChannelCount);
+            return;
+        }
+
+        // display channel name
+        const char *name = channelFile.channels[actualChannelIndex].settings.name;
+        char displayName[13];
+
+        LOG_INFO("channel name = %s", name);
+
+        if (name && strlen(name) > 0)
+        {
+            display->drawString(x, y, name);
+        }
+        else
+        {
+            snprintf(displayName, sizeof(displayName), "Channel %d", actualChannelIndex);
+            display->drawString(x, y, displayName);
+        }
+        display->drawString(x + 64, y, String(validChannelCount));
+
+        y += FONT_HEIGHT_SMALL;
+
+        // display packet info
+        uint8_t direction = 0;
+
+        uint16_t packetListSize = redBankController->_getMeshPacketListSize(actualChannelIndex);
+
+        if (packetListSize == 0)
+        {
+            LOG_INFO("packetListSize = %d\n", packetListSize);
+            return;
+        }
+
+        if (channelPacketBrowseIndex >= packetListSize)
+        {
+            channelPacketBrowseIndex = packetListSize - 1;
+        }
+
+        const meshtastic_MeshPacket &mp = redBankController->getRecentMeshPacket(actualChannelIndex, channelPacketBrowseIndex);
+
+        // added by QCB end
+
+        meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(getFrom(&mp));
+
+        // For time delta
+        uint32_t seconds = sinceReceived(&mp);
+        uint32_t minutes = seconds / 60;
+        uint32_t hours = minutes / 60;
+        uint32_t days = hours / 24;
+
+        // For timestamp
+        uint8_t timestampHours, timestampMinutes;
+        int32_t daysAgo;
+        bool useTimestamp = deltaToTimestamp(seconds, &timestampHours, &timestampMinutes, &daysAgo);
+
+        // If bold, draw twice, shifting right by one pixel
+        for (uint8_t xOff = 0; xOff <= (config.display.heading_bold ? 1 : 0); xOff++)
+        {
+            // Show a timestamp if received today, but longer than 15 minutes ago
+            if (useTimestamp && minutes >= 15 && daysAgo == 0)
             {
-                const meshtastic_PositionLite &op = ourNode->position;
-                const meshtastic_PositionLite &p = node->position;
-                float d = GeoCoord::latLongToMeter(DegD(p.latitude_i), DegD(p.longitude_i), DegD(op.latitude_i), DegD(op.longitude_i));
-                if (config.display.units == meshtastic_Config_DisplayConfig_DisplayUnits_IMPERIAL)
-                    snprintf(distanceStr, sizeof(distanceStr), "%.1f mi", d * METERS_TO_FEET / MILES_TO_FEET);
-                else
-                    snprintf(distanceStr, sizeof(distanceStr), "%.1f km", d / 1000);
+                display->drawStringf(xOff + x, 0 + y, tempBuf, "At %02hu:%02hu from %s", timestampHours, timestampMinutes,
+                                     (node && node->has_user) ? node->user.short_name : "???");
             }
+            // Timestamp yesterday (if display is wide enough)
+            else if (useTimestamp && daysAgo == 1 && display->width() >= 200)
+            {
+                display->drawStringf(xOff + x, 0 + y, tempBuf, "Yesterday %02hu:%02hu from %s", timestampHours, timestampMinutes,
+                                     (node && node->has_user) ? node->user.short_name : "???");
+            }
+            // Otherwise, show a time delta
             else
             {
-                snprintf(distanceStr, sizeof(distanceStr), "?");
+                display->drawStringf(xOff + x, 0 + y, tempBuf, "%s ago from %s",
+                                     screen->drawTimeDelta(days, hours, minutes, seconds).c_str(),
+                                     (node && node->has_user) ? node->user.short_name : "???");
             }
-            display->drawString(x + 60, y + 40, distanceStr);
         }
-    }
 
-    static void drawChannelFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
-    {
-
-        return;
+        display->setColor(WHITE);
+#ifndef EXCLUDE_EMOJI
+        const char *msg = reinterpret_cast<const char *>(mp.decoded.payload.bytes);
+        if (strcmp(msg, "\U0001F44D") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
+                             thumbup);
+        }
+        else if (strcmp(msg, "\U0001F44E") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
+                             thumbdown);
+        }
+        else if (strcmp(msg, "\U0001F60A") == 0 || strcmp(msg, "\U0001F600") == 0 || strcmp(msg, "\U0001F642") == 0 ||
+                 strcmp(msg, "\U0001F609") == 0 ||
+                 strcmp(msg, "\U0001F601") == 0)
+        { // matches 5 different common smileys, so that the phone user doesn't have to
+          // remember which one is compatible
+            display->drawXbm(x + (SCREEN_WIDTH - smiley_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5, smiley_width, smiley_height,
+                             smiley);
+        }
+        else if (strcmp(msg, "❓") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - question_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5, question_width, question_height,
+                             question);
+        }
+        else if (strcmp(msg, "‼️") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - bang_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5,
+                             bang_width, bang_height, bang);
+        }
+        else if (strcmp(msg, "\U0001F4A9") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - poo_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5,
+                             poo_width, poo_height, poo);
+        }
+        else if (strcmp(msg, "\U0001F923") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - haha_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5,
+                             haha_width, haha_height, haha);
+        }
+        else if (strcmp(msg, "\U0001F44B") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - wave_icon_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5, wave_icon_width,
+                             wave_icon_height, wave_icon);
+        }
+        else if (strcmp(msg, "\U0001F920") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - cowboy_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5, cowboy_width, cowboy_height,
+                             cowboy);
+        }
+        else if (strcmp(msg, "\U0001F42D") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - deadmau5_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5, deadmau5_width, deadmau5_height,
+                             deadmau5);
+        }
+        else if (strcmp(msg, "\xE2\x98\x80\xEF\xB8\x8F") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - sun_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5,
+                             sun_width, sun_height, sun);
+        }
+        else if (strcmp(msg, "\u2614") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - rain_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10,
+                             rain_width, rain_height, rain);
+        }
+        else if (strcmp(msg, "☁️") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - cloud_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5, cloud_width, cloud_height, cloud);
+        }
+        else if (strcmp(msg, "🌫️") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - fog_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5,
+                             fog_width, fog_height, fog);
+        }
+        else if (strcmp(msg, "\U0001F608") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - devil_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5, devil_width, devil_height, devil);
+        }
+        else if (strcmp(msg, "♥️") == 0 || strcmp(msg, "\U0001F9E1") == 0 || strcmp(msg, "\U00002763") == 0 ||
+                 strcmp(msg, "\U00002764") == 0 || strcmp(msg, "\U0001F495") == 0 || strcmp(msg, "\U0001F496") == 0 ||
+                 strcmp(msg, "\U0001F497") == 0 || strcmp(msg, "\U0001F498") == 0)
+        {
+            display->drawXbm(x + (SCREEN_WIDTH - heart_width) / 2,
+                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5, heart_width, heart_height, heart);
+        }
+        else
+        {
+            snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
+            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
+        }
+#else
+        snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
+        display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
+#endif
     }
 
 #if defined(ESP_PLATFORM) && defined(USE_ST7789)
@@ -1842,6 +2125,7 @@ namespace graphics
      */
     void Screen::doDeepSleep()
     {
+        LOG_INFO("doDeepSleep");
 #ifdef USE_EINK
         setOn(false, drawDeepSleepScreen);
 #ifdef PIN_EINK_EN
@@ -1966,7 +2250,7 @@ namespace graphics
 #endif
 
         // Initialising the UI will init the display too.
-        ui->init();
+        ui->init(onFrameFixed);
 
         displayWidth = dispdev->width();
         displayHeight = dispdev->height();
@@ -2195,6 +2479,13 @@ namespace graphics
             case Cmd::SHOW_NEXT_FRAME:
                 handleShowNextFrame();
                 break;
+            case Cmd::SHOW_PREV_PACKET:
+                handleShowPrevPacket();
+                break;
+            case Cmd::SHOW_NEXT_PACKET:
+                handleShowNextPacket();
+                break;
+
             case Cmd::START_ALERT_FRAME:
             {
                 showingBootScreen = false; // this should avoid the edge case where an alert triggers before the boot screen goes away
@@ -2445,28 +2736,55 @@ namespace graphics
             focus = FOCUS_FAULT; // Change our "focus" parameter, to ensure we show the fault frame
         }
 
+        LOG_DEBUG("Added faults.  numframes: %d", (numframes - fsi.positions.fault));
+
 #if defined(DISPLAY_CLOCK_FRAME)
         normalFrames[numframes++] = screen->digitalWatchFace ? &Screen::drawDigitalClockFrame : &Screen::drawAnalogClockFrame;
 #endif
 
+#if 0
         // If we have a text message - show it next, unless it's a phone message and we aren't using any special modules
         if (devicestate.has_rx_text_message && shouldDrawMessage(&devicestate.rx_text_message))
         {
             fsi.positions.textMessage = numframes;
             normalFrames[numframes++] = drawTextMessageFrame;
+            LOG_DEBUG("Added text message.  numframes: 1");
         }
+#endif
 
+#if 0
         // then all the nodes
         // We only show a few nodes in our scrolling list - because meshes with many nodes would have too many screens
-        // size_t numToShow = min(numMeshNodes, 4U);
-        // for (size_t i = 0; i < numToShow; i++)
-        //     normalFrames[numframes++] = drawNodeInfo;
+        size_t numToShow = min(numMeshNodes, 4U);
+        for (size_t i = 0; i < numToShow; i++)
+            normalFrames[numframes++] = drawNodeInfo;
+#endif
 
+        //----------------------------------------------
+        // add channel frame
+        // begin
+        fsi.positions.channelMessage = numframes;
+        channelFrameBeginIndex = numframes;
+        validChannelCount = 0;
         // then the node info for our node
+        int numChannels = channelFile.channels_count;
+        LOG_DEBUG("numChannels = %d", numChannels);
+        for (size_t i = 0; i < numChannels; i++)
+        {
+            if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
+                channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY)
+            {
+                validChannelIndices[validChannelCount++] = i;
+                normalFrames[numframes++] = drawChannelTextMessageFrame;
+            }
+        }
 
-        normalFrames[numframes++] = drawTestFrame;
+        LOG_DEBUG("Added channel text message begin at %d.  numframes: %d", fsi.positions.channelMessage, (numChannels - fsi.positions.channelMessage));
+        // add channel frame
+        // end
+        //----------------------------------------------
 
-        normalFrames[numframes++] = drawNodeListFrame;
+        // normalFrames[numframes++] = drawNodeListFrame;
         // normalFrames[numframes++] = drawNodeInfoFrame;
 
         // then the debug info
@@ -2475,10 +2793,12 @@ namespace graphics
         // call a method on debugInfo object.
         fsi.positions.log = numframes;
         normalFrames[numframes++] = &Screen::drawDebugInfoTrampoline;
+        LOG_DEBUG("Added debug info trampoline.  numframes: 1");
 
         // call a method on debugInfoScreen object (for more details)
         fsi.positions.settings = numframes;
         normalFrames[numframes++] = &Screen::drawDebugInfoSettingsTrampoline;
+        LOG_DEBUG("Added debug info setting trampoline.  numframes: 1");
 
         fsi.positions.wifi = numframes;
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
@@ -2502,7 +2822,8 @@ namespace graphics
 
         prevFrame = -1; // Force drawNodeInfo to pick a new node (because our list
                         // just changed)
-
+        channelIndex = 0;
+        uint8_t frameIndex = 0;
         // Focus on a specific frame, in the frame set we just created
         switch (focus)
         {
@@ -2513,7 +2834,16 @@ namespace graphics
             ui->switchToFrame(fsi.positions.fault);
             break;
         case FOCUS_TEXTMESSAGE:
-            ui->switchToFrame(fsi.positions.textMessage);
+            LOG_INFO("textMessageChannel = %d", textMessageChannel);
+            if (getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
+            {
+                LOG_INFO("frameIndex = %d", frameIndex);
+                ui->switchToFrame(fsi.positions.channelMessage + frameIndex);
+            }
+            else
+            {
+                LOG_INFO("frameIndex error");
+            }
             break;
         case FOCUS_MODULE:
             // Whichever frame was marked by MeshModule::requestFocus(), if any
@@ -2735,6 +3065,70 @@ namespace graphics
             lastScreenTransition = millis();
             setFastFramerate();
         }
+    }
+
+    void Screen::handleShowPrevPacket(void)
+    {
+        if (ui->getUiState()->frameState != FIXED)
+        {
+            return;
+        }
+
+        if (!isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
+        {
+            return;
+        }
+
+        channelIndex = getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+
+        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (packetListSize == 0)
+        {
+            return;
+        }
+
+        if (channelPacketBrowseIndex == 0 || channelPacketBrowseIndex > packetListSize)
+        {
+            channelPacketBrowseIndex = (packetListSize - 1);
+        }
+        else
+        {
+            --channelPacketBrowseIndex;
+        }
+
+        setFastFramerate();
+    }
+
+    void Screen::handleShowNextPacket(void)
+    {
+        if (ui->getUiState()->frameState != FIXED)
+        {
+            return;
+        }
+
+        if (!isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
+        {
+            return;
+        }
+
+        channelIndex = getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+
+        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (packetListSize == 0)
+        {
+            return;
+        }
+
+        if (channelPacketBrowseIndex >= (packetListSize - 1))
+        {
+            channelPacketBrowseIndex = 0;
+        }
+        else
+        {
+            ++channelPacketBrowseIndex;
+        }
+
+        setFastFramerate();
     }
 
 #ifndef SCREEN_TRANSITION_FRAMERATE
@@ -3147,7 +3541,11 @@ namespace graphics
 
             // Incoming message
             else
+            {
+                textMessageChannel = packet->channel;
+                LOG_INFO("FOCUS_TEXTMESSAGE");
                 setFrames(FOCUS_TEXTMESSAGE); // Focus on the new message
+            }
         }
 
         return 0;
