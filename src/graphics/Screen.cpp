@@ -52,7 +52,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sleep.h"
 #include "target_specific.h"
 
-#include "modules/ChannelMessageStore.h"
 #include "red_bank_s3/RedBankController.h"
 
 int currentPageIndex = 0;
@@ -441,6 +440,7 @@ namespace graphics
     // Ignore messages originating from phone (from the current node 0x0) unless range test or store and forward module are enabled
     static bool shouldDrawMessage(const meshtastic_MeshPacket *packet)
     {
+        LOG_DEBUG("shouldDrawMessage: from=%d, store_forward=%d", packet->from, moduleConfig.store_forward.enabled);
         return packet->from != 0 && !moduleConfig.store_forward.enabled;
     }
 
@@ -1600,7 +1600,7 @@ namespace graphics
         }
         else
         {
-            snprintf(signalStr, sizeof(signalStr), "Signal: %d%%", clamp((int)((node->snr + 10) * 5), 0, 100));
+            snprintf(signalStr, sizeof(signalStr), "Device Signal: %d%%", clamp((int)((node->snr + 10) * 5), 0, 100));
         }
 
         static char lastStr[20];
@@ -1685,7 +1685,7 @@ namespace graphics
             // Debug info for gps lock errors
             // LOG_DEBUG("ourNode %d, ourPos %d, theirPos %d", !!ourNode, ourNode && hasValidPosition(ourNode),
             // hasValidPosition(node));
-            display->drawString(compassX - FONT_HEIGHT_SMALL / 4, compassY - FONT_HEIGHT_SMALL / 2, "?");
+            display->drawString(compassX - FONT_HEIGHT_SMALL / 4, compassY - FONT_HEIGHT_SMALL / 2, "?????");
         }
         display->drawCircle(compassX, compassY, compassDiam / 2);
 
@@ -1696,89 +1696,6 @@ namespace graphics
         // Must be after distStr is populated
         screen->drawColumns(display, x, y, fields);
     }
-
-    static void drawTestFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
-    {
-        return; // This is just a placeholder for testing purposes
-    }
-
-    // static void drawNodeListFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
-    // {
-    //     int totalNodes = nodeDB->getNumMeshNodes(); // 获取总节点数
-    //     char nodeInfoStr[128];
-
-    //     display->setTextAlignment(TEXT_ALIGN_LEFT);
-    //     display->setFont(ArialMT_Plain_10);
-
-    //     for (int i = 0; i < nodesPerPage; i++)
-    //     {
-    //         int nodeIndex = currentPageIndex + i;
-    //         if (nodeIndex >= totalNodes)
-    //             break;
-
-    //         meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
-    //         if (node)
-    //         {
-    //             const char *name = node->has_user ? node->user.short_name : "Unknown";
-    //             char truncated[8] = {0};
-
-    //             strncpy(truncated, name, 7);
-
-    //             if (i == selectedLine)
-    //                 snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s<", truncated);
-    //             else
-    //                 snprintf(nodeInfoStr, sizeof(nodeInfoStr), "%-7s ", truncated);
-
-    //             display->drawString(x, y + i * 10, nodeInfoStr);
-    //         }
-    //     }
-    //     display->setTextAlignment(TEXT_ALIGN_RIGHT);
-
-    //     // 显示页码
-    //     char pageInfo[32];
-    //     snprintf(pageInfo, sizeof(pageInfo), "Page: %d/%d", currentPageIndex / nodesPerPage + 1,
-    //              (totalNodes + nodesPerPage - 1) / nodesPerPage);
-    //     display->drawString(128, y + nodesPerPage * 10, pageInfo);
-    // }
-
-    // static void drawNodeInfoFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
-    // {
-    //     display->setTextAlignment(TEXT_ALIGN_LEFT);
-
-    //     meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(selectedLine + currentPageIndex);
-    //     if (node)
-    //     {
-    //         char nodeInfoStr[128];
-    //         snprintf(nodeInfoStr, sizeof(nodeInfoStr), "Node: %s", node->has_user ? node->user.short_name : "Unknown");
-    //         display->drawString(x, y, nodeInfoStr);
-    //         display->drawString(x, y + 10, "Signal: ");
-    //         display->drawString(x + 60, y + 10, String(clamp((int)((node->snr + 10) * 5), 0, 100)) + "%");
-    //         display->drawString(x, y + 20, "Hops Away: ");
-    //         display->drawString(x + 60, y + 20, String(node->hops_away));
-    //         display->drawString(x, y + 30, "Last Seen: "); // 显示最后看到的时间
-    //         char lastSeenStr[32];
-    //         screen->getTimeAgoStr(sinceLastSeen(node), lastSeenStr, sizeof(lastSeenStr));
-    //         display->drawString(x + 60, y + 30, lastSeenStr);
-    //         display->drawString(x, y + 40, "Distance: ");
-    //         char distanceStr[32];
-    //         meshtastic_NodeInfoLite *ourNode = nodeDB->getMeshNode(nodeDB->getNodeNum()); // 获取本地节点信息
-    //         if (ourNode && nodeDB->hasValidPosition(ourNode))
-    //         {
-    //             const meshtastic_PositionLite &op = ourNode->position;
-    //             const meshtastic_PositionLite &p = node->position;
-    //             float d = GeoCoord::latLongToMeter(DegD(p.latitude_i), DegD(p.longitude_i), DegD(op.latitude_i), DegD(op.longitude_i));
-    //             if (config.display.units == meshtastic_Config_DisplayConfig_DisplayUnits_IMPERIAL)
-    //                 snprintf(distanceStr, sizeof(distanceStr), "%.1f mi", d * METERS_TO_FEET / MILES_TO_FEET);
-    //             else
-    //                 snprintf(distanceStr, sizeof(distanceStr), "%.1f km", d / 1000);
-    //         }
-    //         else
-    //         {
-    //             snprintf(distanceStr, sizeof(distanceStr), "?");
-    //         }
-    //         display->drawString(x + 60, y + 40, distanceStr);
-    //     }
-    // }
 
     uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
     {
@@ -1822,7 +1739,7 @@ namespace graphics
 
         return (false);
     }
-
+#ifdef RED_BANK_S3
     void onFrameFixed(uint8_t currentFrame)
     {
         if (!isBrowsingChannelPacketFrame(currentFrame))
@@ -1877,25 +1794,54 @@ namespace graphics
 
         // display channel name
         const char *name = channelFile.channels[actualChannelIndex].settings.name;
-        char displayName[13];
+        char displayName[25];
 
         LOG_INFO("channel name = %s", name);
+        snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
 
-        if (name && strlen(name) > 0)
+        if (strlen(name) <= 0 && channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
         {
-            display->drawString(x, y, name);
+            char preset = config.lora.modem_preset;
+            switch (preset)
+            {
+            case meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_fast");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_slow");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_VERY_LONG_SLOW:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Very_long_fast");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_SLOW:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Medium_slow");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Medium_fast");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_SLOW:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Short_slow");
+                break;
+            case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_FAST:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Short_fast");
+                break;
+            default:
+                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_fast");
+                break;
+            }
         }
-        else
+        else if (strlen(name) <= 0 && channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_SECONDARY)
         {
-            snprintf(displayName, sizeof(displayName), "Channel %d", actualChannelIndex);
-            display->drawString(x, y, displayName);
+            snprintf(displayName, sizeof(displayName), "Sec Ch: %d", actualChannelIndex);
         }
+        display->drawString(x, y, displayName);
+
         display->drawString(x + 64, y, String(validChannelCount));
 
-        y += FONT_HEIGHT_SMALL;
+        y += FONT_HEIGHT_SMALL * 2;
 
         // display packet info
-        uint8_t direction = 0;
+        // uint8_t direction = 0;
 
         uint16_t packetListSize = redBankController->_getMeshPacketListSize(actualChannelIndex);
 
@@ -2057,6 +2003,7 @@ namespace graphics
 #endif
     }
 
+#endif
 #if defined(ESP_PLATFORM) && defined(USE_ST7789)
     SPIClass SPI1(HSPI);
 #endif
@@ -2249,8 +2196,12 @@ namespace graphics
         static_cast<ST7789Spi *>(dispdev)->setRGB(TFT_MESH);
 #endif
 
-        // Initialising the UI will init the display too.
+// Initialising the UI will init the display too.
+#ifdef RED_BANK_S3
         ui->init(onFrameFixed);
+#else
+        ui->init();
+#endif
 
         displayWidth = dispdev->width();
         displayHeight = dispdev->height();
@@ -2479,13 +2430,14 @@ namespace graphics
             case Cmd::SHOW_NEXT_FRAME:
                 handleShowNextFrame();
                 break;
+#ifdef RED_BANK_S3
             case Cmd::SHOW_PREV_PACKET:
                 handleShowPrevPacket();
                 break;
             case Cmd::SHOW_NEXT_PACKET:
                 handleShowNextPacket();
                 break;
-
+#endif
             case Cmd::START_ALERT_FRAME:
             {
                 showingBootScreen = false; // this should avoid the edge case where an alert triggers before the boot screen goes away
@@ -2742,17 +2694,21 @@ namespace graphics
         normalFrames[numframes++] = screen->digitalWatchFace ? &Screen::drawDigitalClockFrame : &Screen::drawAnalogClockFrame;
 #endif
 
-#if 0
+#if 1
+        LOG_INFO("Adding frames for device state");
+        LOG_INFO("has_rx_text_message: %d", devicestate.has_rx_text_message);
+        LOG_INFO("shouldDrawMessage: %d", shouldDrawMessage(&devicestate.rx_text_message));
         // If we have a text message - show it next, unless it's a phone message and we aren't using any special modules
         if (devicestate.has_rx_text_message && shouldDrawMessage(&devicestate.rx_text_message))
         {
+            LOG_INFO("Showing text message");
             fsi.positions.textMessage = numframes;
             normalFrames[numframes++] = drawTextMessageFrame;
             LOG_DEBUG("Added text message.  numframes: 1");
         }
 #endif
 
-#if 0
+#if 1
         // then all the nodes
         // We only show a few nodes in our scrolling list - because meshes with many nodes would have too many screens
         size_t numToShow = min(numMeshNodes, 4U);
@@ -2766,7 +2722,8 @@ namespace graphics
         fsi.positions.channelMessage = numframes;
         channelFrameBeginIndex = numframes;
         validChannelCount = 0;
-        // then the node info for our node
+// then the node info for our node
+#ifdef RED_BANK_S3
         int numChannels = channelFile.channels_count;
         LOG_DEBUG("numChannels = %d", numChannels);
         for (size_t i = 0; i < numChannels; i++)
@@ -2780,6 +2737,7 @@ namespace graphics
         }
 
         LOG_DEBUG("Added channel text message begin at %d.  numframes: %d", fsi.positions.channelMessage, (numChannels - fsi.positions.channelMessage));
+#endif
         // add channel frame
         // end
         //----------------------------------------------
@@ -3066,7 +3024,7 @@ namespace graphics
             setFastFramerate();
         }
     }
-
+#ifdef RED_BANK_S3
     void Screen::handleShowPrevPacket(void)
     {
         if (ui->getUiState()->frameState != FIXED)
@@ -3130,7 +3088,7 @@ namespace graphics
 
         setFastFramerate();
     }
-
+#endif
 #ifndef SCREEN_TRANSITION_FRAMERATE
 #define SCREEN_TRANSITION_FRAMERATE 30 // fps
 #endif

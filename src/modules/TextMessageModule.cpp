@@ -20,8 +20,9 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     devicestate.has_rx_text_message = true;
 
     // 保存最新的消息
+#ifdef RED_BANK_S3
     redBankController->saveMeshPacket(mp);
-
+#endif
     powerFSM.trigger(EVENT_RECEIVED_MSG);
     notifyObservers(&mp);
 

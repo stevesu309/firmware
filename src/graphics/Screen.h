@@ -618,8 +618,10 @@ namespace graphics
         void handleOnPress();
         void handleShowNextFrame();
         void handleShowPrevFrame();
+#ifdef RED_BANK_S3
         void handleShowNextPacket();
         void handleShowPrevPacket();
+#endif
         void handlePrint(const char *text);
         void handleStartFirmwareUpdateScreen();
 

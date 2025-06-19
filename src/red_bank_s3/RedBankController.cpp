@@ -1,5 +1,5 @@
 #include "RedBankController.h"
-#include "esp32-hal-gpio.h"
+// #include "esp32-hal-gpio.h"
 #include "DebugConfiguration.h"
 #include "main.h"
 #include "FSCommon.h"
@@ -115,7 +115,7 @@ namespace RedBankS3
     {
         return (channelPackets[channel].size());
     }
-
+#ifdef RED_BANK_S3
     void RedBankController::_previousMeshPacket()
     {
         /*
@@ -149,7 +149,7 @@ namespace RedBankS3
 
         direction = 1;
     }
-
+#endif
     uint8_t RedBankController::getDirection(void)
     {
         return (direction);
@@ -190,31 +190,32 @@ namespace RedBankS3
         lastShuttingDownButtonState = curState;
     }
 
-    // void RedBankController::_handlePrePageButtonPress() // 上一页
-    // {
-    //     // static bool lastButtonState = HIGH;
-    //     // bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
-    //     // if (lastButtonState != curState && curState == HIGH)
-    //     // {
-    //     //     selectedLine = max(0, selectedLine - 1);
-    //     // }
-    //     // lastButtonState = curState;
-    //     // printf("selectedLine: %d\n", selectedLine);
-    // }
+// void RedBankController::_handlePrePageButtonPress() // 上一页
+// {
+//     // static bool lastButtonState = HIGH;
+//     // bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
+//     // if (lastButtonState != curState && curState == HIGH)
+//     // {
+//     //     selectedLine = max(0, selectedLine - 1);
+//     // }
+//     // lastButtonState = curState;
+//     // printf("selectedLine: %d\n", selectedLine);
+// }
 
-    // void RedBankController::_handleNextPageButtonPress() // 下一页
-    // {
-    //     // static bool lastButtonState = HIGH;
-    //     // bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
-    //     // if (lastButtonState != curState && curState == HIGH)
-    //     // {
-    //     //     int totalNodes = nodeDB->getNumMeshNodes();
-    //     //     int lastVisible = min(nodesPerPage - 1, totalNodes - currentPageIndex - 1);
-    //     //     selectedLine = min(lastVisible, selectedLine + 1);
-    //     // }
-    //     // lastButtonState = curState;
-    //     // printf("selectedLine: %d\n", selectedLine);
-    // }
+// void RedBankController::_handleNextPageButtonPress() // 下一页
+// {
+//     // static bool lastButtonState = HIGH;
+//     // bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
+//     // if (lastButtonState != curState && curState == HIGH)
+//     // {
+//     //     int totalNodes = nodeDB->getNumMeshNodes();
+//     //     int lastVisible = min(nodesPerPage - 1, totalNodes - currentPageIndex - 1);
+//     //     selectedLine = min(lastVisible, selectedLine + 1);
+//     // }
+//     // lastButtonState = curState;
+//     // printf("selectedLine: %d\n", selectedLine);
+// }
+#ifdef RED_BANK_S3
     void RedBankController::_handlePrePageButtonPress() // 上一帧
     {
         static bool lastButtonState = HIGH;
@@ -243,7 +244,7 @@ namespace RedBankS3
         }
         lastNextMeshPacketButtonState = curState;
     }
-
+#endif
     // void RedBankController::_handleNextPages() // Node列表翻页
     // {
     //     static bool lastButtonState = HIGH;
