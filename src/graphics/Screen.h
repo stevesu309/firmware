@@ -614,11 +614,11 @@ namespace graphics
         }
 
         // Implementations of various commands, called from doTask().
-        void handleSetOn(bool on, FrameCallback einkScreensaver = NULL);
+        void handleSetOn(bool on, FrameCallback einkScreaver = NULL);
         void handleOnPress();
         void handleShowNextFrame();
         void handleShowPrevFrame();
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
         void handleShowNextPacket();
         void handleShowPrevPacket();
 #endif

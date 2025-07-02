@@ -1561,10 +1561,12 @@ namespace graphics
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        LOG_INFO("drawNodeInfo");
         // We only advance our nodeIndex if the frame # has changed - because
         // drawNodeInfo will be called repeatedly while the frame is shown
         if (state->currentFrame != prevFrame)
         {
+            LOG_INFO("is %d", state->currentFrame);
             prevFrame = state->currentFrame;
 
             nodeIndex = (nodeIndex + 1) % nodeDB->getNumMeshNodes();
@@ -1576,7 +1578,7 @@ namespace graphics
                 n = nodeDB->getMeshNodeByIndex(nodeIndex);
             }
         }
-
+        LOG_INFO("Draw Title");
         meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
 
         display->setFont(FONT_SMALL);
@@ -1616,7 +1618,9 @@ namespace graphics
             strncpy(distStr, "? km ?°", sizeof(distStr));
         }
         meshtastic_NodeInfoLite *ourNode = nodeDB->getMeshNode(nodeDB->getNodeNum());
-        const char *fields[] = {username, lastStr, signalStr, distStr, NULL};
+        // const char *fields[] = {username, lastStr, signalStr, distStr, NULL};
+        const char *fields[] = {username, signalStr, distStr, lastStr, NULL};
+
         int16_t compassX = 0, compassY = 0;
         uint16_t compassDiam = Screen::getCompassDiam(SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -1624,7 +1628,7 @@ namespace graphics
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT)
         {
             compassX = x + SCREEN_WIDTH - compassDiam / 2 - 5;
-            compassY = y + SCREEN_HEIGHT / 2;
+            compassY = y + SCREEN_HEIGHT / 2 + FONT_HEIGHT_SMALL;
         }
         else
         {
@@ -1693,8 +1697,18 @@ namespace graphics
         {
             display->setColor(BLACK);
         }
+
+        LOG_INFO("nodeDB->getNodeNum() = %d\n", nodeDB->getNodeNum());
+        LOG_INFO("nodeDB->getNumMeshNodes() = %d\n", nodeDB->getNumMeshNodes() - 1);
+        LOG_INFO("nodeIndex = %d\n", nodeIndex);
+
         // Must be after distStr is populated
         screen->drawColumns(display, x, y, fields);
+
+        display->setTextAlignment(TEXT_ALIGN_RIGHT);
+        char numStr[20];
+        snprintf(numStr, sizeof(numStr), "Node Info: %d/%d", nodeIndex, nodeDB->getNumMeshNodes() - 1);
+        display->drawString(x + SCREEN_WIDTH - 10, y, numStr);
     }
 
     uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
@@ -1739,7 +1753,7 @@ namespace graphics
 
         return (false);
     }
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
     void onFrameFixed(uint8_t currentFrame)
     {
         if (!isBrowsingChannelPacketFrame(currentFrame))
@@ -1797,48 +1811,64 @@ namespace graphics
         char displayName[25];
 
         LOG_INFO("channel name = %s", name);
-        snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
+        if (strlen(name) > 0)
+        {
+            if (channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+                snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
 
-        if (strlen(name) <= 0 && channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+            else
+                snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
+        }
+        else
         {
             char preset = config.lora.modem_preset;
             switch (preset)
             {
             case meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_fast");
+                name = "Long_fast";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_slow");
+                name = "Long_slow";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_VERY_LONG_SLOW:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Very_long_fast");
+                name = "Very_long_slow";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_SLOW:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Medium_slow");
+                name = "Medium_slow";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Medium_fast");
+                name = "Medium_fast";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_SLOW:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Short_slow");
+                name = "Short_slow";
                 break;
             case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_FAST:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Short_fast");
+                name = "Short_fast";
                 break;
             default:
-                snprintf(displayName, sizeof(displayName), "Pri Ch: Long_fast");
+                name = "Long_fast";
                 break;
             }
+            if (channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+                snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
+            else
+                snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
         }
-        else if (strlen(name) <= 0 && channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_SECONDARY)
-        {
-            snprintf(displayName, sizeof(displayName), "Sec Ch: %d", actualChannelIndex);
-        }
-        display->drawString(x, y, displayName);
+        // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
+        EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
 
-        display->drawString(x + 64, y, String(validChannelCount));
+        display->drawString(x + 5, y, displayName);
+        display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
-        y += FONT_HEIGHT_SMALL * 2;
+        char displayNum[5];
+        snprintf(displayNum, sizeof(displayNum), "%d/%d", actualChannelIndex + 1, validChannelCount);
+        display->drawString(x + SCREEN_WIDTH - 10, y, displayNum);
+        display->drawLine(x, y + FONT_HEIGHT_SMALL, x + SCREEN_WIDTH, y + FONT_HEIGHT_SMALL);
+        display->drawString(x, y + FONT_HEIGHT_SMALL, "");
+
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
+
+        y += FONT_HEIGHT_SMALL;
 
         // display packet info
         // uint8_t direction = 0;
@@ -2197,7 +2227,7 @@ namespace graphics
 #endif
 
 // Initialising the UI will init the display too.
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
         ui->init(onFrameFixed);
 #else
         ui->init();
@@ -2430,7 +2460,7 @@ namespace graphics
             case Cmd::SHOW_NEXT_FRAME:
                 handleShowNextFrame();
                 break;
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
             case Cmd::SHOW_PREV_PACKET:
                 handleShowPrevPacket();
                 break;
@@ -2472,6 +2502,7 @@ namespace graphics
         { // If we didn't just wake and the screen is still off, then
           // stop updating until it is on again
             enabled = false;
+            LOG_WARN("Screen is off");
             return 0;
         }
 
@@ -2711,9 +2742,12 @@ namespace graphics
 #if 1
         // then all the nodes
         // We only show a few nodes in our scrolling list - because meshes with many nodes would have too many screens
+        LOG_INFO("NOW: Adding frames for node list");
         size_t numToShow = min(numMeshNodes, 4U);
         for (size_t i = 0; i < numToShow; i++)
-            normalFrames[numframes++] = drawNodeInfo;
+            LOG_INFO("Adding node%d", i);
+        normalFrames[numframes++] = drawNodeInfo;
+        LOG_INFO("IS OK HERE");
 #endif
 
         //----------------------------------------------
@@ -2723,7 +2757,7 @@ namespace graphics
         channelFrameBeginIndex = numframes;
         validChannelCount = 0;
 // then the node info for our node
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
         int numChannels = channelFile.channels_count;
         LOG_DEBUG("numChannels = %d", numChannels);
         for (size_t i = 0; i < numChannels; i++)
@@ -3024,7 +3058,7 @@ namespace graphics
             setFastFramerate();
         }
     }
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
     void Screen::handleShowPrevPacket(void)
     {
         if (ui->getUiState()->frameState != FIXED)

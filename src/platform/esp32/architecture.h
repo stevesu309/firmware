@@ -19,7 +19,7 @@
 #define HAS_WIRE 1
 #endif
 #ifndef HAS_GPS
-#define HAS_GPS 0
+#define HAS_GPS 1
 #endif
 #ifndef HAS_BUTTON
 #define HAS_BUTTON 1
@@ -184,6 +184,8 @@
 #define HW_VENDOR meshtastic_HardwareModel_HELTEC_SENSOR_HUB
 #elif defined(ELECROW_PANEL)
 #define HW_VENDOR meshtastic_HardwareModel_CROWPANEL
+// #elif defined(RED_BANK_S3)
+// #define HW_VENDOR meshtastic_HardwareModel_RED_BANK_S3
 #endif
 
 // -----------------------------------------------------------------------------

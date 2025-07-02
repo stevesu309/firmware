@@ -137,7 +137,7 @@ void setupNicheGraphics();
 #include "nicheGraphics.h"
 #endif
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
 #include "red_bank_s3/RedBankController.h"
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
@@ -908,7 +908,7 @@ void setup()
     screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
     redBankController = new RedBankS3::RedBankController();
 #endif
 
@@ -946,6 +946,7 @@ void setup()
 #endif
         if (HAS_GPS)
         {
+            LOG_INFO("GPS: %d", HAS_GPS);
             if (config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
                 config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
             {
@@ -959,6 +960,10 @@ void setup()
                     LOG_DEBUG("Run without GPS");
                 }
             }
+        }
+        else
+        {
+            LOG_INFO("NO GPS: %d", HAS_GPS);
         }
 #ifdef SENSOR_GPS_CONFLICT
     }
@@ -1011,8 +1016,8 @@ void setup()
 #if !MESHTASTIC_EXCLUDE_I2C
 // Don't call screen setup until after nodedb is setup (because we need
 // the current region name)
-#if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || \
-    defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS)
+#if (defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || \
+     defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS))
     screen->setup();
 #elif defined(ARCH_PORTDUINO)
     if (screen_found.port != ScanI2C::I2CPort::NO_I2C || settingsMap[displayPanel])
@@ -1427,7 +1432,7 @@ void setup()
     LOG_DEBUG("Free PSRAM : %7d bytes", ESP.getFreePsram());
 #endif
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
     redBankController->setup();
 #endif
 }
@@ -1526,7 +1531,7 @@ void loop()
 #ifdef ARCH_NRF52
     nrf52Loop();
 #endif
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
     redBankController->loop();
 #endif
     powerCommandsCheck();

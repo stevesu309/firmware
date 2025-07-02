@@ -22,11 +22,20 @@ namespace RedBankS3
 
     void RedBankController::setup()
     {
+        LOG_INFO("RedBankController: setup()");
         pinMode(BUTTON_PRE_MESH_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_MESH_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_PRE_CHANNEL_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_CHANNEL_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_PAGE_PACKET, INPUT_PULLDOWN);
+        LOG_INFO("RedBankController:GNSS");
+        pinMode(GNSS_POW_CTRL_PIN, OUTPUT); // GNSS power control
+        // pinMode(GNSS_MPOW_CTRL_PIN, OUTPUT);
+
+        pinMode(GNSS_POW_CTRL_PIN, HIGH);
+        // pinMode
+        // delay(1000);
+        // pinMode(GNSS_MPOW_CTRL_PIN, PULLDOWN);
     }
 
     void RedBankController::loop()
@@ -115,7 +124,7 @@ namespace RedBankS3
     {
         return (channelPackets[channel].size());
     }
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
     void RedBankController::_previousMeshPacket()
     {
         /*
@@ -159,6 +168,7 @@ namespace RedBankS3
     {
         static bool lastPreMeshPacketButtonState = HIGH;
         bool curState = digitalRead(BUTTON_PRE_MESH_PACKET);
+        // bool curState = digitalRead(42);
         if (lastPreMeshPacketButtonState != curState && curState == HIGH)
         {
             _previousMeshPacket();
@@ -177,45 +187,20 @@ namespace RedBankS3
         lastNextMeshPacketButtonState = curState;
     }
 
-    void RedBankController::_handleShuttingDownButtonPress()
-    {
-        static bool lastShuttingDownButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
-        if (lastShuttingDownButtonState != curState && curState == HIGH)
-        {
-            if (screen)
-                screen->startAlert("Shutting down...");
-            shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
-        }
-        lastShuttingDownButtonState = curState;
-    }
+    // void RedBankController::_handleShuttingDownButtonPress()
+    // {
+    //     static bool lastShuttingDownButtonState = HIGH;
+    //     bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
+    //     if (lastShuttingDownButtonState != curState && curState == HIGH)
+    //     {
+    //         if (screen)
+    //             screen->startAlert("Shutting down...");
+    //         shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+    //     }
+    //     lastShuttingDownButtonState = curState;
+    // }
 
-// void RedBankController::_handlePrePageButtonPress() // 上一页
-// {
-//     // static bool lastButtonState = HIGH;
-//     // bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
-//     // if (lastButtonState != curState && curState == HIGH)
-//     // {
-//     //     selectedLine = max(0, selectedLine - 1);
-//     // }
-//     // lastButtonState = curState;
-//     // printf("selectedLine: %d\n", selectedLine);
-// }
-
-// void RedBankController::_handleNextPageButtonPress() // 下一页
-// {
-//     // static bool lastButtonState = HIGH;
-//     // bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
-//     // if (lastButtonState != curState && curState == HIGH)
-//     // {
-//     //     int totalNodes = nodeDB->getNumMeshNodes();
-//     //     int lastVisible = min(nodesPerPage - 1, totalNodes - currentPageIndex - 1);
-//     //     selectedLine = min(lastVisible, selectedLine + 1);
-//     // }
-//     // lastButtonState = curState;
-//     // printf("selectedLine: %d\n", selectedLine);
-// }
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
     void RedBankController::_handlePrePageButtonPress() // 上一帧
     {
         static bool lastButtonState = HIGH;
@@ -245,22 +230,5 @@ namespace RedBankS3
         lastNextMeshPacketButtonState = curState;
     }
 #endif
-    // void RedBankController::_handleNextPages() // Node列表翻页
-    // {
-    //     static bool lastButtonState = HIGH;
-    //     bool curState = digitalRead(BUTTON_NEX_PAGE_PACKET);
-
-    //     if (lastButtonState != curState && curState == HIGH)
-    //     {
-    //         int totalNodes = nodeDB->getNumMeshNodes();
-
-    //         currentPageIndex += nodesPerPage;
-
-    //         if (currentPageIndex >= totalNodes)
-    //             currentPageIndex = 0;
-    //     }
-
-    //     lastButtonState = curState;
-    // }
 
 }

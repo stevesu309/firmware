@@ -43,6 +43,6 @@ namespace RedBankS3
         void _handleShuttingDownButtonPress();
         void _handlePrePageButtonPress();
         void _handleNextPageButtonPress();
-        // void _handleNextPages();
+        void _handleNextPages();
     };
 }

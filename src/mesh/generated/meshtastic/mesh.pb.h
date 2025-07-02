@@ -247,6 +247,7 @@ typedef enum _meshtastic_HardwareModel {
     meshtastic_HardwareModel_NOMADSTAR_METEOR_PRO = 96,
     /* Elecrow CrowPanel Advance models, ESP32-S3 and TFT with SX1262 radio plugin */
     meshtastic_HardwareModel_CROWPANEL = 97,
+   //  meshtastic_HardwareModel_RED_BANK_S3 = 98,
     /* ------------------------------------------------------------------------------------------------------------------------------------------
  Reserved ID For developing private Ports. These will show up in live traffic sparsely, so we can use a high number. Keep it within 8 bits.
  ------------------------------------------------------------------------------------------------------------------------------------------ */

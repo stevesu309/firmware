@@ -42,7 +42,7 @@
 
 #define GPS_RX_PIN 17
 #define GPS_TX_PIN 18
-#define GPS_WAKEUP_PIN 7
+// #define GPS_WAKEUP_PIN 7
 // #define GPS_1PPS_PIN 6
 
 // #define HAS_SDCARD // Have SPI interface SD card slot
@@ -62,6 +62,6 @@
 #define BUTTON_NEX_CHANNEL_PACKET 41 // 定义GPIO41引脚，查看下一个channel
 #define BUTTON_NEX_PAGE_PACKET 42    // 定义GPIO42引脚，查看下一页
 
-// // #define HAS_GPS
-// #define GNSS_POW_CTRL_PIN 36
-// #define GNSS_MPOW_CTRL_PIN 37
+// #define HAS_GPS
+#define GNSS_POW_CTRL_PIN 36
+#define GNSS_MPOW_CTRL_PIN 37

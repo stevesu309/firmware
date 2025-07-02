@@ -36,13 +36,14 @@ ButtonThread::ButtonThread() : OSThread("Button")
 #if defined(BUTTON_PIN) || defined(ARCH_PORTDUINO) || defined(USERPREFS_BUTTON_PIN)
 
 #if defined(ARCH_PORTDUINO)
-    if (settingsMap.count(user) != 0 && settingsMap[user] != RADIOLIB_NC) {
+    if (settingsMap.count(user) != 0 && settingsMap[user] != RADIOLIB_NC)
+    {
         this->userButton = OneButton(settingsMap[user], true, true);
         LOG_DEBUG("Use GPIO%02d for button", settingsMap[user]);
     }
 #elif defined(BUTTON_PIN)
 #if !defined(USERPREFS_BUTTON_PIN)
-    int pin = config.device.button_gpio ? config.device.button_gpio : BUTTON_PIN;           // Resolved button pin
+    int pin = config.device.button_gpio ? config.device.button_gpio : BUTTON_PIN; // Resolved button pin
 #endif
 #ifdef USERPREFS_BUTTON_PIN
     int pin = config.device.button_gpio ? config.device.button_gpio : USERPREFS_BUTTON_PIN; // Resolved button pin
@@ -73,8 +74,8 @@ ButtonThread::ButtonThread() : OSThread("Button")
     userButton.setDebounceMs(1);
     userButton.attachDoubleClick(userButtonDoublePressed);
     userButton.attachMultiClick(userButtonMultiPressed, this); // Reference to instance: get click count from non-static OneButton
-#if !defined(T_DECK) &&                                                                                                          \
-    !defined(                                                                                                                    \
+#if !defined(T_DECK) && \
+    !defined(           \
         ELECROW_ThinkNode_M2) // T-Deck immediately wakes up after shutdown, Thinknode M2 has this on the smaller ALT button
     userButton.attachLongPressStart(userButtonPressedLongStart);
     userButton.attachLongPressStop(userButtonPressedLongStop);
@@ -123,7 +124,8 @@ void ButtonThread::switchPage()
     if (((config.device.button_gpio ? config.device.button_gpio : BUTTON_PIN) !=
          moduleConfig.canned_message.inputbroker_pin_press) ||
         !(moduleConfig.canned_message.updown1_enabled || moduleConfig.canned_message.rotary1_enabled) ||
-        !moduleConfig.canned_message.enabled) {
+        !moduleConfig.canned_message.enabled)
+    {
         powerFSM.trigger(EVENT_PRESS);
     }
 #endif
@@ -131,7 +133,8 @@ void ButtonThread::switchPage()
     if (((config.device.button_gpio ? config.device.button_gpio : USERPREFS_BUTTON_PIN) !=
          moduleConfig.canned_message.inputbroker_pin_press) ||
         !(moduleConfig.canned_message.updown1_enabled || moduleConfig.canned_message.rotary1_enabled) ||
-        !moduleConfig.canned_message.enabled) {
+        !moduleConfig.canned_message.enabled)
+    {
         powerFSM.trigger(EVENT_PRESS);
     }
 #endif
@@ -140,7 +143,8 @@ void ButtonThread::switchPage()
 #if defined(ARCH_PORTDUINO)
     if ((settingsMap.count(user) != 0 && settingsMap[user] != RADIOLIB_NC) &&
             (settingsMap[user] != moduleConfig.canned_message.inputbroker_pin_press) ||
-        !moduleConfig.canned_message.enabled) {
+        !moduleConfig.canned_message.enabled)
+    {
         powerFSM.trigger(EVENT_PRESS);
     }
 #endif
@@ -150,7 +154,8 @@ void ButtonThread::sendAdHocPosition()
 {
     service->refreshLocalMeshNode();
     auto sentPosition = service->trySendPosition(NODENUM_BROADCAST, true);
-    if (screen) {
+    if (screen)
+    {
         if (sentPosition)
             screen->print("Sent ad-hoc position\n");
         else
@@ -168,7 +173,8 @@ int32_t ButtonThread::runOnce()
     userButton.tick();
     canSleep &= userButton.isIdle();
 #elif defined(ARCH_PORTDUINO)
-    if (settingsMap.count(user) != 0 && settingsMap[user] != RADIOLIB_NC) {
+    if (settingsMap.count(user) != 0 && settingsMap[user] != RADIOLIB_NC)
+    {
         userButton.tick();
         canSleep &= userButton.isIdle();
     }
@@ -182,12 +188,16 @@ int32_t ButtonThread::runOnce()
     canSleep &= userButtonTouch.isIdle();
 #endif
 
-    if (btnEvent != BUTTON_EVENT_NONE) {
-        switch (btnEvent) {
-        case BUTTON_EVENT_PRESSED: {
+    if (btnEvent != BUTTON_EVENT_NONE)
+    {
+        switch (btnEvent)
+        {
+        case BUTTON_EVENT_PRESSED:
+        {
             LOG_BUTTON("press!");
             // If a nag notification is running, stop it and prevent other actions
-            if (moduleConfig.external_notification.enabled && (externalNotificationModule->nagCycleCutoff != UINT32_MAX)) {
+            if (moduleConfig.external_notification.enabled && (externalNotificationModule->nagCycleCutoff != UINT32_MAX))
+            {
                 externalNotificationModule->stopNow();
                 break;
             }
@@ -199,11 +209,13 @@ int32_t ButtonThread::runOnce()
             break;
         }
 
-        case BUTTON_EVENT_PRESSED_SCREEN: {
+        case BUTTON_EVENT_PRESSED_SCREEN:
+        {
             LOG_BUTTON("AltPress!");
 #ifdef ELECROW_ThinkNode_M1
             // If a nag notification is running, stop it and prevent other actions
-            if (moduleConfig.external_notification.enabled && (externalNotificationModule->nagCycleCutoff != UINT32_MAX)) {
+            if (moduleConfig.external_notification.enabled && (externalNotificationModule->nagCycleCutoff != UINT32_MAX))
+            {
                 externalNotificationModule->stopNow();
                 break;
             }
@@ -217,7 +229,8 @@ int32_t ButtonThread::runOnce()
             break;
         }
 
-        case BUTTON_EVENT_DOUBLE_PRESSED: {
+        case BUTTON_EVENT_DOUBLE_PRESSED:
+        {
             LOG_BUTTON("Double press!");
 #ifdef ELECROW_ThinkNode_M1
             digitalWrite(PIN_EINK_EN, digitalRead(PIN_EINK_EN) == LOW);
@@ -227,13 +240,16 @@ int32_t ButtonThread::runOnce()
             break;
         }
 
-        case BUTTON_EVENT_MULTI_PRESSED: {
+        case BUTTON_EVENT_MULTI_PRESSED:
+        {
             LOG_BUTTON("Mulitipress! %hux", multipressClickCount);
-            switch (multipressClickCount) {
+            switch (multipressClickCount)
+            {
 #if HAS_GPS && !defined(ELECROW_ThinkNode_M1)
             // 3 clicks: toggle GPS
             case 3:
-                if (!config.device.disable_triple_click && (gps != nullptr)) {
+                if (!config.device.disable_triple_click && (gps != nullptr))
+                {
                     gps->toggleGpsMode();
                     if (screen)
                         screen->forceDisplay(true); // Force a new UI frame, then force an EInk update
@@ -258,13 +274,15 @@ int32_t ButtonThread::runOnce()
 #if !MESHTASTIC_EXCLUDE_SCREEN && HAS_SCREEN
             // 5 clicks: start accelerometer/magenetometer calibration for 30 seconds
             case 5:
-                if (accelerometerThread) {
+                if (accelerometerThread)
+                {
                     accelerometerThread->calibrate(30);
                 }
                 break;
             // 6 clicks: start accelerometer/magenetometer calibration for 60 seconds
             case 6:
-                if (accelerometerThread) {
+                if (accelerometerThread)
+                {
                     accelerometerThread->calibrate(60);
                 }
                 break;
@@ -277,10 +295,12 @@ int32_t ButtonThread::runOnce()
             break;
         } // end multipress event
 
-        case BUTTON_EVENT_LONG_PRESSED: {
+        case BUTTON_EVENT_LONG_PRESSED:
+        {
             LOG_BUTTON("Long press!");
             powerFSM.trigger(EVENT_PRESS);
-            if (screen) {
+            if (screen)
+            {
                 screen->startAlert("Shutting down...");
             }
             playBeep();
@@ -289,7 +309,8 @@ int32_t ButtonThread::runOnce()
 
         // Do actual shutdown when button released, otherwise the button release
         // may wake the board immediatedly.
-        case BUTTON_EVENT_LONG_RELEASED: {
+        case BUTTON_EVENT_LONG_RELEASED:
+        {
             LOG_INFO("Shutdown from long press");
             playShutdownMelody();
             delay(3000);
@@ -298,13 +319,14 @@ int32_t ButtonThread::runOnce()
         }
 
 #ifdef BUTTON_PIN_TOUCH
-        case BUTTON_EVENT_TOUCH_LONG_PRESSED: {
+        case BUTTON_EVENT_TOUCH_LONG_PRESSED:
+        {
             LOG_BUTTON("Touch press!");
             // Ignore if: no screen
             if (!screen)
                 break;
 
-#ifdef TTGO_T_ECHO
+#if defined(TTGO_T_ECHO)
             // Ignore if: TX in progress
             // Uncommon T-Echo hardware bug, LoRa TX triggers touch button
             if (!RadioLibInterface::instance || RadioLibInterface::instance->isSending())
@@ -348,7 +370,8 @@ void ButtonThread::attachButtonInterrupts()
 #if defined(USERPREFS_BUTTON_PIN)
         config.device.button_gpio ? config.device.button_gpio : USERPREFS_BUTTON_PIN,
 #endif
-        []() {
+        []()
+        {
             ButtonThread::userButton.tick();
             runASAP = true;
             BaseType_t higherWake = 0;
@@ -425,7 +448,8 @@ void ButtonThread::wakeOnIrq(int irq, int mode)
 {
     attachInterrupt(
         irq,
-        [] {
+        []
+        {
             BaseType_t higherWake = 0;
             mainDelay.interruptFromISR(&higherWake);
             runASAP = true;
@@ -454,14 +478,16 @@ void ButtonThread::storeClickCount()
 
 void ButtonThread::userButtonPressedLongStart()
 {
-    if (millis() > c_holdOffTime) {
+    if (millis() > c_holdOffTime)
+    {
         btnEvent = BUTTON_EVENT_LONG_PRESSED;
     }
 }
 
 void ButtonThread::userButtonPressedLongStop()
 {
-    if (millis() > c_holdOffTime) {
+    if (millis() > c_holdOffTime)
+    {
         btnEvent = BUTTON_EVENT_LONG_RELEASED;
     }
 }
