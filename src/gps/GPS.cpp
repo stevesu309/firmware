@@ -379,8 +379,6 @@ GPS_RESPONSE GPS::getACK(uint8_t class_id, uint8_t msg_id, uint32_t waitMillis)
 #endif
             return GNSS_RESPONSE_OK; // ACK received
         }
-        else
-            LOG_INFO("IS NOT OK");
         if (_serial_gps->available())
         {
             LOG_INFO("IS AVAILABLE");
@@ -421,8 +419,6 @@ GPS_RESPONSE GPS::getACK(uint8_t class_id, uint8_t msg_id, uint32_t waitMillis)
                 ack = 0; // Reset the acknowledgement counter
             }
         }
-        else
-            LOG_INFO("IS NOT AVAILABLE");
     }
 #ifdef GPS_DEBUG
     LOG_DEBUG(debugmsg.c_str());
@@ -536,7 +532,11 @@ int GPS::getACK(uint8_t *buffer, uint16_t size, uint8_t requestedClass, uint8_t 
 static const int serialSpeeds[1] = {GPS_BAUDRATE};
 static const int rareSerialSpeeds[1] = {GPS_BAUDRATE};
 #else
-static const int serialSpeeds[3] = {9600, 115200, 38400};
+static const int serialSpeeds[3] = {
+    115200,
+    9600,
+    38400,
+};
 static const int rareSerialSpeeds[3] = {4800, 57600, GPS_BAUDRATE};
 #endif
 
@@ -558,6 +558,8 @@ bool GPS::setup()
         int msglen = 0;
         if (tx_gpio && gnssModel == GNSS_MODEL_UNKNOWN)
         {
+            LOG_INFO("gnssModel is unknown, trying to probe GPS");
+            // Initialize the serial port for GPS communication
 #ifdef TRACKER_T1000_E
             // add power up/down strategy, improve ag3335 detection success
             digitalWrite(PIN_GPS_EN, LOW);
@@ -571,10 +573,12 @@ bool GPS::setup()
 #endif
             if (probeTries < GPS_PROBETRIES)
             {
-                LOG_DEBUG("Probe for GPS at %d", serialSpeeds[speedSelect]);
+                LOG_DEBUG("Probe for GPS at1 %d", serialSpeeds[speedSelect]);
                 gnssModel = probe(serialSpeeds[speedSelect]);
+                LOG_INFO("GPS model %d", gnssModel);
                 if (gnssModel == GNSS_MODEL_UNKNOWN)
                 {
+                    LOG_INFO("No GPS at %d", serialSpeeds[speedSelect]);
                     if (++speedSelect == array_count(serialSpeeds))
                     {
                         speedSelect = 0;
@@ -582,10 +586,11 @@ bool GPS::setup()
                     }
                 }
             }
+            LOG_INFO("GPS model %d after %d tries", gnssModel, probeTries);
             // Rare Serial Speeds
             if (probeTries == GPS_PROBETRIES)
             {
-                LOG_DEBUG("Probe for GPS at %d", rareSerialSpeeds[speedSelect]);
+                LOG_DEBUG("Probe for GPS at2 %d", rareSerialSpeeds[speedSelect]);
                 gnssModel = probe(rareSerialSpeeds[speedSelect]);
                 if (gnssModel == GNSS_MODEL_UNKNOWN)
                 {
@@ -600,6 +605,7 @@ bool GPS::setup()
 
         if (gnssModel != GNSS_MODEL_UNKNOWN)
         {
+            LOG_INFO("set new model ,GPS model %d detected", gnssModel);
             setConnected();
         }
         else
@@ -609,6 +615,7 @@ bool GPS::setup()
 
         if (gnssModel == GNSS_MODEL_MTK)
         {
+            LOG_INFO("IS IN MTK");
             /*
              * t-beam-s3-core uses the same L76K GNSS module as t-echo.
              * Unlike t-echo, L76K uses 9600 baud rate for communication by default.
@@ -617,15 +624,18 @@ bool GPS::setup()
             // Initialize the L76K Chip, use GPS + GLONASS + BEIDOU
             _serial_gps->write("$PCAS04,7*1E\r\n");
             delay(250);
+
             // only ask for RMC and GGA
             _serial_gps->write("$PCAS03,1,0,0,0,1,0,0,0,0,0,,,0,0*02\r\n");
             delay(250);
+
             // Switch to Vehicle Mode, since SoftRF enables Aviation < 2g
             _serial_gps->write("$PCAS11,3*1E\r\n");
             delay(250);
         }
         else if (gnssModel == GNSS_MODEL_MTK_L76B)
         {
+            LOG_INFO("is in GNSS_MODEL_MTK_L76B");
             // Waveshare Pico-GPS hat uses the L76B with 9600 baud
             // Initialize the L76B Chip, use GPS + GLONASS
             // See note in L76_Series_GNSS_Protocol_Specification, chapter 3.29
@@ -648,6 +658,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_MTK_PA1010D)
         {
+            LOG_INFO("is in GNSS_MODEL_MTK_PA1010D");
             // PA1010D is used in the Pimoroni GPS board.
 
             // Enable all constellations.
@@ -663,6 +674,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_MTK_PA1616S)
         {
+            LOG_INFO("is in GNSS_MODEL_MTK_PA1616S");
             // PA1616S is used in some GPS breakout boards from Adafruit
             // PA1616S does not have GLONASS capability. PA1616D does, but is not implemented here.
             _serial_gps->write("$PMTK353,1,0,0,0,0*2A\r\n");
@@ -677,6 +689,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_ATGM336H)
         {
+            LOG_INFO("is in GNSS_MODEL_ATGM336H");
             // Set the intial configuration of the device - these _should_ work for most AT6558 devices
             msglen = makeCASPacket(0x06, 0x07, sizeof(_message_CAS_CFG_NAVX_CONF), _message_CAS_CFG_NAVX_CONF);
             _serial_gps->write(UBXscratch, msglen);
@@ -710,6 +723,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_UC6580)
         {
+            LOG_INFO("is in GNSS_MODEL_UC6580");
             // The Unicore UC6580 can use a lot of sat systems, enable it to
             // use GPS L1 & L5 + BDS B1I & B2a + GLONASS L1 + GALILEO E1 & E5a + SBAS + QZSS
             // This will reset the receiver, so wait a bit afterwards
@@ -731,6 +745,7 @@ bool GPS::setup()
         }
         else if (IS_ONE_OF(gnssModel, GNSS_MODEL_AG3335, GNSS_MODEL_AG3352))
         {
+            LOG_INFO("is in AG3335 or AG3352");
 
             _serial_gps->write("$PAIR066,1,0,1,0,0,1*3B\r\n"); // Enable GPS+GALILEO+NAVIC
 
@@ -748,6 +763,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_UBLOX6)
         {
+            LOG_INFO("is in GNSS_MODEL_UBLOX6");
             clearBuffer();
             SEND_UBX_PACKET(0x06, 0x02, _message_DISABLE_TXT_INFO, "disable text info messages", 500);
             SEND_UBX_PACKET(0x06, 0x39, _message_JAM_6_7, "enable interference resistance", 500);
@@ -780,6 +796,7 @@ bool GPS::setup()
         }
         else if (IS_ONE_OF(gnssModel, GNSS_MODEL_UBLOX7, GNSS_MODEL_UBLOX8, GNSS_MODEL_UBLOX9))
         {
+            LOG_INFO("is in UBLOX7, UBLOX8 or UBLOX9");
             if (gnssModel == GNSS_MODEL_UBLOX7)
             {
                 LOG_DEBUG("Set GPS+SBAS");
@@ -870,6 +887,7 @@ bool GPS::setup()
         }
         else if (gnssModel == GNSS_MODEL_UBLOX10)
         {
+            LOG_INFO("GNSS module is GNSS_MODEL_UBLOX10, reconfiguring...");
             delay(1000);
             clearBuffer();
             SEND_UBX_PACKET(0x06, 0x8A, _message_VALSET_DISABLE_NMEA_RAM, "disable NMEA messages in M10 RAM", 300);
@@ -1219,14 +1237,19 @@ int32_t GPS::runOnce()
 {
     if (!GPSInitFinished)
     {
+        LOG_INFO("GPS not initialized, running probe");
         if (!_serial_gps || config.position.gps_mode == meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
         {
             LOG_INFO("GPS set to not-present. Skip probe");
             return disable();
         }
         if (!setup())
+        {
+            LOG_WARN("GPS setup failed.");
             return 2000; // Setup failed, re-run in two seconds
+        }
 
+        config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; ////强制启动GNSS
         // We have now loaded our saved preferences from flash
         if (config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_ENABLED)
         {
@@ -1333,6 +1356,7 @@ static const char *DETECTED_MESSAGE = "%s detected";
         _serial_gps->write(TOWRITE "\r\n");                         \
         if (getACK(RESPONSE, TIMEOUT) == GNSS_RESPONSE_OK)          \
         {                                                           \
+            LOG_DEBUG("ACK received for %s", CHIP);                 \
             LOG_INFO(DETECTED_MESSAGE, CHIP);                       \
             return DRIVER;                                          \
         }                                                           \
@@ -1345,6 +1369,7 @@ static const char *DETECTED_MESSAGE = "%s detected";
         clearBuffer();                                                        \
         _serial_gps->write(COMMAND "\r\n");                                   \
         GnssModel_t detectedDriver = getProbeResponse(TIMEOUT, RESPONSE_MAP); \
+        LOG_INFO("detectedDriver = %i", detectedDriver);                      \
         if (detectedDriver != GNSS_MODEL_UNKNOWN)                             \
         {                                                                     \
             return detectedDriver;                                            \
@@ -1365,7 +1390,10 @@ GnssModel_t GPS::probe(int serialSpeed)
     {
         LOG_DEBUG("Set Baud to %i", serialSpeed);
         _serial_gps->updateBaudRate(serialSpeed);
+        LOG_INFO("Baud set to %d", _serial_gps->baudRate());
     }
+    else
+        LOG_INFO("1111Baud already set to %d", _serial_gps->baudRate());
 #endif
 
     memset(&ublox_info, 0, sizeof(ublox_info));
@@ -1397,8 +1425,9 @@ GnssModel_t GPS::probe(int serialSpeed)
     _serial_gps->write("$PAIR513*3D\r\n");     // save configuration
     std::vector<ChipInfo> airoha = {{"AG3335", "$PAIR021,AG3335", GNSS_MODEL_AG3335},
                                     {"AG3352", "$PAIR021,AG3352", GNSS_MODEL_AG3352},
-                                    {"RYS3520", "$PAIR021,REYAX_RYS3520_V2", GNSS_MODEL_AG3352}};
-    PROBE_FAMILY("Airoha Family", "$PAIR021*39", airoha, 1000);
+                                    {"RYS3520", "$PAIR021,REYAX_RYS3520_V2", GNSS_MODEL_AG3352},
+                                    {"SIM65M", "$PAIR021,AG3352Q_V2", GNSS_MODEL_AG3352}};
+    PROBE_FAMILY("Airoha Family", "$PAIR021*39", airoha, 10000);
 
     PROBE_SIMPLE("LC86", "$PQTMVERNO*58", "$PQTMVERNO,LC86", GNSS_MODEL_AG3352, 500);
     PROBE_SIMPLE("L76K", "$PCAS06,0*1B", "$GPTXT,01,01,02,SW=", GNSS_MODEL_MTK, 500);
@@ -1409,7 +1438,35 @@ GnssModel_t GPS::probe(int serialSpeed)
     std::vector<ChipInfo> mtk = {{"L76B", "Quectel-L76B", GNSS_MODEL_MTK_L76B}, {"PA1010D", "1010D", GNSS_MODEL_MTK_PA1010D}, {"PA1616S", "1616S", GNSS_MODEL_MTK_PA1616S}, {"LS20031", "MC-1513", GNSS_MODEL_MTK_L76B}, {"L96", "Quectel-L96", GNSS_MODEL_MTK_L76B}, {"L80-R", "_3337_", GNSS_MODEL_MTK_L76B}, {"L80", "_3339_", GNSS_MODEL_MTK_L76B}};
 
     PROBE_FAMILY("MTK Family", "$PMTK605*31", mtk, 500);
+    uint32_t start = millis();
+    int pos = 0;
+    LOG_INFO("Finished scanning for MTK family, waiting for response...");
+    _serial_gps->write("$PAIR002*38\r\n");
 
+    delay(200);
+
+    _serial_gps->write("$PAIR020*38\r\n");
+    while (millis() - start < 2000 && pos < sizeof(buffer) - 1)
+    {
+        if (_serial_gps->available())
+        {
+            char c = _serial_gps->read();
+            char iiii = Serial.readBytes((char *)&c, 1);
+            LOG_INFO("Read %d bytes from GPS", iiii);
+            buffer[pos++] = c;
+            buffer[pos] = 0;
+            LOG_INFO("Read char: %02X (%c)", (uint8_t)c, (c >= 32 && c < 127) ? c : '.');
+
+            if (strstr((const char *)buffer, "$PAIR020"))
+            {
+                LOG_INFO("Detected: %s", buffer);
+                break;
+            }
+        }
+    }
+    LOG_INFO("_serial_gps->available(): %d", _serial_gps->available());
+
+#if 1
     uint8_t cfg_rate[] = {0xB5, 0x62, 0x06, 0x08, 0x00, 0x00, 0x00, 0x00};
     UBXChecksum(cfg_rate, sizeof(cfg_rate));
     clearBuffer();
@@ -1425,7 +1482,7 @@ GnssModel_t GPS::probe(int serialSpeed)
     {
         LOG_INFO("UBlox Frame Errors (baudrate %d)", serialSpeed);
     }
-
+    LOG_INFO("UBlox GNSS Module detected (baudrate %d)", serialSpeed);
     memset(buffer, 0, sizeof(buffer));
     uint8_t _message_MONVER[8] = {
         0xB5, 0x62, // Sync message for UBX protocol
@@ -1527,6 +1584,8 @@ GnssModel_t GPS::probe(int serialSpeed)
         }
     }
     LOG_WARN("No GNSS Module22 (baudrate %d)", serialSpeed);
+#endif
+
     return GNSS_MODEL_UNKNOWN;
 }
 
@@ -1539,7 +1598,6 @@ GnssModel_t GPS::getProbeResponse(unsigned long timeout, const std::vector<ChipI
         if (_serial_gps->available())
         {
             response += (char)_serial_gps->read();
-
             if (response.endsWith(",") || response.endsWith("\r\n"))
             {
 #ifdef GPS_DEBUG
@@ -1550,7 +1608,7 @@ GnssModel_t GPS::getProbeResponse(unsigned long timeout, const std::vector<ChipI
                 {
                     if (strstr(response.c_str(), chipInfo.detectionString.c_str()) != nullptr)
                     {
-                        LOG_INFO("%s detected", chipInfo.chipName.c_str());
+                        LOG_INFO("chip %s detected", chipInfo.chipName.c_str());
                         return chipInfo.driver;
                     }
                 }
@@ -1562,6 +1620,8 @@ GnssModel_t GPS::getProbeResponse(unsigned long timeout, const std::vector<ChipI
             }
         }
     }
+
+    LOG_INFO("GPS read: %s", response.c_str());
 #ifdef GPS_DEBUG
     LOG_DEBUG(response.c_str());
 #endif
@@ -1570,6 +1630,7 @@ GnssModel_t GPS::getProbeResponse(unsigned long timeout, const std::vector<ChipI
 
 GPS *GPS::createGps()
 {
+    LOG_INFO("Creating GPS instance");
     int8_t _rx_gpio = config.position.rx_gpio;
     int8_t _tx_gpio = config.position.tx_gpio;
     int8_t _en_gpio = config.position.gps_en_gpio;
@@ -1668,7 +1729,7 @@ GPS *GPS::createGps()
         _serial_gps->setFIFOSize(256);
         _serial_gps->begin(GPS_BAUDRATE);
 #else
-        _serial_gps->begin(GPS_BAUDRATE);
+        _serial_gps->begin(115200);
 #endif
     }
     return new_gps;
@@ -2002,6 +2063,7 @@ void GPS::enable()
 
     scheduling.informSearching();
     setPowerState(GPS_ACTIVE);
+    LOG_INFO("GPS enabled, powerState=%d", powerState);
 }
 
 int32_t GPS::disable()
@@ -2009,7 +2071,7 @@ int32_t GPS::disable()
     enabled = false;
     setInterval(INT32_MAX);
     setPowerState(GPS_OFF);
-
+    LOG_INFO("GPS disabled, powerState=%d", powerState);
     return INT32_MAX;
 }
 
@@ -2027,7 +2089,7 @@ void GPS::toggleGpsMode()
             digitalWrite(PIN_GPS_EN, LOW);
         }
 #endif
-        disable();
+        // disable();
     }
     else if (config.position.gps_mode == meshtastic_Config_PositionConfig_GpsMode_DISABLED)
     {

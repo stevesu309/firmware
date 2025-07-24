@@ -52,7 +52,11 @@ bool EInkDisplay::forceDisplay(uint32_t msecLimit)
 {
     // No need to grab this lock because we are on our own SPI bus
     // concurrency::LockGuard g(spiLock);
-
+    if (!adafruitDisplay)
+    {
+        LOG_ERROR("Display not initialized!");
+        return false;
+    }
     uint32_t now = millis();
     uint32_t sinceLast = now - lastDrawMsec;
 
@@ -81,9 +85,9 @@ bool EInkDisplay::forceDisplay(uint32_t msecLimit)
     }
 
     // Trigger the refresh in GxEPD2
-    LOG_DEBUG("Update E-Paper");
+    LOG_DEBUG("Starting display update");
     adafruitDisplay->nextPage();
-
+    LOG_DEBUG("Display update complete");
     // End the update process
     endUpdate();
 
@@ -94,7 +98,14 @@ bool EInkDisplay::forceDisplay(uint32_t msecLimit)
 // End the update process - virtual method, overriden in derived class
 void EInkDisplay::endUpdate()
 {
-    // Power off display hardware, then deep-sleep (Except Wireless Paper V1.1, no deep-sleep)
+    LOG_INFO("EInkDisplay::endUpdate() called");
+    // Don't hibernate immediately for first update
+    if (firstUpdate)
+    {
+        firstUpdate = false;
+        return;
+    }
+    // Power off display hardware, then deep-sleep
     adafruitDisplay->hibernate();
 }
 
@@ -183,7 +194,7 @@ bool EInkDisplay::connect()
 
 #elif defined(HELTEC_WIRELESS_PAPER_V1_0) || defined(HELTEC_WIRELESS_PAPER) || defined(HELTEC_VISION_MASTER_E213) || \
     defined(HELTEC_VISION_MASTER_E290) || defined(TLORA_T3S3_EPAPER) || defined(CROWPANEL_ESP32S3_5_EPAPER) ||       \
-    defined(CROWPANEL_ESP32S3_4_EPAPER) || defined(CROWPANEL_ESP32S3_2_EPAPER) || defined(RED_BANK_S3)
+    defined(CROWPANEL_ESP32S3_4_EPAPER) || defined(CROWPANEL_ESP32S3_2_EPAPER)
     {
         // Start HSPI
         hspi = new SPIClass(HSPI);
@@ -201,6 +212,31 @@ bool EInkDisplay::connect()
 #if defined(CROWPANEL_ESP32S3_5_EPAPER) || defined(CROWPANEL_ESP32S3_4_EPAPER)
         adafruitDisplay->setRotation(0);
 #endif
+    }
+#elif defined(RED_BANK_S3)
+    {
+        // 启动HSPI前先确保电源
+        pinMode(EINK_POWER_PIN, OUTPUT);
+        digitalWrite(EINK_POWER_PIN, HIGH);
+        delay(100); // 等待电源稳定
+        pinMode(4, OUTPUT);
+        digitalWrite(4, LOW);
+        delay(100);
+        LOG_DEBUG("Initializing HSPI for E-ink");
+        hspi = new SPIClass(HSPI);
+        hspi->begin(PIN_EINK_SCLK, -1, PIN_EINK_MOSI, PIN_EINK_CS);
+
+        // 更详细的初始化日志
+        LOG_DEBUG("Creating GxEPD2_270 driver");
+        auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, hspi);
+
+        adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
+
+        LOG_DEBUG("Initializing display");
+        adafruitDisplay->init(115200, true, 10, false); // 初始化显示
+
+        adafruitDisplay->setRotation(3);
+        LOG_DEBUG("Display initialized successfully");
     }
 #elif defined(PCA10059) || defined(ME25LS01)
     {

@@ -1103,20 +1103,17 @@ LoadFileResult NodeDB::loadProto(const char *filename, size_t protoSize, size_t 
         memset(dest_struct, 0, objSize);
         if (!pb_decode(&stream, fields, dest_struct))
         {
-            LOG_ERROR("Error: can't decode protobuf %s", PB_GET_ERROR(&stream));
+            // LOG_ERROR("Error: can't decode protobuf %s", PB_GET_ERROR(&stream));
             state = LoadFileResult::DECODE_FAILED;
         }
         else
         {
-            LOG_INFO("Loaded %s successfully", filename);
+            // LOG_INFO("Loaded %s successfully", filename);
             state = LoadFileResult::LOAD_SUCCESS;
         }
         f.close();
     }
-    else
-    {
-        LOG_ERROR("Could not open / read %s", filename);
-    }
+
 #else
     LOG_ERROR("ERROR: Filesystem not implemented");
     state = LoadFileResult::NO_FILESYSTEM;

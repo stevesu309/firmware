@@ -22,20 +22,17 @@ namespace RedBankS3
 
     void RedBankController::setup()
     {
-        LOG_INFO("RedBankController: setup()");
-        pinMode(BUTTON_PRE_MESH_PACKET, INPUT_PULLDOWN);
+        // pinMode(BUTTON_PRE_MESH_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_MESH_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_PRE_CHANNEL_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_CHANNEL_PACKET, INPUT_PULLDOWN);
         pinMode(BUTTON_NEX_PAGE_PACKET, INPUT_PULLDOWN);
-        LOG_INFO("RedBankController:GNSS");
-        pinMode(GNSS_POW_CTRL_PIN, OUTPUT); // GNSS power control
-        // pinMode(GNSS_MPOW_CTRL_PIN, OUTPUT);
 
-        pinMode(GNSS_POW_CTRL_PIN, HIGH);
-        // pinMode
-        // delay(1000);
-        // pinMode(GNSS_MPOW_CTRL_PIN, PULLDOWN);
+        // pinMode(GNSS_MPOW_CTRL_PIN, OUTPUT);
+        // digitalWrite(GNSS_MPOW_CTRL_PIN, HIGH);
+        // delay(10);
+        // pinMode(GNSS_POW_CTRL_PIN, OUTPUT);
+        // digitalWrite(GNSS_POW_CTRL_PIN, HIGH);
     }
 
     void RedBankController::loop()
@@ -127,34 +124,16 @@ namespace RedBankS3
 #if defined(RED_BANK_S3)
     void RedBankController::_previousMeshPacket()
     {
-        /*
-        if (m_currentMeshPacketIndex > 0)
-        {
-            m_currentMeshPacketIndex--;
-        }
-        else
-        {
-            m_currentMeshPacketIndex = _getMeshPacketListSize() - 1;
-        }
-        */
-        screen->showPrevPacket();
+
+        // screen->showPrevPacket(); 注释屏幕
 
         direction = 0;
     }
 
     void RedBankController::_nextMeshPacket()
     {
-        /*
-        if (m_currentMeshPacketIndex < _getMeshPacketListSize() - 1)
-        {
-            m_currentMeshPacketIndex++;
-        }
-        else
-        {
-            m_currentMeshPacketIndex = 0;
-        }
-        */
-        screen->showNextPacket();
+
+        // screen->showNextPacket(); 注释屏幕
 
         direction = 1;
     }
@@ -167,7 +146,7 @@ namespace RedBankS3
     void RedBankController::_handlePreMeshPacketButtonPress() // 上一条信息
     {
         static bool lastPreMeshPacketButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_PRE_MESH_PACKET);
+        bool curState = digitalRead(42);
         // bool curState = digitalRead(42);
         if (lastPreMeshPacketButtonState != curState && curState == HIGH)
         {
@@ -209,7 +188,7 @@ namespace RedBankS3
         {
             if (screen)
             {
-                screen->showPrevFrame();
+                // screen->showPrevFrame(); 注释屏幕
             }
         }
 
@@ -224,7 +203,7 @@ namespace RedBankS3
         {
             if (screen)
             {
-                screen->showNextFrame();
+                // screen->showNextFrame(); 注释屏幕
             }
         }
         lastNextMeshPacketButtonState = curState;

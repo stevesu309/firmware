@@ -4,7 +4,7 @@
 
 #include "GxEPD2_BW.h"
 #include <OLEDDisplay.h>
-
+// #include <GxEPD2_3C.h>
 /**
  * An adapter class that allows using the GxEPD2 library as if it was an OLEDDisplay implementation.
  *
@@ -64,7 +64,8 @@ protected:
   virtual bool connect() override;
 
   // AdafruitGFX display object - instantiated in connect(), variant specific
-  GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT> *adafruitDisplay = NULL;
+  GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> *adafruitDisplay = NULL;
+  // GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> *adafruitDisplay3C = NULL;
 
   // If display uses HSPI
 #if defined(HELTEC_WIRELESS_PAPER) || defined(HELTEC_WIRELESS_PAPER_V1_0) || defined(HELTEC_VISION_MASTER_E213) || \
@@ -79,6 +80,7 @@ protected:
 
 private:
   // FIXME quick hack to limit drawing to a very slow rate
+  bool firstUpdate = true; // Add this line
   uint32_t lastDrawMsec = 0;
 };
 

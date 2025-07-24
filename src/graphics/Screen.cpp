@@ -1689,7 +1689,7 @@ namespace graphics
             // Debug info for gps lock errors
             // LOG_DEBUG("ourNode %d, ourPos %d, theirPos %d", !!ourNode, ourNode && hasValidPosition(ourNode),
             // hasValidPosition(node));
-            display->drawString(compassX - FONT_HEIGHT_SMALL / 4, compassY - FONT_HEIGHT_SMALL / 2, "?????");
+            display->drawString(compassX - FONT_HEIGHT_SMALL / 4, compassY - FONT_HEIGHT_SMALL / 2, "?");
         }
         display->drawCircle(compassX, compassY, compassDiam / 2);
 

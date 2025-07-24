@@ -141,6 +141,7 @@ void setupNicheGraphics();
 #include "red_bank_s3/RedBankController.h"
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
+#include "graphics/EInkScreen.h"
 
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
@@ -397,7 +398,7 @@ void setup()
 #if !HAS_TFT
     meshtastic_Config_DisplayConfig_OledType screen_model =
         meshtastic_Config_DisplayConfig_OledType::meshtastic_Config_DisplayConfig_OledType_OLED_AUTO;
-    OLEDDISPLAY_GEOMETRY screen_geometry = GEOMETRY_128_64;
+    OLEDDISPLAY_GEOMETRY screen_geometry = GEOMETRY_RAWMODE;
 #endif
 
 #ifdef USE_SEGGER
@@ -424,9 +425,11 @@ void setup()
     tv.tv_usec = 0;
     perhapsSetRTC(RTCQualityNTP, &tv);
 #endif
-
+    LOG_INFO("Meshtastic %s starting up", optstr(APP_VERSION));
     powerMonInit();
+    LOG_INFO("powerMonInit done");
     serialSinceMsec = millis();
+    LOG_INFO("Serial since %d msec", serialSinceMsec);
 
     LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
 
@@ -575,7 +578,9 @@ void setup()
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
 
-#if !MESHTASTIC_EXCLUDE_I2C
+// #if !MESHTASTIC_EXCLUDE_I2C
+#if 0
+
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
     auto i2cScanner = std::unique_ptr<ScanI2CTwoWire>(new ScanI2CTwoWire());
@@ -843,7 +848,9 @@ void setup()
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // keep dimension of 128x64
 #endif
 
-#if !MESHTASTIC_EXCLUDE_I2C
+// #if !MESHTASTIC_EXCLUDE_I2C
+#if 0
+
 #if !defined(ARCH_STM32WL)
     if (acc_info.type != ScanI2C::DeviceType::NONE)
     {
@@ -907,6 +914,10 @@ void setup()
 #if HAS_SCREEN
     screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
+    // graphics::EInkScreen *einkScreen = new graphics::EInkScreen();
+    // einkScreen->setup();
+    // einkScreen->lightUp();
+    // einkScreen->displayHello();
 
 #if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
     redBankController = new RedBankS3::RedBankController();
@@ -947,6 +958,8 @@ void setup()
         if (HAS_GPS)
         {
             LOG_INFO("GPS: %d", HAS_GPS);
+            LOG_INFO("GPS role: %d", config.device.role);
+            LOG_INFO("GPS mode: %d", config.position.gps_mode);
             if (config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
                 config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
             {
@@ -1524,7 +1537,6 @@ void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, Scan
 void loop()
 {
     runASAP = false;
-
 #ifdef ARCH_ESP32
     esp32Loop();
 #endif
