@@ -1,13 +1,47 @@
 #include "RedBankController.h"
-// #include "esp32-hal-gpio.h"
+#include <Arduino.h>
 #include "DebugConfiguration.h"
 #include "main.h"
 #include "FSCommon.h"
 #include "../variants/red_bank_s3/variant.h"
 #include "graphics/Screen.h"
-
+#include "AntennaManager.h"
 namespace RedBankS3
 {
+#define KEY1_ADC_PIN 1 // IO1
+#define KEY2_ADC_PIN 2 // IO2
+
+    static int key1_adc_val = 0;
+    static int key2_adc_val = 0;
+
+    static KeypadKey key1_last = KeypadKey::NONE;
+    static KeypadKey key2_last = KeypadKey::NONE;
+
+    static KeypadKey detect_key(int adc_value, bool isKey1)
+    {
+        if (adc_value > 3200 && adc_value < 3800)
+            return isKey1 ? KeypadKey::UP : KeypadKey::DOWN;
+        else if (adc_value > 1800 && adc_value < 3200)
+            return isKey1 ? KeypadKey::ESC : KeypadKey::RIGHT;
+        else if (adc_value > 300 && adc_value < 1800)
+            return isKey1 ? KeypadKey::ENTER : KeypadKey::LEFT;
+        else
+            return KeypadKey::NONE;
+    }
+
+    void RedBankController::scanAdcKeypad()
+    {
+        int val1 = analogRead(KEY1_ADC_PIN);
+        int val2 = analogRead(KEY2_ADC_PIN);
+        key1_adc_val = val1;
+        key2_adc_val = val2;
+        key1_last = detect_key(val1, true);
+        key2_last = detect_key(val2, false);
+    }
+
+    KeypadKey RedBankController::getKey1() { return key1_last; }
+    KeypadKey RedBankController::getKey2() { return key2_last; }
+
     RedBankController::RedBankController()
     {
         // m_meshPacketList = new std::vector<meshtastic_MeshPacket>();
@@ -22,26 +56,53 @@ namespace RedBankS3
 
     void RedBankController::setup()
     {
-        // pinMode(BUTTON_PRE_MESH_PACKET, INPUT_PULLDOWN);
-        pinMode(BUTTON_NEX_MESH_PACKET, INPUT_PULLDOWN);
-        pinMode(BUTTON_PRE_CHANNEL_PACKET, INPUT_PULLDOWN);
-        pinMode(BUTTON_NEX_CHANNEL_PACKET, INPUT_PULLDOWN);
-        pinMode(BUTTON_NEX_PAGE_PACKET, INPUT_PULLDOWN);
-
-        // pinMode(GNSS_MPOW_CTRL_PIN, OUTPUT);
-        // digitalWrite(GNSS_MPOW_CTRL_PIN, HIGH);
-        // delay(10);
-        // pinMode(GNSS_POW_CTRL_PIN, OUTPUT);
-        // digitalWrite(GNSS_POW_CTRL_PIN, HIGH);
+        pinMode(KEY1_ADC_PIN, INPUT);
+        pinMode(KEY2_ADC_PIN, INPUT);
+        // 初始化天线管理器
+        AntennaManager::init(config.lora.region);
     }
 
     void RedBankController::loop()
     {
-        _handlePreMeshPacketButtonPress();
-        _handleNextMeshPacketButtonPress();
+        // 使用天线管理器处理天线切换
+        AntennaManager::switchAntennaForRegion(config.lora.region);
+        scanAdcKeypad(); // ADC按键扫描
+        if (screen)
+        {
+            delay(200);
+            switch (key1_last)
+            {
+            case KeypadKey::UP:
+                screen->showPrevPacket();
+                break;
+            case KeypadKey::ENTER:
+                LOG_INFO("RedBankController: key1_last == KeypadKey::ENTER");
+                break;
+            case KeypadKey::ESC:
+                LOG_INFO("RedBankController: key1_last == KeypadKey::ESC");
+                break;
+            default:
+                break;
+            }
+
+            switch (key2_last)
+            {
+            case KeypadKey::DOWN:
+                screen->showNextPacket();
+                break;
+            case KeypadKey::LEFT:
+                screen->showPrevFrame();
+                break;
+            case KeypadKey::RIGHT:
+                screen->showNextFrame();
+                break;
+            default:
+                break;
+            }
+        }
         // _handleShuttingDownButtonPress();
-        _handlePrePageButtonPress();
-        _handleNextPageButtonPress();
+        // _handlePrePageButtonPress();
+        // _handleNextPageButtonPress();
         // _handleNextPages();
     }
 
@@ -121,11 +182,10 @@ namespace RedBankS3
     {
         return (channelPackets[channel].size());
     }
-#if defined(RED_BANK_S3)
     void RedBankController::_previousMeshPacket()
     {
 
-        // screen->showPrevPacket(); 注释屏幕
+        screen->showPrevPacket();
 
         direction = 0;
     }
@@ -133,38 +193,37 @@ namespace RedBankS3
     void RedBankController::_nextMeshPacket()
     {
 
-        // screen->showNextPacket(); 注释屏幕
+        screen->showNextPacket();
 
         direction = 1;
     }
-#endif
     uint8_t RedBankController::getDirection(void)
     {
         return (direction);
     }
 
-    void RedBankController::_handlePreMeshPacketButtonPress() // 上一条信息
-    {
-        static bool lastPreMeshPacketButtonState = HIGH;
-        bool curState = digitalRead(42);
-        // bool curState = digitalRead(42);
-        if (lastPreMeshPacketButtonState != curState && curState == HIGH)
-        {
-            _previousMeshPacket();
-        }
-        lastPreMeshPacketButtonState = curState;
-    }
+    // void RedBankController::_handlePreMeshPacketButtonPress() // 上一条信息
+    // {
+    //     static bool lastPreMeshPacketButtonState = HIGH;
+    //     bool curState = digitalRead(42);
+    //     // bool curState = digitalRead(42);
+    //     if (lastPreMeshPacketButtonState != curState && curState == HIGH)
+    //     {
+    //         _previousMeshPacket();
+    //     }
+    //     lastPreMeshPacketButtonState = curState;
+    // }
 
-    void RedBankController::_handleNextMeshPacketButtonPress() // 下一条信息
-    {
-        static bool lastNextMeshPacketButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_NEX_MESH_PACKET);
-        if (lastNextMeshPacketButtonState != curState && curState == HIGH)
-        {
-            _nextMeshPacket();
-        }
-        lastNextMeshPacketButtonState = curState;
-    }
+    // void RedBankController::_handleNextMeshPacketButtonPress() // 下一条信息
+    // {
+    //     static bool lastNextMeshPacketButtonState = HIGH;
+    //     bool curState = digitalRead(BUTTON_NEX_MESH_PACKET);
+    //     if (lastNextMeshPacketButtonState != curState && curState == HIGH)
+    //     {
+    //         _nextMeshPacket();
+    //     }
+    //     lastNextMeshPacketButtonState = curState;
+    // }
 
     // void RedBankController::_handleShuttingDownButtonPress()
     // {

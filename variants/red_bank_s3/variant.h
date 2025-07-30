@@ -1,10 +1,11 @@
 #define RED_BANK_S3
 
-#define I2C_SDA 5
-#define I2C_SCL 4
+// #define I2C_SDA 5
+// #define I2C_SCL 4
 // #define SPI_HOST SPI2_HOST
 #define BUTTON_PIN 8 // The middle button GPIO on the T-Beam S3
 #define USE_SX1262
+#define HAS_WIRE 0 // 没有iic设备
 
 #if 0
 #define LORA_DIO0 -1 // a No connect on the SX1262 module
@@ -59,10 +60,11 @@
 
 #define LORA_DIO0 -1 // a No connect on the SX1262 module
 #define LORA_RESET 8
-#define LORA_DIO1 10 // SX1262 IRQ
-#define LORA_DIO2 9  // SX1262 BUSY
-#define LORA_DIO3    // Not connected on PCB, but internally on the TTGO SX1262, if DIO3 is high the TXCO is enabled
-
+#define LORA_DIO1 10    // SX1262 IRQ
+#define LORA_DIO2 9     // SX1262 BUSY
+#define LORA_DIO3       // Not connected on PCB, but internally on the TTGO SX1262, if DIO3 is high the TXCO is enabled
+#define LORA_ANT_900 12 // 天线选择引脚 US United States 902.0 - 928.0
+#define LORA_ANT_413 13 // 天线选择引脚 CN China 470.0 - 510.0
 #ifdef USE_SX1262
 #define SX126X_CS 7    // FIXME - we really should define LORA_CS instead
 #define SX126X_DIO1 10 // LORA_DIO1

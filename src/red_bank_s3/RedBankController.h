@@ -6,6 +6,16 @@
 
 namespace RedBankS3
 {
+    enum class KeypadKey
+    {
+        NONE,
+        ENTER,
+        ESC,
+        UP,
+        LEFT,
+        RIGHT,
+        DOWN
+    };
     class RedBankController
     {
 
@@ -23,6 +33,10 @@ namespace RedBankS3
 
         void push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp);
         void restoreChannelPackets(void);
+        void initAdcKeypad();
+        void scanAdcKeypad();
+        KeypadKey getKey1();
+        KeypadKey getKey2();
 
     private:
         // 消息列表容量

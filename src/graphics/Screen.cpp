@@ -1233,6 +1233,7 @@ namespace graphics
         }
         if (!gps->getIsConnected())
         {
+            LOG_INFO("GPS not connected\n");
             display->drawString(x, y - 2, "No GPS");
             if (config.display.heading_bold)
                 display->drawString(x + 1, y - 2, "No GPS");
@@ -1561,7 +1562,6 @@ namespace graphics
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-        LOG_INFO("drawNodeInfo");
         // We only advance our nodeIndex if the frame # has changed - because
         // drawNodeInfo will be called repeatedly while the frame is shown
         if (state->currentFrame != prevFrame)
@@ -1578,7 +1578,6 @@ namespace graphics
                 n = nodeDB->getMeshNodeByIndex(nodeIndex);
             }
         }
-        LOG_INFO("Draw Title");
         meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
 
         display->setFont(FONT_SMALL);
@@ -1697,10 +1696,6 @@ namespace graphics
         {
             display->setColor(BLACK);
         }
-
-        LOG_INFO("nodeDB->getNodeNum() = %d\n", nodeDB->getNodeNum());
-        LOG_INFO("nodeDB->getNumMeshNodes() = %d\n", nodeDB->getNumMeshNodes() - 1);
-        LOG_INFO("nodeIndex = %d\n", nodeIndex);
 
         // Must be after distStr is populated
         screen->drawColumns(display, x, y, fields);

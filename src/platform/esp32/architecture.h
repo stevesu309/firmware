@@ -19,7 +19,7 @@
 #define HAS_WIRE 0
 #endif
 #ifndef HAS_GPS
-#define HAS_GPS 0
+#define HAS_GPS 1
 #endif
 #ifndef HAS_BUTTON
 #define HAS_BUTTON 1

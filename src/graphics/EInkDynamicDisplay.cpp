@@ -26,7 +26,6 @@ EInkDynamicDisplay::~EInkDynamicDisplay()
 // Screen requests a BACKGROUND frame
 void EInkDynamicDisplay::display()
 {
-    LOG_INFO("is displaying a background frame...");
     addFrameFlag(BACKGROUND);
     update();
 }
@@ -99,10 +98,8 @@ void EInkDynamicDisplay::adjustRefreshCounters()
 // Trigger the display update by calling base class
 bool EInkDynamicDisplay::update()
 {
-    LOG_INFO("is updating...");
     // Detemine the refresh mode to use, and start the update
     bool refreshApproved = determineMode();
-    LOG_INFO("determineMode() returned %s", refreshApproved ? "true" : "false");
     if (refreshApproved)
     {
         EInkDisplay::forceDisplay(0); // Bypass base class' own rate-limiting system
@@ -153,29 +150,20 @@ void EInkDynamicDisplay::endOrDetach()
 // Assess situation, pick a refresh type
 bool EInkDynamicDisplay::determineMode()
 {
-    LOG_INFO("111");
     checkInitialized();
-    LOG_INFO("222");
     checkForPromotion();
-    LOG_INFO("333");
 #if defined(HAS_EINK_ASYNCFULL)
     checkBusyAsyncRefresh();
 #endif
-    LOG_INFO("checkBusyAsyncRefresh()");
     checkRateLimiting();
-    LOG_INFO("checkRateLimiting()");
     // If too soon for a new frame, or display busy, abort early
     if (refresh == SKIPPED)
     {
-        LOG_INFO("refresh == SKIPPED");
         return false; // No refresh
     }
     // -- New frame is due --
-    LOG_INFO("444");
     resetRateLimiting(); // Once determineMode() ends, will have to wait again
-    LOG_INFO("555");
-    hashImage();                    // Generate here, so we can still copy it to previousImageHash, even if we skip the comparison check
-    LOG_DEBUG("determineMode(): "); // Begin log entry
+    hashImage();         // Generate here, so we can still copy it to previousImageHash, even if we skip the comparison check
 
     // Once mode determined, any remaining checks will bypass
     checkCosmetic();

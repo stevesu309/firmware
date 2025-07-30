@@ -578,8 +578,8 @@ void setup()
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
 
-// #if !MESHTASTIC_EXCLUDE_I2C
-#if 0
+#if !MESHTASTIC_EXCLUDE_I2C
+    // #if 0
 
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
@@ -848,8 +848,8 @@ void setup()
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // keep dimension of 128x64
 #endif
 
-// #if !MESHTASTIC_EXCLUDE_I2C
-#if 0
+#if !MESHTASTIC_EXCLUDE_I2C
+    // #if 0
 
 #if !defined(ARCH_STM32WL)
     if (acc_info.type != ScanI2C::DeviceType::NONE)
@@ -914,10 +914,6 @@ void setup()
 #if HAS_SCREEN
     screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
-    // graphics::EInkScreen *einkScreen = new graphics::EInkScreen();
-    // einkScreen->setup();
-    // einkScreen->lightUp();
-    // einkScreen->displayHello();
 
 #if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
     redBankController = new RedBankS3::RedBankController();
@@ -1547,7 +1543,6 @@ void loop()
     redBankController->loop();
 #endif
     powerCommandsCheck();
-
 #ifdef DEBUG_STACK
     static uint32_t lastPrint = 0;
     if (!Throttle::isWithinTimespanMs(lastPrint, 10 * 1000L))
@@ -1558,9 +1553,7 @@ void loop()
 #endif
 
     service->loop();
-
     long delayMsec = mainController.runOrDelay();
-
     // We want to sleep as long as possible here - because it saves power
     if (!runASAP && loopCanSleep())
     {

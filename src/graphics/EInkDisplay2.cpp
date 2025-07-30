@@ -102,6 +102,7 @@ void EInkDisplay::endUpdate()
     // Don't hibernate immediately for first update
     if (firstUpdate)
     {
+        LOG_INFO("firstUpdate");
         firstUpdate = false;
         return;
     }
@@ -215,24 +216,21 @@ bool EInkDisplay::connect()
     }
 #elif defined(RED_BANK_S3)
     {
-        // 启动HSPI前先确保电源
+
         pinMode(EINK_POWER_PIN, OUTPUT);
         digitalWrite(EINK_POWER_PIN, HIGH);
-        delay(100); // 等待电源稳定
+        delay(100);
         pinMode(4, OUTPUT);
         digitalWrite(4, LOW);
         delay(100);
-        LOG_DEBUG("Initializing HSPI for E-ink");
         hspi = new SPIClass(HSPI);
         hspi->begin(PIN_EINK_SCLK, -1, PIN_EINK_MOSI, PIN_EINK_CS);
 
-        // 更详细的初始化日志
         LOG_DEBUG("Creating GxEPD2_270 driver");
         auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, hspi);
 
         adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
 
-        LOG_DEBUG("Initializing display");
         adafruitDisplay->init(115200, true, 10, false); // 初始化显示
 
         adafruitDisplay->setRotation(3);
