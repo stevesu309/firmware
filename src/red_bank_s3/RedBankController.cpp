@@ -10,7 +10,6 @@ namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
 #define KEY2_ADC_PIN 2 // IO2
-
     static int key1_adc_val = 0;
     static int key2_adc_val = 0;
 
@@ -100,10 +99,6 @@ namespace RedBankS3
                 break;
             }
         }
-        // _handleShuttingDownButtonPress();
-        // _handlePrePageButtonPress();
-        // _handleNextPageButtonPress();
-        // _handleNextPages();
     }
 
     bool RedBankController::isMeshPacketListEmpty(uint8_t channel)
@@ -130,7 +125,7 @@ namespace RedBankS3
     void RedBankController::saveMeshPacket(const meshtastic_MeshPacket &mp)
     {
         uint8_t i;
-
+        LOG_INFO("mp:to = 0x%x", mp.to);
         if (mp.channel >= 8)
         {
             LOG_INFO("RedBankController: incorrect mp.channel = 0x%x!", mp.channel);
@@ -202,29 +197,6 @@ namespace RedBankS3
         return (direction);
     }
 
-    // void RedBankController::_handlePreMeshPacketButtonPress() // 上一条信息
-    // {
-    //     static bool lastPreMeshPacketButtonState = HIGH;
-    //     bool curState = digitalRead(42);
-    //     // bool curState = digitalRead(42);
-    //     if (lastPreMeshPacketButtonState != curState && curState == HIGH)
-    //     {
-    //         _previousMeshPacket();
-    //     }
-    //     lastPreMeshPacketButtonState = curState;
-    // }
-
-    // void RedBankController::_handleNextMeshPacketButtonPress() // 下一条信息
-    // {
-    //     static bool lastNextMeshPacketButtonState = HIGH;
-    //     bool curState = digitalRead(BUTTON_NEX_MESH_PACKET);
-    //     if (lastNextMeshPacketButtonState != curState && curState == HIGH)
-    //     {
-    //         _nextMeshPacket();
-    //     }
-    //     lastNextMeshPacketButtonState = curState;
-    // }
-
     // void RedBankController::_handleShuttingDownButtonPress()
     // {
     //     static bool lastShuttingDownButtonState = HIGH;
@@ -237,36 +209,5 @@ namespace RedBankS3
     //     }
     //     lastShuttingDownButtonState = curState;
     // }
-
-#if defined(RED_BANK_S3)
-    void RedBankController::_handlePrePageButtonPress() // 上一帧
-    {
-        static bool lastButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
-        if (lastButtonState != curState && curState == HIGH)
-        {
-            if (screen)
-            {
-                // screen->showPrevFrame(); 注释屏幕
-            }
-        }
-
-        lastButtonState = curState;
-    }
-
-    void RedBankController::_handleNextPageButtonPress() // 下一帧
-    {
-        static bool lastNextMeshPacketButtonState = HIGH;
-        bool curState = digitalRead(BUTTON_NEX_CHANNEL_PACKET);
-        if (lastNextMeshPacketButtonState != curState && curState == HIGH)
-        {
-            if (screen)
-            {
-                // screen->showNextFrame(); 注释屏幕
-            }
-        }
-        lastNextMeshPacketButtonState = curState;
-    }
-#endif
 
 }

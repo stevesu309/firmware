@@ -213,7 +213,6 @@ void EInkDynamicDisplay::checkInitialized()
         // Use a fast-refresh for the next frame; no skipping or else blank screen when waking from deep sleep
         addFrameFlag(DEMAND_FAST);
     }
-    LOG_INFO("EInkDynamicDisplay initialized (%s)", initialized ? "true" : "false");
 }
 
 // Was a frame skipped (rate, display busy) that should have been a FAST refresh?
@@ -500,7 +499,6 @@ void EInkDynamicDisplay::onNotify(uint32_t notification)
 // Public: wait for an refresh already in progress, then run the post-update code. See Screen::setScreensaverFrames()
 void EInkDynamicDisplay::joinAsyncRefresh()
 {
-    LOG_INFO("joinAsyncRefresh() called"); // 修改
     // If no async refresh running, nothing to do
     if (!asyncRefreshRunning)
         return;
@@ -527,7 +525,6 @@ void EInkDynamicDisplay::joinAsyncRefresh()
 // Called from NotifiedWorkerThread. Run the post-update code if the hardware is ready
 void EInkDynamicDisplay::pollAsyncRefresh()
 {
-    LOG_INFO("pollAsyncRefresh() called"); // 修改
     // In theory, this condition should never be met
     if (!asyncRefreshRunning)
         return;
@@ -555,7 +552,6 @@ void EInkDynamicDisplay::pollAsyncRefresh()
 // Check the status of "async full-refresh"; skip if running
 void EInkDynamicDisplay::checkBusyAsyncRefresh()
 {
-    LOG_INFO("checkBusyAsyncRefresh() called"); // 修改
     // No refresh taking place, continue with determineMode()
     if (!asyncRefreshRunning)
         return;
@@ -588,7 +584,6 @@ void EInkDynamicDisplay::checkBusyAsyncRefresh()
 // Hold control while an async refresh runs
 void EInkDynamicDisplay::awaitRefresh()
 {
-    LOG_INFO("awaitRefresh() called"); // 修改
     // Continually poll the BUSY pin
     while (adafruitDisplay->epd2.isBusy()) // 注释
         // while (adafruitDisplay3C->epd2.isBusy()) // 修改

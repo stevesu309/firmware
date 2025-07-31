@@ -231,7 +231,7 @@ bool EInkDisplay::connect()
 
         adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
 
-        adafruitDisplay->init(115200, true, 10, false); // 初始化显示
+        adafruitDisplay->init(115200, true, 10, false);
 
         adafruitDisplay->setRotation(3);
         LOG_DEBUG("Display initialized successfully");

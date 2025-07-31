@@ -59,7 +59,7 @@ extern UdpMulticastHandler *udpHandler;
 extern graphics::Screen *screen;
 
 // Global RedBankS3Controller singleton.
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
 #include "red_bank_s3/RedBankController.h"
 extern RedBankS3::RedBankController *redBankController;
 #endif

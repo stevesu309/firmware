@@ -1235,6 +1235,35 @@ void GPS::publishUpdate()
 
 int32_t GPS::runOnce()
 {
+    // 强制重置
+    static bool firstRun = true;
+    static uint32_t lastResetTime = 0;
+
+    if (firstRun)
+    {
+        LOG_INFO("First GPS runOnce after system restart, ensuring clean state");
+        GPSInitFinished = false;
+        GPSInitStarted = false;
+        hasValidLocation = false;
+        hasGPS = false;
+        shouldPublish = false;
+        powerState = GPS_OFF;
+        speedSelect = 0;
+        probeTries = 0;
+        gnssModel = GNSS_MODEL_UNKNOWN;
+        didSerialInit = false;
+        lastResetTime = millis();
+        firstRun = false;
+    }
+
+    if (millis() - lastResetTime > 30000 && GPSInitFinished)
+    {
+        LOG_INFO("GPS state seems stale, forcing reset");
+        GPSInitFinished = false;
+        GPSInitStarted = false;
+        lastResetTime = millis();
+    }
+
     if (!GPSInitFinished)
     {
         LOG_INFO("GPS not initialized, running probe");
@@ -1249,7 +1278,7 @@ int32_t GPS::runOnce()
             return 2000; // Setup failed, re-run in two seconds
         }
 
-        config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; ////强制启动GNSS
+        config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; // 强制启动GNSS
         // We have now loaded our saved preferences from flash
         if (config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_ENABLED)
         {
@@ -1660,6 +1689,23 @@ GPS *GPS::createGps()
         return nullptr;
 
     GPS *new_gps = new GPS;
+
+    // 重置所有初始化相关的变量，确保干净的状态
+    new_gps->GPSInitFinished = false;
+    new_gps->GPSInitStarted = false;
+    new_gps->hasValidLocation = false;
+    new_gps->hasGPS = false;
+    new_gps->shouldPublish = false;
+    new_gps->powerState = GPS_OFF;
+    new_gps->speedSelect = 0;
+    new_gps->probeTries = 0;
+    new_gps->gnssModel = GNSS_MODEL_UNKNOWN;
+
+    // 重置串口初始化标志
+    didSerialInit = false;
+
+    LOG_INFO("GPS instance created with clean state, GPSInitFinished=%d", new_gps->GPSInitFinished);
+
     new_gps->rx_gpio = _rx_gpio;
     new_gps->tx_gpio = _tx_gpio;
     LOG_INFO("NEW GPS: %d %d", new_gps->rx_gpio, new_gps->tx_gpio);

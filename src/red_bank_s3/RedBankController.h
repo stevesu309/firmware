@@ -33,7 +33,6 @@ namespace RedBankS3
 
         void push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp);
         void restoreChannelPackets(void);
-        void initAdcKeypad();
         void scanAdcKeypad();
         KeypadKey getKey1();
         KeypadKey getKey2();
@@ -52,11 +51,6 @@ namespace RedBankS3
 
         void _previousMeshPacket();
         void _nextMeshPacket();
-        void _handlePreMeshPacketButtonPress();
-        void _handleNextMeshPacketButtonPress();
         void _handleShuttingDownButtonPress();
-        void _handlePrePageButtonPress();
-        void _handleNextPageButtonPress();
-        void _handleNextPages();
     };
 }

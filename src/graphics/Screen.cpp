@@ -1748,7 +1748,7 @@ namespace graphics
 
         return (false);
     }
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
     void onFrameFixed(uint8_t currentFrame)
     {
         if (!isBrowsingChannelPacketFrame(currentFrame))
@@ -1852,13 +1852,26 @@ namespace graphics
         // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
         EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
 
+        // 动态获取屏幕尺寸，适配不同方向
+        int16_t displayWidth = display->getWidth();
+        int16_t displayHeight = display->getHeight();
+        LOG_INFO("displayWidth = %d, displayHeight = %d\n", displayWidth, displayHeight);
+        bool isPortrait = displayHeight > displayWidth; // 判断是否为竖屏
+
         display->drawString(x + 5, y, displayName);
         display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
         char displayNum[5];
         snprintf(displayNum, sizeof(displayNum), "%d/%d", actualChannelIndex + 1, validChannelCount);
-        display->drawString(x + SCREEN_WIDTH - 10, y, displayNum);
-        display->drawLine(x, y + FONT_HEIGHT_SMALL, x + SCREEN_WIDTH, y + FONT_HEIGHT_SMALL);
+
+        // 根据屏幕方向调整右侧数字位置
+        int16_t rightMargin = 10;
+        if (isPortrait)
+        {
+            rightMargin = (displayWidth > 200) ? 10 : 5;
+        }
+        display->drawString(x + displayWidth - rightMargin, y, displayNum);
+        display->drawLine(x, y + FONT_HEIGHT_SMALL, x + displayWidth, y + FONT_HEIGHT_SMALL);
         display->drawString(x, y + FONT_HEIGHT_SMALL, "");
 
         display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -1925,97 +1938,109 @@ namespace graphics
         display->setColor(WHITE);
 #ifndef EXCLUDE_EMOJI
         const char *msg = reinterpret_cast<const char *>(mp.decoded.payload.bytes);
+
+        // 根据屏幕方向调整图标位置
+        int16_t iconX, iconY;
         if (strcmp(msg, "\U0001F44D") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
-                             thumbup);
+            iconX = x + (displayWidth - thumbs_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, thumbs_width, thumbs_height, thumbup);
         }
         else if (strcmp(msg, "\U0001F44E") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
-                             thumbdown);
+            iconX = x + (displayWidth - thumbs_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, thumbs_width, thumbs_height, thumbdown);
         }
         else if (strcmp(msg, "\U0001F60A") == 0 || strcmp(msg, "\U0001F600") == 0 || strcmp(msg, "\U0001F642") == 0 ||
                  strcmp(msg, "\U0001F609") == 0 ||
                  strcmp(msg, "\U0001F601") == 0)
         { // matches 5 different common smileys, so that the phone user doesn't have to
           // remember which one is compatible
-            display->drawXbm(x + (SCREEN_WIDTH - smiley_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5, smiley_width, smiley_height,
-                             smiley);
+            iconX = x + (displayWidth - smiley_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, smiley_width, smiley_height, smiley);
         }
         else if (strcmp(msg, "❓") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - question_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5, question_width, question_height,
-                             question);
+            iconX = x + (displayWidth - question_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, question_width, question_height, question);
         }
         else if (strcmp(msg, "‼️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - bang_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5,
-                             bang_width, bang_height, bang);
+            iconX = x + (displayWidth - bang_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, bang_width, bang_height, bang);
         }
         else if (strcmp(msg, "\U0001F4A9") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - poo_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5,
-                             poo_width, poo_height, poo);
+            iconX = x + (displayWidth - poo_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, poo_width, poo_height, poo);
         }
         else if (strcmp(msg, "\U0001F923") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - haha_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5,
-                             haha_width, haha_height, haha);
+            iconX = x + (displayWidth - haha_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, haha_width, haha_height, haha);
         }
         else if (strcmp(msg, "\U0001F44B") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - wave_icon_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5, wave_icon_width,
-                             wave_icon_height, wave_icon);
+            iconX = x + (displayWidth - wave_icon_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, wave_icon_width, wave_icon_height, wave_icon);
         }
         else if (strcmp(msg, "\U0001F920") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - cowboy_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5, cowboy_width, cowboy_height,
-                             cowboy);
+            iconX = x + (displayWidth - cowboy_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, cowboy_width, cowboy_height, cowboy);
         }
         else if (strcmp(msg, "\U0001F42D") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - deadmau5_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5, deadmau5_width, deadmau5_height,
-                             deadmau5);
+            iconX = x + (displayWidth - deadmau5_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, deadmau5_width, deadmau5_height, deadmau5);
         }
         else if (strcmp(msg, "\xE2\x98\x80\xEF\xB8\x8F") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - sun_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5,
-                             sun_width, sun_height, sun);
+            iconX = x + (displayWidth - sun_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, sun_width, sun_height, sun);
         }
         else if (strcmp(msg, "\u2614") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - rain_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10,
-                             rain_width, rain_height, rain);
+            iconX = x + (displayWidth - rain_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10;
+            display->drawXbm(iconX, iconY, rain_width, rain_height, rain);
         }
         else if (strcmp(msg, "☁️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - cloud_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5, cloud_width, cloud_height, cloud);
+            iconX = x + (displayWidth - cloud_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, cloud_width, cloud_height, cloud);
         }
         else if (strcmp(msg, "🌫️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - fog_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5,
-                             fog_width, fog_height, fog);
+            iconX = x + (displayWidth - fog_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, fog_width, fog_height, fog);
         }
         else if (strcmp(msg, "\U0001F608") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - devil_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5, devil_width, devil_height, devil);
+            iconX = x + (displayWidth - devil_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, devil_width, devil_height, devil);
         }
         else if (strcmp(msg, "♥️") == 0 || strcmp(msg, "\U0001F9E1") == 0 || strcmp(msg, "\U00002763") == 0 ||
                  strcmp(msg, "\U00002764") == 0 || strcmp(msg, "\U0001F495") == 0 || strcmp(msg, "\U0001F496") == 0 ||
                  strcmp(msg, "\U0001F497") == 0 || strcmp(msg, "\U0001F498") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - heart_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5, heart_width, heart_height, heart);
+            iconX = x + (displayWidth - heart_width) / 2;
+            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5;
+            display->drawXbm(iconX, iconY, heart_width, heart_height, heart);
         }
         else
         {
@@ -2455,7 +2480,7 @@ namespace graphics
             case Cmd::SHOW_NEXT_FRAME:
                 handleShowNextFrame();
                 break;
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
             case Cmd::SHOW_PREV_PACKET:
                 handleShowPrevPacket();
                 break;
@@ -2720,7 +2745,6 @@ namespace graphics
         normalFrames[numframes++] = screen->digitalWatchFace ? &Screen::drawDigitalClockFrame : &Screen::drawAnalogClockFrame;
 #endif
 
-#if 1
         LOG_INFO("Adding frames for device state");
         LOG_INFO("has_rx_text_message: %d", devicestate.has_rx_text_message);
         LOG_INFO("shouldDrawMessage: %d", shouldDrawMessage(&devicestate.rx_text_message));
@@ -2732,18 +2756,12 @@ namespace graphics
             normalFrames[numframes++] = drawTextMessageFrame;
             LOG_DEBUG("Added text message.  numframes: 1");
         }
-#endif
 
-#if 1
         // then all the nodes
         // We only show a few nodes in our scrolling list - because meshes with many nodes would have too many screens
-        LOG_INFO("NOW: Adding frames for node list");
         size_t numToShow = min(numMeshNodes, 4U);
         for (size_t i = 0; i < numToShow; i++)
-            LOG_INFO("Adding node%d", i);
-        normalFrames[numframes++] = drawNodeInfo;
-        LOG_INFO("IS OK HERE");
-#endif
+            normalFrames[numframes++] = drawNodeInfo;
 
         //----------------------------------------------
         // add channel frame
@@ -2752,9 +2770,8 @@ namespace graphics
         channelFrameBeginIndex = numframes;
         validChannelCount = 0;
 // then the node info for our node
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
         int numChannels = channelFile.channels_count;
-        LOG_DEBUG("numChannels = %d", numChannels);
         for (size_t i = 0; i < numChannels; i++)
         {
             if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
@@ -3053,7 +3070,7 @@ namespace graphics
             setFastFramerate();
         }
     }
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
     void Screen::handleShowPrevPacket(void)
     {
         if (ui->getUiState()->frameState != FIXED)

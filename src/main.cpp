@@ -137,7 +137,7 @@ void setupNicheGraphics();
 #include "nicheGraphics.h"
 #endif
 
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
 #include "red_bank_s3/RedBankController.h"
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
@@ -579,7 +579,6 @@ void setup()
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
 
 #if !MESHTASTIC_EXCLUDE_I2C
-    // #if 0
 
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
@@ -849,7 +848,6 @@ void setup()
 #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C
-    // #if 0
 
 #if !defined(ARCH_STM32WL)
     if (acc_info.type != ScanI2C::DeviceType::NONE)
@@ -915,7 +913,7 @@ void setup()
     screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
 
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
     redBankController = new RedBankS3::RedBankController();
 #endif
 
@@ -956,6 +954,10 @@ void setup()
             LOG_INFO("GPS: %d", HAS_GPS);
             LOG_INFO("GPS role: %d", config.device.role);
             LOG_INFO("GPS mode: %d", config.position.gps_mode);
+            LOG_INFO("config.device.role: %d", config.device.role);
+            LOG_INFO("config.position.gps_mode: %d", config.position.gps_mode);
+            config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; ////强制启动GNSS
+
             if (config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
                 config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
             {

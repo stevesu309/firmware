@@ -99,5 +99,9 @@
 #define BUTTON_NEX_PAGE_PACKET 2    // 定义GPIO42引脚，查看下一页
 
 // #define HAS_GPS
-// #define GNSS_POW_CTRL_PIN 36
-// #define GNSS_MPOW_CTRL_PIN 21
+#define PIN_GPS_EN (21)       // GNSS模块电源控制引脚
+#define GPS_EN_ACTIVE (HIGH)  // 输出使能为高电平
+#define PIN_GPS_RESET (41)    // GNSS模块复位引脚
+#define GPS_RESET_MODE (HIGH) // 复位为低电平，但是这个引脚接了一个NPN，高电平导通，导通就是低电平复位，所以是高电平复位
+                              // #define GNSS_POW_CTRL_PIN 36
+                              // #define GNSS_MPOW_CTRL_PIN 21

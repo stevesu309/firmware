@@ -618,7 +618,7 @@ namespace graphics
         void handleOnPress();
         void handleShowNextFrame();
         void handleShowPrevFrame();
-#if defined(RED_BANK_S3) || defined(TTGO_T_ECHO)
+#if defined(RED_BANK_S3)
         void handleShowNextPacket();
         void handleShowPrevPacket();
 #endif
