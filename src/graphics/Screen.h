@@ -573,6 +573,9 @@ namespace graphics
 #ifdef USE_EINK
         /// Draw an image to remain on E-Ink display after screen off
         void setScreensaverFrames(FrameCallback einkScreensaver = NULL);
+        OLEDDisplay *getDisplayDevice() { return dispdev; }
+        uint16_t getCurrentWidth() { return displayWidth; }
+        uint16_t getCurrentHeight() { return displayHeight; }
 #endif
 
     protected:

@@ -37,6 +37,12 @@ namespace RedBankS3
         KeypadKey getKey1();
         KeypadKey getKey2();
 
+        // 屏幕旋转相关
+        uint8_t currentRotation = 0;                              // 当前旋转角度：0=竖屏, 1=左横屏, 3=右横屏
+        void rotateScreenLeft();                                  // 向左旋转（ENTER按键）
+        void rotateScreenRight();                                 // 向右旋转（ESC按键）
+        void applyRotation();                                     // 使用旋转
+        uint8_t getCurrentRotation() { return currentRotation; }; // 获取当前旋转角度
     private:
         // 消息列表容量
         static const int MESH_PACKET_LIST_CAPCITY = 10;

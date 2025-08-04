@@ -48,6 +48,18 @@ public:
   virtual void endUpdate();
 
   /**
+   * Set the rotation of the display
+   * @param rotation: 0=portrait, 1=landscape, 2=portrait upside down, 3=landscape upside down
+   */
+  void setRotation(uint8_t rotation);
+
+  /**
+   * Fill the screen with a given color
+   * @param color: 0=black, 1=white
+   */
+  void fillScreen(uint8_t color);
+
+  /**
    * shim to make the abstraction happy
    *
    */

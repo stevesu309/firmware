@@ -3,7 +3,7 @@
 // #define I2C_SDA 5
 // #define I2C_SCL 4
 // #define SPI_HOST SPI2_HOST
-#define BUTTON_PIN 8 // The middle button GPIO on the T-Beam S3
+// #define BUTTON_PIN 8 // The middle button GPIO on the T-Beam S3
 #define USE_SX1262
 #define HAS_WIRE 0 // 没有iic设备
 
@@ -37,10 +37,6 @@
 // #define HAS_AXP2101
 
 // #define HAS_RTC 1
-
-// Specify the PMU as Wire1. In the t-beam-s3 core, PCF8563 and PMU share the bus
-// #define PMU_USE_WIRE1
-// #define RTC_USE_WIRE1
 
 #define GPS_RX_PIN 18
 #define GPS_TX_PIN 17

@@ -135,6 +135,23 @@ void EInkDisplay::setDetected(uint8_t detected)
     (void)detected;
 }
 
+void EInkDisplay::setRotation(uint8_t rotation)
+{
+    if (adafruitDisplay)
+    {
+        adafruitDisplay->setRotation(rotation);
+        LOG_INFO("EInkDisplay rotation set to %d", rotation);
+    }
+}
+
+void EInkDisplay::fillScreen(uint8_t color)
+{
+    if (adafruitDisplay)
+    {
+        adafruitDisplay->fillScreen(color);
+        LOG_INFO("EInkDisplay fillScreen %d", color);
+    }
+}
 // Connect to the display - variant specific
 bool EInkDisplay::connect()
 {
@@ -228,12 +245,13 @@ bool EInkDisplay::connect()
 
         LOG_DEBUG("Creating GxEPD2_270 driver");
         auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, hspi);
-
         adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
-
         adafruitDisplay->init(115200, true, 10, false);
 
-        adafruitDisplay->setRotation(3);
+        adafruitDisplay->setRotation(0);
+        this->displayWidth = 176;
+        this->displayHeight = 264;
+        adafruitDisplay->fillScreen(GxEPD_WHITE);
         LOG_DEBUG("Display initialized successfully");
     }
 #elif defined(PCA10059) || defined(ME25LS01)

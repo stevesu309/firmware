@@ -52,8 +52,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sleep.h"
 #include "target_specific.h"
 
+#ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
-
 int currentPageIndex = 0;
 int selectedLine = 0;
 int actualChannelIndex = 0;
@@ -61,6 +61,7 @@ bool isInChannelFrame = false;
 static uint16_t channelFrameBeginIndex;
 static uint16_t channelPacketBrowseIndex;
 // int validChannelCount = 0;
+#endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
 #include "mesh/wifi/WiFiAPClient.h"
@@ -131,7 +132,6 @@ namespace graphics
 
 #include "graphics/ScreenFonts.h"
 #include <Throttle.h>
-
 #define getStringCenteredX(s) ((SCREEN_WIDTH - display->getStringWidth(s)) / 2)
 
     // Check if the display can render a string (detect special chars; emoji)
@@ -307,13 +307,20 @@ namespace graphics
     // draw overlay in bottom right corner of screen to show when notifications are muted or modifier key is active
     static void drawFunctionOverlay(OLEDDisplay *display, OLEDDisplayUiState *state)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         // LOG_DEBUG("Draw function overlay");
         if (functionSymbol.begin() != functionSymbol.end())
         {
             char buf[64];
             display->setFont(FONT_SMALL);
             snprintf(buf, sizeof(buf), "%s", functionSymbolString.c_str());
-            display->drawString(SCREEN_WIDTH - display->getStringWidth(buf), SCREEN_HEIGHT - FONT_HEIGHT_SMALL, buf);
+            display->drawString(width - display->getStringWidth(buf), height - FONT_HEIGHT_SMALL, buf);
         }
     }
 
@@ -1018,6 +1025,12 @@ namespace graphics
     /// Draw the last text message we received
     static void drawTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         // the max length of this buffer is much longer than we can possibly print
         static char tempBuf[237];
 
@@ -1031,9 +1044,11 @@ namespace graphics
         // be wrapped. Currently only spaces and "-" are allowed for wrapping
         display->setTextAlignment(TEXT_ALIGN_LEFT);
         display->setFont(FONT_SMALL);
+        LOG_INFO("display1->getWidth() %d, display->getHeight() %d", width, height);
+
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
         {
-            display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + FONT_HEIGHT_SMALL);
+            display->fillRect(0 + x, 0 + y, x + width, y + FONT_HEIGHT_SMALL);
             display->setColor(BLACK);
         }
 
@@ -1058,7 +1073,7 @@ namespace graphics
                                      (node && node->has_user) ? node->user.short_name : "???");
             }
             // Timestamp yesterday (if display is wide enough)
-            else if (useTimestamp && daysAgo == 1 && display->width() >= 200)
+            else if (useTimestamp && daysAgo == 1 && width >= 200)
             {
                 display->drawStringf(xOff + x, 0 + y, tempBuf, "Yesterday %02hu:%02hu from %s", timestampHours, timestampMinutes,
                                      (node && node->has_user) ? node->user.short_name : "???");
@@ -1077,14 +1092,14 @@ namespace graphics
         const char *msg = reinterpret_cast<const char *>(mp.decoded.payload.bytes);
         if (strcmp(msg, "\U0001F44D") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
+            display->drawXbm(x + (width - thumbs_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
                              thumbup);
         }
         else if (strcmp(msg, "\U0001F44E") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - thumbs_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
+            display->drawXbm(x + (width - thumbs_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5, thumbs_width, thumbs_height,
                              thumbdown);
         }
         else if (strcmp(msg, "\U0001F60A") == 0 || strcmp(msg, "\U0001F600") == 0 || strcmp(msg, "\U0001F642") == 0 ||
@@ -1092,89 +1107,89 @@ namespace graphics
                  strcmp(msg, "\U0001F601") == 0)
         { // matches 5 different common smileys, so that the phone user doesn't have to
           // remember which one is compatible
-            display->drawXbm(x + (SCREEN_WIDTH - smiley_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5, smiley_width, smiley_height,
+            display->drawXbm(x + (width - smiley_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5, smiley_width, smiley_height,
                              smiley);
         }
         else if (strcmp(msg, "❓") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - question_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5, question_width, question_height,
+            display->drawXbm(x + (width - question_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5, question_width, question_height,
                              question);
         }
         else if (strcmp(msg, "‼️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - bang_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5,
+            display->drawXbm(x + (width - bang_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5,
                              bang_width, bang_height, bang);
         }
         else if (strcmp(msg, "\U0001F4A9") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - poo_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5,
+            display->drawXbm(x + (width - poo_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5,
                              poo_width, poo_height, poo);
         }
         else if (strcmp(msg, "\U0001F923") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - haha_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5,
+            display->drawXbm(x + (width - haha_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5,
                              haha_width, haha_height, haha);
         }
         else if (strcmp(msg, "\U0001F44B") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - wave_icon_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5, wave_icon_width,
+            display->drawXbm(x + (width - wave_icon_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5, wave_icon_width,
                              wave_icon_height, wave_icon);
         }
         else if (strcmp(msg, "\U0001F920") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - cowboy_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5, cowboy_width, cowboy_height,
+            display->drawXbm(x + (width - cowboy_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5, cowboy_width, cowboy_height,
                              cowboy);
         }
         else if (strcmp(msg, "\U0001F42D") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - deadmau5_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5, deadmau5_width, deadmau5_height,
+            display->drawXbm(x + (width - deadmau5_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5, deadmau5_width, deadmau5_height,
                              deadmau5);
         }
         else if (strcmp(msg, "\xE2\x98\x80\xEF\xB8\x8F") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - sun_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5,
+            display->drawXbm(x + (width - sun_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5,
                              sun_width, sun_height, sun);
         }
         else if (strcmp(msg, "\u2614") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - rain_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10,
+            display->drawXbm(x + (width - rain_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10,
                              rain_width, rain_height, rain);
         }
         else if (strcmp(msg, "☁️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - cloud_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5, cloud_width, cloud_height, cloud);
+            display->drawXbm(x + (width - cloud_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5, cloud_width, cloud_height, cloud);
         }
         else if (strcmp(msg, "🌫️") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - fog_width) / 2, y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5,
+            display->drawXbm(x + (width - fog_width) / 2, y + (height - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5,
                              fog_width, fog_height, fog);
         }
         else if (strcmp(msg, "\U0001F608") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - devil_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5, devil_width, devil_height, devil);
+            display->drawXbm(x + (width - devil_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5, devil_width, devil_height, devil);
         }
         else if (strcmp(msg, "♥️") == 0 || strcmp(msg, "\U0001F9E1") == 0 || strcmp(msg, "\U00002763") == 0 ||
                  strcmp(msg, "\U00002764") == 0 || strcmp(msg, "\U0001F495") == 0 || strcmp(msg, "\U0001F496") == 0 ||
                  strcmp(msg, "\U0001F497") == 0 || strcmp(msg, "\U0001F498") == 0)
         {
-            display->drawXbm(x + (SCREEN_WIDTH - heart_width) / 2,
-                             y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5, heart_width, heart_height, heart);
+            display->drawXbm(x + (width - heart_width) / 2,
+                             y + (height - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5, heart_width, heart_height, heart);
         }
         else
         {
             snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
-            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
+            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + width, tempBuf);
         }
 #else
         snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
-        display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
+        display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + width, tempBuf);
 #endif
     }
 
@@ -1562,6 +1577,14 @@ namespace graphics
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        LOG_INFO("displayWidth 1= %d, displayHeight = %d\n", width, height);
         // We only advance our nodeIndex if the frame # has changed - because
         // drawNodeInfo will be called repeatedly while the frame is shown
         if (state->currentFrame != prevFrame)
@@ -1581,7 +1604,6 @@ namespace graphics
         meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(nodeIndex);
 
         display->setFont(FONT_SMALL);
-
         // The coordinates define the left starting point of the text
         display->setTextAlignment(TEXT_ALIGN_LEFT);
 
@@ -1621,18 +1643,18 @@ namespace graphics
         const char *fields[] = {username, signalStr, distStr, lastStr, NULL};
 
         int16_t compassX = 0, compassY = 0;
-        uint16_t compassDiam = Screen::getCompassDiam(SCREEN_WIDTH, SCREEN_HEIGHT);
+        uint16_t compassDiam = Screen::getCompassDiam(width, height);
 
         // coordinates for the center of the compass/circle
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT)
         {
-            compassX = x + SCREEN_WIDTH - compassDiam / 2 - 5;
-            compassY = y + SCREEN_HEIGHT / 2 + FONT_HEIGHT_SMALL;
+            compassX = x + width - compassDiam / 2 - 5;
+            compassY = y + height / 2 + FONT_HEIGHT_SMALL;
         }
         else
         {
-            compassX = x + SCREEN_WIDTH - compassDiam / 2 - 5;
-            compassY = y + FONT_HEIGHT_SMALL + (SCREEN_HEIGHT - FONT_HEIGHT_SMALL) / 2;
+            compassX = x + width - compassDiam / 2 - 5;
+            compassY = y + FONT_HEIGHT_SMALL + (height - FONT_HEIGHT_SMALL) / 2;
         }
         bool hasNodeHeading = false;
 
@@ -1703,7 +1725,7 @@ namespace graphics
         display->setTextAlignment(TEXT_ALIGN_RIGHT);
         char numStr[20];
         snprintf(numStr, sizeof(numStr), "Node Info: %d/%d", nodeIndex, nodeDB->getNumMeshNodes() - 1);
-        display->drawString(x + SCREEN_WIDTH - 10, y, numStr);
+        display->drawString(x + width - 10, y, numStr);
     }
 
     uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
@@ -1774,7 +1796,13 @@ namespace graphics
     {
         // the max length of this buffer is much longer than we can possibly print
         static char tempBuf[237];
+        int width = display->getWidth();
+        int height = display->getHeight();
 
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         // LOG_DEBUG("Draw text message from 0x%x: %s", mp.from,
         // mp.decoded.variant.data.decoded.bytes);
 
@@ -1852,11 +1880,10 @@ namespace graphics
         // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
         EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
 
-        // 动态获取屏幕尺寸，适配不同方向
-        int16_t displayWidth = display->getWidth();
-        int16_t displayHeight = display->getHeight();
+        int16_t displayWidth = width;
+        int16_t displayHeight = height;
         LOG_INFO("displayWidth = %d, displayHeight = %d\n", displayWidth, displayHeight);
-        bool isPortrait = displayHeight > displayWidth; // 判断是否为竖屏
+        bool isPortrait = displayHeight > displayWidth; // 判断竖屏
 
         display->drawString(x + 5, y, displayName);
         display->setTextAlignment(TEXT_ALIGN_RIGHT);
@@ -1864,7 +1891,6 @@ namespace graphics
         char displayNum[5];
         snprintf(displayNum, sizeof(displayNum), "%d/%d", actualChannelIndex + 1, validChannelCount);
 
-        // 根据屏幕方向调整右侧数字位置
         int16_t rightMargin = 10;
         if (isPortrait)
         {
@@ -2045,7 +2071,7 @@ namespace graphics
         else
         {
             snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
-            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
+            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + displayWidth, tempBuf);
         }
 #else
         snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
@@ -2817,7 +2843,7 @@ namespace graphics
         LOG_DEBUG("Finished build frames. numframes: %d", numframes);
 
         ui->setFrames(normalFrames, numframes);
-        ui->enableAllIndicators();
+        ui->enableAllIndicators(); // Enable all indicators
 
         // Add function overlay here. This can show when notifications muted, modifier key is active etc
         static OverlayCallback functionOverlay[] = {drawFunctionOverlay};
@@ -3151,6 +3177,14 @@ namespace graphics
 
     void DebugInfo::drawFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        LOG_INFO("width: %d, height: %d", width, height);
+
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text
@@ -3158,7 +3192,7 @@ namespace graphics
 
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
         {
-            display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + FONT_HEIGHT_SMALL);
+            display->fillRect(0 + x, 0 + y, x + width, y + FONT_HEIGHT_SMALL);
             display->setColor(BLACK);
         }
 
@@ -3194,11 +3228,11 @@ namespace graphics
         // Display nodes status
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT)
         {
-            drawNodes(display, x + (SCREEN_WIDTH * 0.25), y + 2, nodeStatus);
+            drawNodes(display, x + (width * 0.25), y + 2, nodeStatus);
         }
         else
         {
-            drawNodes(display, x + (SCREEN_WIDTH * 0.25), y + 3, nodeStatus);
+            drawNodes(display, x + (width * 0.25), y + 3, nodeStatus);
         }
 #if HAS_GPS
         // Display GPS status
@@ -3210,11 +3244,11 @@ namespace graphics
         {
             if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT)
             {
-                drawGPS(display, x + (SCREEN_WIDTH * 0.63), y + 2, gpsStatus);
+                drawGPS(display, x + (width * 0.63), y + 2, gpsStatus);
             }
             else
             {
-                drawGPS(display, x + (SCREEN_WIDTH * 0.63), y + 3, gpsStatus);
+                drawGPS(display, x + (width * 0.63), y + 3, gpsStatus);
             }
         }
 #endif
@@ -3231,12 +3265,12 @@ namespace graphics
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
      defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || ARCH_PORTDUINO) &&           \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
-                display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
+                display->drawFastImage(x + width - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
                                        imgQuestionL1);
-                display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 12, 8,
+                display->drawFastImage(x + width - 14 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 12, 8,
                                        imgQuestionL2);
 #else
-                display->drawFastImage(x + SCREEN_WIDTH - 10 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 8, 8,
+                display->drawFastImage(x + width - 10 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 8, 8,
                                        imgQuestion);
 #endif
             }
@@ -3245,12 +3279,12 @@ namespace graphics
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
      defined(ST7789_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(HX8357_CS)) &&                             \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
-                display->drawFastImage(x + SCREEN_WIDTH - 18 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 16, 8,
+                display->drawFastImage(x + width - 18 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 16, 8,
                                        imgSFL1);
-                display->drawFastImage(x + SCREEN_WIDTH - 18 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 16, 8,
+                display->drawFastImage(x + width - 18 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 16, 8,
                                        imgSFL2);
 #else
-                display->drawFastImage(x + SCREEN_WIDTH - 13 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 11, 8,
+                display->drawFastImage(x + width - 13 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 11, 8,
                                        imgSF);
 #endif
             }
@@ -3262,16 +3296,16 @@ namespace graphics
 #if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
      defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || ARCH_PORTDUINO) &&           \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
-            display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
+            display->drawFastImage(x + width - 14 - display->getStringWidth(ourId), y + 3 + FONT_HEIGHT_SMALL, 12, 8,
                                    imgInfoL1);
-            display->drawFastImage(x + SCREEN_WIDTH - 14 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 12, 8,
+            display->drawFastImage(x + width - 14 - display->getStringWidth(ourId), y + 11 + FONT_HEIGHT_SMALL, 12, 8,
                                    imgInfoL2);
 #else
-            display->drawFastImage(x + SCREEN_WIDTH - 10 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 8, 8, imgInfo);
+            display->drawFastImage(x + width - 10 - display->getStringWidth(ourId), y + 2 + FONT_HEIGHT_SMALL, 8, 8, imgInfo);
 #endif
         }
 
-        display->drawString(x + SCREEN_WIDTH - display->getStringWidth(ourId), y + FONT_HEIGHT_SMALL, ourId);
+        display->drawString(x + width - display->getStringWidth(ourId), y + FONT_HEIGHT_SMALL, ourId);
 
         // Draw any log messages
         display->drawLogBuffer(x, y + (FONT_HEIGHT_SMALL * 2));
@@ -3287,6 +3321,14 @@ namespace graphics
     // Jm
     void DebugInfo::drawFrameWiFi(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        LOG_INFO("width: %d, height: %d", width, height);
+
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
         const char *wifiName = config.network.wifi_ssid;
 
@@ -3297,7 +3339,7 @@ namespace graphics
 
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
         {
-            display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + FONT_HEIGHT_SMALL);
+            display->fillRect(0 + x, 0 + y, x + width, y + FONT_HEIGHT_SMALL);
             display->setColor(BLACK);
         }
 
@@ -3313,11 +3355,11 @@ namespace graphics
             if (config.display.heading_bold)
                 display->drawString(x + 1, y, String("WiFi: Connected"));
 
-            display->drawString(x + SCREEN_WIDTH - display->getStringWidth("RSSI " + String(WiFi.RSSI())), y,
+            display->drawString(x + width - display->getStringWidth("RSSI " + String(WiFi.RSSI())), y,
                                 "RSSI " + String(WiFi.RSSI()));
             if (config.display.heading_bold)
             {
-                display->drawString(x + SCREEN_WIDTH - display->getStringWidth("RSSI " + String(WiFi.RSSI())) - 1, y,
+                display->drawString(x + width - display->getStringWidth("RSSI " + String(WiFi.RSSI())) - 1, y,
                                     "RSSI " + String(WiFi.RSSI()));
             }
         }
@@ -3386,6 +3428,13 @@ namespace graphics
 
     void DebugInfo::drawFrameSettings(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        int width = display->getWidth();
+        int height = display->getHeight();
+        if (redBankController->getCurrentRotation() == 0)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        LOG_INFO("width: %d, height: %d", width, height);
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text
@@ -3393,7 +3442,7 @@ namespace graphics
 
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
         {
-            display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + FONT_HEIGHT_SMALL);
+            display->fillRect(0 + x, 0 + y, x + width, y + FONT_HEIGHT_SMALL);
             display->setColor(BLACK);
         }
 
@@ -3439,9 +3488,9 @@ namespace graphics
         std::string uptime = screen->drawTimeDelta(days, hours, minutes, seconds);
 
         // Line 1 (Still)
-        display->drawString(x + SCREEN_WIDTH - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
+        display->drawString(x + width - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
         if (config.display.heading_bold)
-            display->drawString(x - 1 + SCREEN_WIDTH - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
+            display->drawString(x - 1 + width - display->getStringWidth(uptime.c_str()), y, uptime.c_str());
 
         display->setColor(WHITE);
 
@@ -3492,7 +3541,7 @@ namespace graphics
         // Display Channel Utilization
         char chUtil[13];
         snprintf(chUtil, sizeof(chUtil), "ChUtil %2.0f%%", airTime->channelUtilizationPercent());
-        display->drawString(x + SCREEN_WIDTH - display->getStringWidth(chUtil), y + FONT_HEIGHT_SMALL * 1, chUtil);
+        display->drawString(x + width - display->getStringWidth(chUtil), y + FONT_HEIGHT_SMALL * 1, chUtil);
 
 #if HAS_GPS
         if (config.position.gps_mode == meshtastic_Config_PositionConfig_GpsMode_ENABLED)

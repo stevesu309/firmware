@@ -5,7 +5,11 @@
 #include "FSCommon.h"
 #include "../variants/red_bank_s3/variant.h"
 #include "graphics/Screen.h"
+#include "graphics/EInkDisplay2.h"
+#include "GxEPD2_BW.h"
 #include "AntennaManager.h"
+#define GxEPD_BLACK 0x0000
+#define GxEPD_WHITE 0xFFFF
 namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
@@ -57,8 +61,83 @@ namespace RedBankS3
     {
         pinMode(KEY1_ADC_PIN, INPUT);
         pinMode(KEY2_ADC_PIN, INPUT);
+
+        currentRotation = 0;
+
         // 初始化天线管理器
         AntennaManager::init(config.lora.region);
+
+        applyRotation(); // 屏幕旋转
+    }
+
+    void RedBankController::rotateScreenLeft()
+    {
+        switch (currentRotation)
+        {
+        case 0:
+            currentRotation = 1;
+            break;
+        case 1:
+            currentRotation = 3;
+            break;
+        case 3:
+            currentRotation = 0;
+            break;
+        default:
+            currentRotation = 0;
+            break;
+        }
+        applyRotation();
+        LOG_INFO("Screen rotated LEFT to rotation %d", currentRotation);
+    }
+
+    void RedBankController::rotateScreenRight()
+    {
+        switch (currentRotation)
+        {
+        case 0:
+            currentRotation = 3;
+            break;
+        case 1:
+            currentRotation = 0;
+            break;
+        case 3:
+            currentRotation = 1;
+            break;
+        default:
+            currentRotation = 0;
+            break;
+        }
+        applyRotation();
+        LOG_INFO("Screen rotated RIGHT to rotation %d", currentRotation);
+    }
+
+    void RedBankController::applyRotation()
+    {
+
+        if (screen && screen->getDisplayDevice())
+        {
+#ifdef USE_EINK
+            EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
+            OLEDDisplay *oledDisplay = static_cast<OLEDDisplay *>(einkDisplay);
+
+            if (einkDisplay)
+            {
+                einkDisplay->setRotation(currentRotation);
+                LOG_INFO("Applied rotation %d to EInk display", currentRotation);
+
+                if (currentRotation == 0)
+                    oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+                einkDisplay->fillScreen(GxEPD_WHITE);
+                LOG_INFO("eink:width=%d,height=%d", einkDisplay->width(), einkDisplay->height());
+                // einkDisplay->forceDisplay(0); // 0表示忽略时间限制立即刷新
+                screen->forceDisplay(true);
+            }
+#else
+            screen->dispdev->setRotation(currentRotation);
+            LOG_INFO("Applied rotation %d to display", currentRotation);
+#endif
+        }
     }
 
     void RedBankController::loop()
@@ -75,10 +154,10 @@ namespace RedBankS3
                 screen->showPrevPacket();
                 break;
             case KeypadKey::ENTER:
-                LOG_INFO("RedBankController: key1_last == KeypadKey::ENTER");
+                rotateScreenLeft(); // ENTER = 向左旋转
                 break;
             case KeypadKey::ESC:
-                LOG_INFO("RedBankController: key1_last == KeypadKey::ESC");
+                rotateScreenRight(); // ESC = 向右旋转
                 break;
             default:
                 break;
