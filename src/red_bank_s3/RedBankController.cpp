@@ -126,8 +126,10 @@ namespace RedBankS3
                 einkDisplay->setRotation(currentRotation);
                 LOG_INFO("Applied rotation %d to EInk display", currentRotation);
 
-                if (currentRotation == 0)
+                if (currentRotation != 0)
                     oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+                else
+                    oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
                 einkDisplay->fillScreen(GxEPD_WHITE);
                 LOG_INFO("eink:width=%d,height=%d", einkDisplay->width(), einkDisplay->height());
                 // einkDisplay->forceDisplay(0); // 0表示忽略时间限制立即刷新
@@ -204,13 +206,16 @@ namespace RedBankS3
     void RedBankController::saveMeshPacket(const meshtastic_MeshPacket &mp)
     {
         uint8_t i;
-        LOG_INFO("mp:to = 0x%x", mp.to);
+
         if (mp.channel >= 8)
         {
             LOG_INFO("RedBankController: incorrect mp.channel = 0x%x!", mp.channel);
             return;
         }
-
+        if (mp.to != 0xffffffff)
+        {
+            return; // 私信不保存
+        }
         push_packet(mp.channel, mp);
 
         for (i = 0; i < channelPackets[mp.channel].size(); ++i)

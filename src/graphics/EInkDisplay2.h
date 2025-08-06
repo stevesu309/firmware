@@ -48,8 +48,14 @@ public:
   virtual void endUpdate();
 
   /**
-   * Set the rotation of the display
-   * @param rotation: 0=portrait, 1=landscape, 2=portrait upside down, 3=landscape upside down
+   * Set the rotation of the display.
+   * @param rotation:
+   * - 0: portrait (0 degrees)
+   * - 2: left rotation (90 degrees)
+   * - 3: right rotation (270 degrees)
+   *
+   * This method adjusts the display orientation based on the provided rotation value.
+   * Ensure that the value is one of the valid options (0, 2, or 3) to avoid undefined behavior.
    */
   void setRotation(uint8_t rotation);
 

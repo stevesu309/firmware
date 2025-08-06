@@ -309,8 +309,11 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
-
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
         {
             std::swap(width, height); // 调换宽高
         }
@@ -320,6 +323,7 @@ namespace graphics
             char buf[64];
             display->setFont(FONT_SMALL);
             snprintf(buf, sizeof(buf), "%s", functionSymbolString.c_str());
+            LOG_INFO("functionSymbolString: %s", buf);
             display->drawString(width - display->getStringWidth(buf), height - FONT_HEIGHT_SMALL, buf);
         }
     }
@@ -448,7 +452,7 @@ namespace graphics
     static bool shouldDrawMessage(const meshtastic_MeshPacket *packet)
     {
         LOG_DEBUG("shouldDrawMessage: from=%d, store_forward=%d", packet->from, moduleConfig.store_forward.enabled);
-        return packet->from != 0 && !moduleConfig.store_forward.enabled;
+        return packet->from != 0 && !moduleConfig.store_forward.enabled && packet->to != 0xffffffff;
     }
 
     // Draw power bars or a charging indicator on an image of a battery, determined by battery charge voltage or percentage.
@@ -1572,19 +1576,21 @@ namespace graphics
             }
         }
 
-        return diam - 20;
+        return diam - 60;
     };
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
         int width = display->getWidth();
         int height = display->getHeight();
-
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
         }
-        LOG_INFO("displayWidth 1= %d, displayHeight = %d\n", width, height);
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         // We only advance our nodeIndex if the frame # has changed - because
         // drawNodeInfo will be called repeatedly while the frame is shown
         if (state->currentFrame != prevFrame)
@@ -1644,7 +1650,6 @@ namespace graphics
 
         int16_t compassX = 0, compassY = 0;
         uint16_t compassDiam = Screen::getCompassDiam(width, height);
-
         // coordinates for the center of the compass/circle
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT)
         {
@@ -1657,7 +1662,6 @@ namespace graphics
             compassY = y + FONT_HEIGHT_SMALL + (height - FONT_HEIGHT_SMALL) / 2;
         }
         bool hasNodeHeading = false;
-
         if (ourNode && (nodeDB->hasValidPosition(ourNode) || screen->hasHeading()))
         {
             const meshtastic_PositionLite &op = ourNode->position;
@@ -1720,12 +1724,12 @@ namespace graphics
         }
 
         // Must be after distStr is populated
-        screen->drawColumns(display, x, y, fields);
+        screen->drawColumns(display, x, y + FONT_HEIGHT_SMALL, fields);
 
-        display->setTextAlignment(TEXT_ALIGN_RIGHT);
+        display->setTextAlignment(TEXT_ALIGN_CENTER);
         char numStr[20];
         snprintf(numStr, sizeof(numStr), "Node Info: %d/%d", nodeIndex, nodeDB->getNumMeshNodes() - 1);
-        display->drawString(x + width - 10, y, numStr);
+        display->drawString(x + width / 2, y, numStr);
     }
 
     uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
@@ -1798,8 +1802,11 @@ namespace graphics
         static char tempBuf[237];
         int width = display->getWidth();
         int height = display->getHeight();
-
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
         {
             std::swap(width, height); // 调换宽高
         }
@@ -2785,8 +2792,8 @@ namespace graphics
 
         // then all the nodes
         // We only show a few nodes in our scrolling list - because meshes with many nodes would have too many screens
-        size_t numToShow = min(numMeshNodes, 4U);
-        for (size_t i = 0; i < numToShow; i++)
+        // size_t numToShow = min(numMeshNodes, 4U);
+        for (size_t i = 0; i < numMeshNodes; i++)
             normalFrames[numframes++] = drawNodeInfo;
 
         //----------------------------------------------
@@ -2864,16 +2871,21 @@ namespace graphics
             ui->switchToFrame(fsi.positions.fault);
             break;
         case FOCUS_TEXTMESSAGE:
-            LOG_INFO("textMessageChannel = %d", textMessageChannel);
-            if (getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
+            LOG_INFO("textMessageChannel = %d,shouldDrawMessage(&devicestate.rx_text_message) = %d", textMessageChannel, shouldDrawMessage(&devicestate.rx_text_message));
+            if (!shouldDrawMessage(&devicestate.rx_text_message))
             {
-                LOG_INFO("frameIndex = %d", frameIndex);
-                ui->switchToFrame(fsi.positions.channelMessage + frameIndex);
+                if (getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
+                {
+                    LOG_INFO("frameIndex = %d", frameIndex);
+                    ui->switchToFrame(fsi.positions.channelMessage + frameIndex);
+                }
+                else
+                {
+                    LOG_INFO("frameIndex error");
+                }
             }
             else
-            {
-                LOG_INFO("frameIndex error");
-            }
+                ui->switchToFrame(fsi.positions.textMessage);
             break;
         case FOCUS_MODULE:
             // Whichever frame was marked by MeshModule::requestFocus(), if any
@@ -3179,12 +3191,14 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
         }
-        LOG_INFO("width: %d, height: %d", width, height);
-
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text
@@ -3323,11 +3337,14 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
         }
-        LOG_INFO("width: %d, height: %d", width, height);
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
         const char *wifiName = config.network.wifi_ssid;
@@ -3430,11 +3447,14 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
-        if (redBankController->getCurrentRotation() == 0)
+        if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
         }
-        LOG_INFO("width: %d, height: %d", width, height);
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text
