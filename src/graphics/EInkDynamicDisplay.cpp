@@ -506,16 +506,13 @@ void EInkDynamicDisplay::joinAsyncRefresh()
     LOG_DEBUG("Join an async refresh in progress");
 
     // Continually poll the BUSY pin
-    // while (adafruitDisplay->epd2.isBusy()) // 修改
-    while (adafruitDisplay->epd2.isBusy()) // 注释
+    while (adafruitDisplay->epd2.isBusy())
         yield();
-    LOG_INFO("adafruitDisplay->epd2.isBusy()=%s", adafruitDisplay->epd2.isBusy() ? "true" : "false"); // 修改
 
     // If asyncRefreshRunning flag is still set, but display's BUSY pin reports the refresh is done
-    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code // 注释
-    // adafruitDisplay3C->display(); // 修改
-    EInkDisplay::endUpdate();    // Run base-class code to finish off update (NOT our derived class override)
-    asyncRefreshRunning = false; // Unset the flag
+    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code
+    EInkDisplay::endUpdate();        // Run base-class code to finish off update (NOT our derived class override)
+    asyncRefreshRunning = false;     // Unset the flag
     LOG_DEBUG("Refresh complete");
 
     // Note: this code only works because of a modification to meshtastic/GxEPD2.
@@ -530,8 +527,7 @@ void EInkDynamicDisplay::pollAsyncRefresh()
         return;
 
     // Still running, check back later
-    if (adafruitDisplay->epd2.isBusy()) // 注释
-    // if (adafruitDisplay3C->epd2.isBusy()) // 修改
+    if (adafruitDisplay->epd2.isBusy())
     {
         // Schedule next call of pollAsyncRefresh()
         NotifiedWorkerThread::notifyLater(intervalPollAsyncRefresh, DUE_POLL_ASYNCREFRESH, true);
@@ -539,10 +535,9 @@ void EInkDynamicDisplay::pollAsyncRefresh()
     }
 
     // If asyncRefreshRunning flag is still set, but display's BUSY pin reports the refresh is done
-    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code //注释
-    // adafruitDisplay3C->display(); // 修改
-    EInkDisplay::endUpdate();    // Run base-class code to finish off update (NOT our derived class override)
-    asyncRefreshRunning = false; // Unset the flag
+    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code
+    EInkDisplay::endUpdate();        // Run base-class code to finish off update (NOT our derived class override)
+    asyncRefreshRunning = false;     // Unset the flag
     LOG_DEBUG("Async full-refresh complete");
 
     // Note: this code only works because of a modification to meshtastic/GxEPD2.
@@ -557,8 +552,7 @@ void EInkDynamicDisplay::checkBusyAsyncRefresh()
         return;
 
     // Full refresh still running
-    if (adafruitDisplay->epd2.isBusy()) // 注释
-    // if (adafruitDisplay3C->epd2.isBusy()) // 修改
+    if (adafruitDisplay->epd2.isBusy())
     {
         // No refresh
         refresh = SKIPPED;
@@ -585,15 +579,13 @@ void EInkDynamicDisplay::checkBusyAsyncRefresh()
 void EInkDynamicDisplay::awaitRefresh()
 {
     // Continually poll the BUSY pin
-    while (adafruitDisplay->epd2.isBusy()) // 注释
-        // while (adafruitDisplay3C->epd2.isBusy()) // 修改
+    while (adafruitDisplay->epd2.isBusy())
         yield();
 
     // End the full-refresh process
-    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code //注释
-    // adafruitDisplay3C->display(); // 修改
-    EInkDisplay::endUpdate();    // Run base-class code to finish off update (NOT our derived class override)
-    asyncRefreshRunning = false; // Unset the flag
+    adafruitDisplay->endAsyncFull(); // Run the end of nextPage() code
+    EInkDisplay::endUpdate();        // Run base-class code to finish off update (NOT our derived class override)
+    asyncRefreshRunning = false;     // Unset the flag
 }
 #endif // HAS_EINK_ASYNCFULL
 

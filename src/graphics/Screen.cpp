@@ -309,6 +309,7 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -317,6 +318,7 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
         // LOG_DEBUG("Draw function overlay");
         if (functionSymbol.begin() != functionSymbol.end())
         {
@@ -1031,10 +1033,16 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
-        if (redBankController->getCurrentRotation() == 0)
+#ifdef RED_BANK_S3
+        if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
         }
+        else if (redBankController->getCurrentRotation() != 0 && width < height)
+        {
+            std::swap(width, height); // 调换宽高
+        }
+#endif
         // the max length of this buffer is much longer than we can possibly print
         static char tempBuf[237];
 
@@ -1583,6 +1591,7 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -1591,14 +1600,25 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
         // We only advance our nodeIndex if the frame # has changed - because
         // drawNodeInfo will be called repeatedly while the frame is shown
         if (state->currentFrame != prevFrame)
         {
-            LOG_INFO("is %d", state->currentFrame);
             prevFrame = state->currentFrame;
-
+#ifdef RED_BANK_S3
+            RedBankS3::KeypadKey key2 = redBankController->getKey2();
+            if (key2 == RedBankS3::KeypadKey::LEFT)
+            {
+                nodeIndex = (nodeIndex == 0) ? nodeDB->getNumMeshNodes() - 1 : nodeIndex - 1;
+            }
+            else if (key2 == RedBankS3::KeypadKey::RIGHT)
+            {
+                nodeIndex = (nodeIndex + 1) % nodeDB->getNumMeshNodes();
+            }
+#else
             nodeIndex = (nodeIndex + 1) % nodeDB->getNumMeshNodes();
+#endif
             meshtastic_NodeInfoLite *n = nodeDB->getMeshNodeByIndex(nodeIndex);
             if (n->num == nodeDB->getNodeNum())
             {
@@ -1802,6 +1822,7 @@ namespace graphics
         static char tempBuf[237];
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -1810,6 +1831,7 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
         // LOG_DEBUG("Draw text message from 0x%x: %s", mp.from,
         // mp.decoded.variant.data.decoded.bytes);
 
@@ -3191,6 +3213,7 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -3199,6 +3222,7 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text
@@ -3337,6 +3361,7 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -3345,6 +3370,7 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
         const char *wifiName = config.network.wifi_ssid;
@@ -3447,6 +3473,7 @@ namespace graphics
     {
         int width = display->getWidth();
         int height = display->getHeight();
+#ifdef RED_BANK_S3
         if (redBankController->getCurrentRotation() == 0 && width > height)
         {
             std::swap(width, height); // 调换宽高
@@ -3455,6 +3482,7 @@ namespace graphics
         {
             std::swap(width, height); // 调换宽高
         }
+#endif
         display->setFont(FONT_SMALL);
 
         // The coordinates define the left starting point of the text

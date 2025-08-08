@@ -8,14 +8,13 @@
 #include "graphics/EInkDisplay2.h"
 #include "GxEPD2_BW.h"
 #include "AntennaManager.h"
-#define GxEPD_BLACK 0x0000
-#define GxEPD_WHITE 0xFFFF
 namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
 #define KEY2_ADC_PIN 2 // IO2
-    static int key1_adc_val = 0;
-    static int key2_adc_val = 0;
+
+    // #define GxEPD_BLACK 0x0000
+    // #define GxEPD_WHITE 0xFFFF
 
     static KeypadKey key1_last = KeypadKey::NONE;
     static KeypadKey key2_last = KeypadKey::NONE;
@@ -36,10 +35,18 @@ namespace RedBankS3
     {
         int val1 = analogRead(KEY1_ADC_PIN);
         int val2 = analogRead(KEY2_ADC_PIN);
-        key1_adc_val = val1;
-        key2_adc_val = val2;
         key1_last = detect_key(val1, true);
         key2_last = detect_key(val2, false);
+
+        // 添加按键防抖处理
+        static uint32_t lastKeyTime = 0;
+        if (millis() - lastKeyTime < 200)
+        { // 200ms防抖
+            key1_last = KeypadKey::NONE;
+            key2_last = KeypadKey::NONE;
+            return;
+        }
+        lastKeyTime = millis();
     }
 
     KeypadKey RedBankController::getKey1() { return key1_last; }
@@ -121,20 +128,15 @@ namespace RedBankS3
             EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
             OLEDDisplay *oledDisplay = static_cast<OLEDDisplay *>(einkDisplay);
 
-            if (einkDisplay)
-            {
-                einkDisplay->setRotation(currentRotation);
-                LOG_INFO("Applied rotation %d to EInk display", currentRotation);
+            einkDisplay->setRotation(currentRotation);
+            if (currentRotation != 0)
+                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+            else
+                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
+            // einkDisplay->fillScreen(GxEPD_WHITE);
+            // screen->forceDisplay(true);
+            EINK_ADD_FRAMEFLAG(einkDisplay, DEMAND_FAST);
 
-                if (currentRotation != 0)
-                    oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
-                else
-                    oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
-                einkDisplay->fillScreen(GxEPD_WHITE);
-                LOG_INFO("eink:width=%d,height=%d", einkDisplay->width(), einkDisplay->height());
-                // einkDisplay->forceDisplay(0); // 0表示忽略时间限制立即刷新
-                screen->forceDisplay(true);
-            }
 #else
             screen->dispdev->setRotation(currentRotation);
             LOG_INFO("Applied rotation %d to display", currentRotation);
@@ -263,17 +265,13 @@ namespace RedBankS3
     }
     void RedBankController::_previousMeshPacket()
     {
-
         screen->showPrevPacket();
-
         direction = 0;
     }
 
     void RedBankController::_nextMeshPacket()
     {
-
         screen->showNextPacket();
-
         direction = 1;
     }
     uint8_t RedBankController::getDirection(void)
