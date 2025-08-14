@@ -81,9 +81,12 @@ protected:
   // Connect to the display
   virtual bool connect() override;
 
-  // AdafruitGFX display object - instantiated in connect(), variant specific
+// AdafruitGFX display object - instantiated in connect(), variant specific
+#ifdef RED_BANK_S3
   GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> *adafruitDisplay = NULL;
-  // GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> *adafruitDisplay3C = NULL;
+#else
+  GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT> *adafruitDisplay = NULL;
+#endif
 
   // If display uses HSPI
 #if defined(HELTEC_WIRELESS_PAPER) || defined(HELTEC_WIRELESS_PAPER_V1_0) || defined(HELTEC_VISION_MASTER_E213) || \

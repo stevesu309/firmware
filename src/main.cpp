@@ -141,7 +141,6 @@ void setupNicheGraphics();
 #include "red_bank_s3/RedBankController.h"
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
-#include "graphics/EInkScreen.h"
 
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
@@ -434,7 +433,6 @@ void setup()
     LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
 
     initDeepSleep();
-
 #if defined(LORA_TCXO_GPIO)
     pinMode(LORA_TCXO_GPIO, OUTPUT);
     digitalWrite(LORA_TCXO_GPIO, HIGH);
@@ -956,7 +954,7 @@ void setup()
             LOG_INFO("GPS mode: %d", config.position.gps_mode);
             LOG_INFO("config.device.role: %d", config.device.role);
             LOG_INFO("config.position.gps_mode: %d", config.position.gps_mode);
-            config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; ////强制启动GNSS
+            config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED;
 
             if (config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
                 config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)

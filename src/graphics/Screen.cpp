@@ -1589,6 +1589,8 @@ namespace graphics
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+        LOG_INFO("flash size: %d", ESP.getFlashChipSize());
+
         int width = display->getWidth();
         int height = display->getHeight();
 #ifdef RED_BANK_S3
@@ -1752,11 +1754,6 @@ namespace graphics
         display->drawString(x + width / 2, y, numStr);
     }
 
-    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
-    {
-        return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
-    }
-
     bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex)
     {
         uint8_t i = 0;
@@ -1779,6 +1776,8 @@ namespace graphics
         return (true);
     }
 
+#if defined(RED_BANK_S3)
+
     bool isBrowsingChannelPacketFrame(uint8_t currentFrame)
     {
         if (validChannelCount == 0)
@@ -1794,7 +1793,12 @@ namespace graphics
 
         return (false);
     }
-#if defined(RED_BANK_S3)
+
+    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
+    {
+        return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
+    }
+
     void onFrameFixed(uint8_t currentFrame)
     {
         if (!isBrowsingChannelPacketFrame(currentFrame))
@@ -1857,12 +1861,17 @@ namespace graphics
                      actualChannelIndex, validChannelCount);
             return;
         }
+        LOG_INFO("width = %d, height = %d\n", width, height);
+        char tetle[23];
+        snprintf(tetle, sizeof(tetle), "Channel Message : %d/%d", actualChannelIndex + 1, validChannelCount);
+
+        display->setTextAlignment(TEXT_ALIGN_CENTER);
+        display->drawString(x + width / 2, y, tetle);
 
         // display channel name
         const char *name = channelFile.channels[actualChannelIndex].settings.name;
         char displayName[25];
 
-        LOG_INFO("channel name = %s", name);
         if (strlen(name) > 0)
         {
             if (channelFile.channels[actualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
@@ -1907,35 +1916,19 @@ namespace graphics
                 snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
         }
         // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
-        EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
+        // EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
 
-        int16_t displayWidth = width;
-        int16_t displayHeight = height;
-        LOG_INFO("displayWidth = %d, displayHeight = %d\n", displayWidth, displayHeight);
-        bool isPortrait = displayHeight > displayWidth; // 判断竖屏
-
-        display->drawString(x + 5, y, displayName);
+        display->drawString(x + 5, y + FONT_HEIGHT_SMALL, displayName);
         display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
-        char displayNum[5];
-        snprintf(displayNum, sizeof(displayNum), "%d/%d", actualChannelIndex + 1, validChannelCount);
-
-        int16_t rightMargin = 10;
-        if (isPortrait)
-        {
-            rightMargin = (displayWidth > 200) ? 10 : 5;
-        }
-        display->drawString(x + displayWidth - rightMargin, y, displayNum);
-        display->drawLine(x, y + FONT_HEIGHT_SMALL, x + displayWidth, y + FONT_HEIGHT_SMALL);
-        display->drawString(x, y + FONT_HEIGHT_SMALL, "");
+        display->drawLine(x, y + FONT_HEIGHT_SMALL * 2, x + width, y + FONT_HEIGHT_SMALL * 2);
+        y += FONT_HEIGHT_SMALL * 2;
 
         display->setTextAlignment(TEXT_ALIGN_LEFT);
 
-        y += FONT_HEIGHT_SMALL;
-
         // display packet info
         // uint8_t direction = 0;
-
         uint16_t packetListSize = redBankController->_getMeshPacketListSize(actualChannelIndex);
 
         if (packetListSize == 0)
@@ -1952,7 +1945,6 @@ namespace graphics
         const meshtastic_MeshPacket &mp = redBankController->getRecentMeshPacket(actualChannelIndex, channelPacketBrowseIndex);
 
         // added by QCB end
-
         meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(getFrom(&mp));
 
         // For time delta
@@ -1998,14 +1990,14 @@ namespace graphics
         int16_t iconX, iconY;
         if (strcmp(msg, "\U0001F44D") == 0)
         {
-            iconX = x + (displayWidth - thumbs_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
+            iconX = x + (width - thumbs_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, thumbs_width, thumbs_height, thumbup);
         }
         else if (strcmp(msg, "\U0001F44E") == 0)
         {
-            iconX = x + (displayWidth - thumbs_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
+            iconX = x + (width - thumbs_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - thumbs_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, thumbs_width, thumbs_height, thumbdown);
         }
         else if (strcmp(msg, "\U0001F60A") == 0 || strcmp(msg, "\U0001F600") == 0 || strcmp(msg, "\U0001F642") == 0 ||
@@ -2013,99 +2005,100 @@ namespace graphics
                  strcmp(msg, "\U0001F601") == 0)
         { // matches 5 different common smileys, so that the phone user doesn't have to
           // remember which one is compatible
-            iconX = x + (displayWidth - smiley_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5;
+            iconX = x + (width - smiley_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - smiley_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, smiley_width, smiley_height, smiley);
         }
         else if (strcmp(msg, "❓") == 0)
         {
-            iconX = x + (displayWidth - question_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5;
+            iconX = x + (width - question_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - question_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, question_width, question_height, question);
         }
         else if (strcmp(msg, "‼️") == 0)
         {
-            iconX = x + (displayWidth - bang_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5;
+            iconX = x + (width - bang_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - bang_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, bang_width, bang_height, bang);
         }
         else if (strcmp(msg, "\U0001F4A9") == 0)
         {
-            iconX = x + (displayWidth - poo_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5;
+            iconX = x + (width - poo_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - poo_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, poo_width, poo_height, poo);
         }
         else if (strcmp(msg, "\U0001F923") == 0)
         {
-            iconX = x + (displayWidth - haha_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5;
+            iconX = x + (width - haha_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - haha_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, haha_width, haha_height, haha);
         }
         else if (strcmp(msg, "\U0001F44B") == 0)
         {
-            iconX = x + (displayWidth - wave_icon_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5;
+            iconX = x + (width - wave_icon_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - wave_icon_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, wave_icon_width, wave_icon_height, wave_icon);
         }
         else if (strcmp(msg, "\U0001F920") == 0)
         {
-            iconX = x + (displayWidth - cowboy_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5;
+            iconX = x + (width - cowboy_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - cowboy_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, cowboy_width, cowboy_height, cowboy);
         }
         else if (strcmp(msg, "\U0001F42D") == 0)
         {
-            iconX = x + (displayWidth - deadmau5_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5;
+            iconX = x + (width - deadmau5_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - deadmau5_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, deadmau5_width, deadmau5_height, deadmau5);
         }
         else if (strcmp(msg, "\xE2\x98\x80\xEF\xB8\x8F") == 0)
         {
-            iconX = x + (displayWidth - sun_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5;
+            iconX = x + (width - sun_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - sun_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, sun_width, sun_height, sun);
         }
         else if (strcmp(msg, "\u2614") == 0)
         {
-            iconX = x + (displayWidth - rain_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10;
+            iconX = x + (width - rain_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - rain_height) / 2 + 2 + 10;
             display->drawXbm(iconX, iconY, rain_width, rain_height, rain);
         }
         else if (strcmp(msg, "☁️") == 0)
         {
-            iconX = x + (displayWidth - cloud_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5;
+            iconX = x + (width - cloud_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - cloud_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, cloud_width, cloud_height, cloud);
         }
         else if (strcmp(msg, "🌫️") == 0)
         {
-            iconX = x + (displayWidth - fog_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5;
+            iconX = x + (width - fog_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - fog_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, fog_width, fog_height, fog);
         }
         else if (strcmp(msg, "\U0001F608") == 0)
         {
-            iconX = x + (displayWidth - devil_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5;
+            iconX = x + (width - devil_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - devil_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, devil_width, devil_height, devil);
         }
         else if (strcmp(msg, "♥️") == 0 || strcmp(msg, "\U0001F9E1") == 0 || strcmp(msg, "\U00002763") == 0 ||
                  strcmp(msg, "\U00002764") == 0 || strcmp(msg, "\U0001F495") == 0 || strcmp(msg, "\U0001F496") == 0 ||
                  strcmp(msg, "\U0001F497") == 0 || strcmp(msg, "\U0001F498") == 0)
         {
-            iconX = x + (displayWidth - heart_width) / 2;
-            iconY = y + (displayHeight - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5;
+            iconX = x + (width - heart_width) / 2;
+            iconY = y + (height - FONT_HEIGHT_MEDIUM - heart_height) / 2 + 2 + 5;
             display->drawXbm(iconX, iconY, heart_width, heart_height, heart);
         }
         else
         {
             snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
-            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + displayWidth, tempBuf);
+            display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + width, tempBuf);
         }
 #else
         snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
         display->drawStringMaxWidth(0 + x, 0 + y + FONT_HEIGHT_SMALL, x + display->getWidth(), tempBuf);
 #endif
+        LOG_INFO("iconX = %d, iconY = %d", iconX, iconY);
     }
 
 #endif
@@ -2822,7 +2815,9 @@ namespace graphics
         // add channel frame
         // begin
         fsi.positions.channelMessage = numframes;
+#if defined(RED_BANK_S3)
         channelFrameBeginIndex = numframes;
+#endif
         validChannelCount = 0;
 // then the node info for our node
 #if defined(RED_BANK_S3)
@@ -2893,6 +2888,7 @@ namespace graphics
             ui->switchToFrame(fsi.positions.fault);
             break;
         case FOCUS_TEXTMESSAGE:
+#ifdef RED_BANK_S3
             LOG_INFO("textMessageChannel = %d,shouldDrawMessage(&devicestate.rx_text_message) = %d", textMessageChannel, shouldDrawMessage(&devicestate.rx_text_message));
             if (!shouldDrawMessage(&devicestate.rx_text_message))
             {
@@ -2907,6 +2903,7 @@ namespace graphics
                 }
             }
             else
+#endif
                 ui->switchToFrame(fsi.positions.textMessage);
             break;
         case FOCUS_MODULE:

@@ -930,6 +930,8 @@ void NodeDB::installRoleDefaults(meshtastic_Config_DeviceConfig_Role role)
         moduleConfig.telemetry.environment_update_interval = UINT32_MAX;
         moduleConfig.telemetry.air_quality_interval = UINT32_MAX;
         moduleConfig.telemetry.health_update_interval = UINT32_MAX;
+    }else if(role == meshtastic_Config_DeviceConfig_Role_TEST){
+        
     }
 }
 

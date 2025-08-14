@@ -74,7 +74,8 @@
     "condition_variable": "cpp",
     "mutex": "cpp",
     "set": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "spi_flash_chip_driver.h": "c"
   },
   "idf.customExtraVars": {
     "OPENOCD_SCRIPTS": "/Users/steve/Documents/Workspace/ESP/esp-idf/tools/tools/openocd-esp32/v0.12.0-esp32-20240821/openocd-esp32/share/openocd/scripts",
