@@ -176,7 +176,10 @@ namespace RedBankS3
                 screen->showPrevFrame();
                 break;
             case KeypadKey::RIGHT:
-                screen->showNextFrame();
+                if (!screen->getScreenOn())
+                    screen->setOn(true);
+                else
+                    screen->showNextFrame();
                 break;
             default:
                 break;
