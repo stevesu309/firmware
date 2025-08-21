@@ -577,7 +577,9 @@ namespace graphics
         uint16_t getCurrentWidth() { return displayWidth; }
         uint16_t getCurrentHeight() { return displayHeight; }
 #endif
-
+#ifdef RED_BANK_S3
+        bool getScreenOn() const { return screenOn; }
+#endif
     protected:
         /// Updates the UI.
         //

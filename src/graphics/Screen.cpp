@@ -1589,7 +1589,6 @@ namespace graphics
 
     static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-        LOG_INFO("flash size: %d", ESP.getFlashChipSize());
 
         int width = display->getWidth();
         int height = display->getHeight();
@@ -1745,13 +1744,13 @@ namespace graphics
             display->setColor(BLACK);
         }
 
-        // Must be after distStr is populated
         screen->drawColumns(display, x, y + FONT_HEIGHT_SMALL, fields);
-
         display->setTextAlignment(TEXT_ALIGN_CENTER);
-        char numStr[20];
-        snprintf(numStr, sizeof(numStr), "Node Info: %d/%d", nodeIndex, nodeDB->getNumMeshNodes() - 1);
-        display->drawString(x + width / 2, y, numStr);
+        char numStr[30];
+        snprintf(numStr, sizeof(numStr), "节点信息: %d/%d", nodeIndex, nodeDB->getNumMeshNodes() - 1);
+        display->drawStringUTF8(x + width / 2, y, numStr);
+
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
     }
 
     bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex)

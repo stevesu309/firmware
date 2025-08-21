@@ -735,7 +735,7 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
     packetPool.release(p_encrypted); // Release the encrypted packet
 }
 
-void Router::perhapsHandleReceived(meshtastic_MeshPacket *p)
+void Router::perhapsHandleReceived(meshtastic_MeshPacket *p) // 处理接收的数据包
 {
 #if ENABLE_JSON_LOGGING
     // Even ignored packets get logged in the trace

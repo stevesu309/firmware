@@ -3,7 +3,6 @@
 // #define I2C_SDA 5
 // #define I2C_SCL 4
 // #define SPI_HOST SPI2_HOST
-// #define BUTTON_PIN 8 // The middle button GPIO on the T-Beam S3
 #define USE_SX1262
 #define HAS_WIRE 0 // 没有iic设备
 
@@ -16,8 +15,8 @@
 
 #define GPS_RX_PIN 18
 #define GPS_TX_PIN 17
-
-#if 0
+// 这是v7版的引脚定义
+#if 1
 
 // Display (E-Ink)
 #define PIN_EINK_BS1 4
@@ -53,7 +52,8 @@
 
 #endif
 
-#if 1
+// 这是v8版的引脚定义
+#if 0
 
 // Display (E-Ink)
 // #define PIN_EINK_BS1 4
