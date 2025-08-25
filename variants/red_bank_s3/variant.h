@@ -16,7 +16,7 @@
 #define GPS_RX_PIN 18
 #define GPS_TX_PIN 17
 // 这是v7版的引脚定义
-#if 1
+#if 0
 
 // Display (E-Ink)
 #define PIN_EINK_BS1 4
@@ -53,7 +53,7 @@
 #endif
 
 // 这是v8版的引脚定义
-#if 0
+#if 1
 
 // Display (E-Ink)
 // #define PIN_EINK_BS1 4
