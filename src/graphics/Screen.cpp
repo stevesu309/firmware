@@ -485,6 +485,71 @@ namespace graphics
             screenOn = on;
         }
     }
+#if defined(RED_BANK_S3)
+
+    bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex)
+    {
+        uint8_t i = 0;
+        uint8_t channelCnt = sizeof(validChannelIndices) / sizeof(validChannelIndices[0]);
+
+        for (i = 0; i < channelCnt; ++i)
+        {
+            if (validChannelIndices[i] == channelIndex)
+            {
+                break;
+            }
+        }
+
+        if (i >= channelCnt)
+        {
+            return (false);
+        }
+
+        *frameIndex = i;
+        return (true);
+    }
+
+    bool isBrowsingChannelPacketFrame(uint8_t currentFrame)
+    {
+        if (validChannelCount == 0)
+        {
+            return (false);
+        }
+
+        if ((currentFrame >= channelFrameBeginIndex) &&
+            (currentFrame < (channelFrameBeginIndex + validChannelCount)))
+        {
+            return (true);
+        }
+
+        return (false);
+    }
+
+    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
+    {
+        return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
+    }
+
+    void onFrameFixed(uint8_t currentFrame)
+    {
+        if (!isBrowsingChannelPacketFrame(currentFrame))
+        {
+            return;
+        }
+
+        channelIndex = getBrowsingChannelIndex(currentFrame);
+
+        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (packetListSize == 0)
+        {
+            LOG_INFO("packetListSize = %d\n", packetListSize);
+            channelPacketBrowseIndex = 0;
+            return;
+        }
+
+        channelPacketBrowseIndex = packetListSize - 1;
+    }
+#endif
 
     void Screen::setup()
     {
