@@ -64,7 +64,11 @@ typedef enum _meshtastic_Config_DeviceConfig_Role {
     in areas not already covered by other routers, or to bridge around problematic terrain,
     but should not be given priority over other routers in order to avoid unnecessaraily
     consuming hops. */
-    meshtastic_Config_DeviceConfig_Role_ROUTER_LATE = 11
+    meshtastic_Config_DeviceConfig_Role_ROUTER_LATE = 11,
+    /*
+    this is a test role
+    */
+   meshtastic_Config_DeviceConfig_Role_TEST = 12
 } meshtastic_Config_DeviceConfig_Role;
 
 /* Defines the device's behavior for how messages are rebroadcast */
@@ -646,8 +650,8 @@ extern "C" {
 
 /* Helper constants for enums */
 #define _meshtastic_Config_DeviceConfig_Role_MIN meshtastic_Config_DeviceConfig_Role_CLIENT
-#define _meshtastic_Config_DeviceConfig_Role_MAX meshtastic_Config_DeviceConfig_Role_ROUTER_LATE
-#define _meshtastic_Config_DeviceConfig_Role_ARRAYSIZE ((meshtastic_Config_DeviceConfig_Role)(meshtastic_Config_DeviceConfig_Role_ROUTER_LATE+1))
+#define _meshtastic_Config_DeviceConfig_Role_MAX meshtastic_Config_DeviceConfig_Role_TEST
+#define _meshtastic_Config_DeviceConfig_Role_ARRAYSIZE ((meshtastic_Config_DeviceConfig_Role)(meshtastic_Config_DeviceConfig_Role_TEST+1))
 
 #define _meshtastic_Config_DeviceConfig_RebroadcastMode_MIN meshtastic_Config_DeviceConfig_RebroadcastMode_ALL
 #define _meshtastic_Config_DeviceConfig_RebroadcastMode_MAX meshtastic_Config_DeviceConfig_RebroadcastMode_CORE_PORTNUMS_ONLY

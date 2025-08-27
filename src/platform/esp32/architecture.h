@@ -16,7 +16,7 @@
 #define HAS_SCREEN 1
 #endif
 #ifndef HAS_WIRE
-#define HAS_WIRE 1
+#define HAS_WIRE 0
 #endif
 #ifndef HAS_GPS
 #define HAS_GPS 1

@@ -109,7 +109,8 @@ uint32_t sinceLastSeen(const meshtastic_NodeInfoLite *n);
 /// Given a packet, return how many seconds in the past (vs now) it was received
 uint32_t sinceReceived(const meshtastic_MeshPacket *p);
 
-enum LoadFileResult {
+enum LoadFileResult
+{
     // Successfully opened the file
     LOAD_SUCCESS = 1,
     // File does not exist
@@ -122,7 +123,12 @@ enum LoadFileResult {
     OTHER_FAILURE = 5
 };
 
-enum UserLicenseStatus { NotKnown, NotLicensed, Licensed };
+enum UserLicenseStatus
+{
+    NotKnown,
+    NotLicensed,
+    Licensed
+};
 
 class NodeDB
 {
@@ -133,9 +139,9 @@ class NodeDB
     // HashMap<NodeNum, NodeInfo> nodes;
     // Note: these two references just point into our static array we serialize to/from disk
 
-  public:
+public:
     std::vector<meshtastic_NodeInfoLite> *meshNodes;
-    bool updateGUI = false; // we think the gui should definitely be redrawn, screen will clear this once handled
+    bool updateGUI = false;                           // we think the gui should definitely be redrawn, screen will clear this once handled
     meshtastic_NodeInfoLite *updateGUIforNode = NULL; // if currently showing this node, we think you should update the GUI
     Observable<const meshtastic::NodeStatus *> newStatus;
     pb_size_t numMeshNodes;
@@ -255,7 +261,8 @@ class NodeDB
 
     void setLocalPosition(meshtastic_Position position, bool timeOnly = false)
     {
-        if (timeOnly) {
+        if (timeOnly)
+        {
             LOG_DEBUG("Set local position time only: time=%u timestamp=%u", position.time, position.timestamp);
             localPosition.time = position.time;
             localPosition.timestamp = position.timestamp > 0 ? position.timestamp : position.time;
@@ -274,6 +281,15 @@ class NodeDB
     bool restorePreferences(meshtastic_AdminMessage_BackupLocation location,
                             int restoreWhat = SEGMENT_CONFIG | SEGMENT_MODULECONFIG | SEGMENT_DEVICESTATE | SEGMENT_CHANNELS);
 
+    bool saveChannelPacketToDisk(uint8_t channel_index, uint8_t packet_index, const meshtastic_MeshPacket &mp);
+    bool restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, meshtastic_MeshPacket &mp);
+
+private:
+    uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
+    uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
+    /// Find a node in our DB, create an empty NodeInfoLite if missing
+    meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
+
     /// Notify observers of changes to the DB
     void notifyObservers(bool forceUpdate = false)
     {
@@ -282,7 +298,7 @@ class NodeDB
         newStatus.notifyObservers(&status);
     }
 
-  private:
+private:
     bool duplicateWarned = false;
     uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
     uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
@@ -353,9 +369,9 @@ extern uint32_t error_address;
 #define NODEINFO_BITFIELD_IS_KEY_MANUALLY_VERIFIED_SHIFT 0
 #define NODEINFO_BITFIELD_IS_KEY_MANUALLY_VERIFIED_MASK (1 << NODEINFO_BITFIELD_IS_KEY_MANUALLY_VERIFIED_SHIFT)
 
-#define Module_Config_size                                                                                                       \
-    (ModuleConfig_CannedMessageConfig_size + ModuleConfig_ExternalNotificationConfig_size + ModuleConfig_MQTTConfig_size +       \
-     ModuleConfig_RangeTestConfig_size + ModuleConfig_SerialConfig_size + ModuleConfig_StoreForwardConfig_size +                 \
+#define Module_Config_size                                                                                                 \
+    (ModuleConfig_CannedMessageConfig_size + ModuleConfig_ExternalNotificationConfig_size + ModuleConfig_MQTTConfig_size + \
+     ModuleConfig_RangeTestConfig_size + ModuleConfig_SerialConfig_size + ModuleConfig_StoreForwardConfig_size +           \
      ModuleConfig_TelemetryConfig_size + ModuleConfig_size)
 
 // Please do not remove this comment, it makes trunk and compiler happy at the same time.

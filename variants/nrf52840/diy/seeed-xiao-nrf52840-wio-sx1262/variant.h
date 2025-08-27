@@ -2,6 +2,10 @@
 // Seeed XIAO nRF52840 : https://www.seeedstudio.com/Seeed-XIAO-BLE-nRF52840-p-5201.html
 // Seeed Wio SX1626 : https://www.seeedstudio.com/Wio-SX1262-with-XIAO-ESP32S3-p-5982.html
 
+// basically xiao_ble with pins remapped for:
+// Seeed XIAO nRF52840 : https://www.seeedstudio.com/Seeed-XIAO-BLE-nRF52840-p-5201.html
+// Seeed Wio SX1626 : https://www.seeedstudio.com/Wio-SX1262-with-XIAO-ESP32S3-p-5982.html
+
 #ifndef _SEEED_XIAO_NRF52840_SENSE_H_
 #define _SEEED_XIAO_NRF52840_SENSE_H_
 
@@ -17,7 +21,8 @@
 #include "WVariant.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif // __cplusplus
 
 #define PINS_COUNT (33)
@@ -26,6 +31,7 @@ extern "C" {
 #define NUM_ANALOG_OUTPUTS (0)
 
 // LEDs
+// ----
 // ----
 #define LED_RED 11
 #define LED_BLUE 12
@@ -70,12 +76,12 @@ extern "C" {
 #define PIN_VBAT (32)
 #define VBAT_ENABLE (14)
 
-static const uint8_t A0 = PIN_A0;
-static const uint8_t A1 = PIN_A1;
-static const uint8_t A2 = PIN_A2;
-static const uint8_t A3 = PIN_A3;
-static const uint8_t A4 = PIN_A4;
-static const uint8_t A5 = PIN_A5;
+    static const uint8_t A0 = PIN_A0;
+    static const uint8_t A1 = PIN_A1;
+    static const uint8_t A2 = PIN_A2;
+    static const uint8_t A3 = PIN_A3;
+    static const uint8_t A4 = PIN_A4;
+    static const uint8_t A5 = PIN_A5;
 #define ADC_RESOLUTION 12
 
 // Other Pins
@@ -94,8 +100,8 @@ static const uint8_t A5 = PIN_A5;
 #define PIN_WIRE_SDA (6)
 #define PIN_WIRE_SCL (7)
 
-static const uint8_t SDA = PIN_WIRE_SDA;
-static const uint8_t SCL = PIN_WIRE_SCL;
+    static const uint8_t SDA = PIN_WIRE_SDA;
+    static const uint8_t SCL = PIN_WIRE_SCL;
 
 // SPI SX1262
 // ----------
@@ -107,10 +113,10 @@ static const uint8_t SCL = PIN_WIRE_SCL;
 #define PIN_SPI_MOSI (10)
 #define PIN_SPI_SCK (8)
 
-static const uint8_t SS = D3;
-static const uint8_t MOSI = PIN_SPI_MOSI;
-static const uint8_t MISO = PIN_SPI_MISO;
-static const uint8_t SCK = PIN_SPI_SCK;
+    static const uint8_t SS = D3;
+    static const uint8_t MOSI = PIN_SPI_MOSI;
+    static const uint8_t MISO = PIN_SPI_MISO;
+    static const uint8_t SCK = PIN_SPI_SCK;
 
 // supported modules list
 #define USE_SX1262

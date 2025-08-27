@@ -36,10 +36,12 @@ void setBluetoothEnable(bool enable)
     if (config.bluetooth.enabled == true)
 #endif
     {
-        if (!nimbleBluetooth) {
+        if (!nimbleBluetooth)
+        {
             nimbleBluetooth = new NimbleBluetooth();
         }
-        if (enable && !nimbleBluetooth->isActive()) {
+        if (enable && !nimbleBluetooth->isActive())
+        {
             powerMon->setState(meshtastic_PowerMon_State_BT_On);
             nimbleBluetooth->setup();
         }
@@ -72,7 +74,8 @@ static uint32_t calibrate_one(rtc_cal_sel_t cal_clk, const char *name)
     const uint32_t cal_count = 1000;
     // const float factor = (1 << 19) * 1000.0f; unused var?
     uint32_t cali_val;
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 5; ++i)
+    {
         cali_val = rtc_clk_cal(cal_clk, cal_count);
     }
     return cali_val;
@@ -85,9 +88,12 @@ void enableSlowCLK()
     CALIBRATE_ONE(RTC_CAL_RTC_MUX);
     uint32_t cal_32k = CALIBRATE_ONE(RTC_CAL_32K_XTAL);
 
-    if (cal_32k == 0) {
+    if (cal_32k == 0)
+    {
         LOG_DEBUG("32K XTAL OSC has not started up");
-    } else {
+    }
+    else
+    {
         rtc_clk_slow_freq_set(RTC_SLOW_FREQ_32K_XTAL);
         LOG_DEBUG("Switch RTC Source to 32.768Khz succeeded, using 32K XTAL");
         CALIBRATE_ONE(RTC_CAL_RTC_MUX);
@@ -95,7 +101,8 @@ void enableSlowCLK()
     }
     CALIBRATE_ONE(RTC_CAL_RTC_MUX);
     CALIBRATE_ONE(RTC_CAL_32K_XTAL);
-    if (rtc_clk_slow_freq_get() != RTC_SLOW_FREQ_32K_XTAL) {
+    if (rtc_clk_slow_freq_get() != RTC_SLOW_FREQ_32K_XTAL)
+    {
         LOG_WARN("Failed to switch 32K XTAL RTC source to 32.768Khz !!! ");
         return;
     }
@@ -146,17 +153,23 @@ void esp32Setup()
     LOG_DEBUG("Number of Device Reboots: %d", rebootCounter);
 #if !MESHTASTIC_EXCLUDE_BLUETOOTH
     String BLEOTA = BleOta::getOtaAppVersion();
-    if (BLEOTA.isEmpty()) {
+    if (BLEOTA.isEmpty())
+    {
         LOG_INFO("No BLE OTA firmware available");
-    } else {
+    }
+    else
+    {
         LOG_INFO("BLE OTA firmware version %s", BLEOTA.c_str());
     }
 #endif
 #if !MESHTASTIC_EXCLUDE_WIFI
     String version = WiFiOTA::getVersion();
-    if (version.isEmpty()) {
+    if (version.isEmpty())
+    {
         LOG_INFO("No WiFi OTA firmware available");
-    } else {
+    }
+    else
+    {
         LOG_INFO("WiFi OTA firmware version %s", version.c_str());
     }
     WiFiOTA::initialize();
@@ -191,6 +204,7 @@ void esp32Setup()
 void esp32Loop()
 {
     esp_task_wdt_reset(); // service our app level watchdog
+    // LOG_INFO("Free heap: %d", ESP.getFreeHeap());
 
     // for debug printing
     // radio.radioIf.canSleep();
@@ -228,10 +242,10 @@ void cpuDeepSleep(uint32_t msecToWake)
         rtc_gpio_isolate((gpio_num_t)rtcGpios[i]);
 #endif
 
-        // FIXME, disable internal rtc pullups/pulldowns on the non isolated pins. for inputs that we aren't using
-        // to detect wake and in normal operation the external part drives them hard.
+    // FIXME, disable internal rtc pullups/pulldowns on the non isolated pins. for inputs that we aren't using
+    // to detect wake and in normal operation the external part drives them hard.
 #ifdef BUTTON_PIN
-        // Only GPIOs which are have RTC functionality can be used in this bit map: 0,2,4,12-15,25-27,32-39.
+    // Only GPIOs which are have RTC functionality can be used in this bit map: 0,2,4,12-15,25-27,32-39.
 #if SOC_RTCIO_HOLD_SUPPORTED && SOC_PM_SUPPORT_EXT_WAKEUP
     uint64_t gpioMask = (1ULL << (config.device.button_gpio ? config.device.button_gpio : BUTTON_PIN));
 #endif

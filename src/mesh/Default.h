@@ -37,12 +37,12 @@
 #define default_mqtt_encryption_enabled true
 #define default_mqtt_tls_enabled false
 
-#define IF_ROUTER(routerVal, normalVal)                                                                                          \
+#define IF_ROUTER(routerVal, normalVal) \
     ((config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER) ? (routerVal) : (normalVal))
 
 class Default
 {
-  public:
+public:
     static uint32_t getConfiguredOrDefaultMs(uint32_t configuredInterval);
     static uint32_t getConfiguredOrDefaultMs(uint32_t configuredInterval, uint32_t defaultInterval);
     static uint32_t getConfiguredOrDefault(uint32_t configured, uint32_t defaultValue);
@@ -50,19 +50,28 @@ class Default
     static uint8_t getConfiguredOrDefaultHopLimit(uint8_t configured);
     static uint32_t getConfiguredOrMinimumValue(uint32_t configured, uint32_t minValue);
 
-  private:
+private:
     static float congestionScalingCoefficient(int numOnlineNodes)
     {
         // Increase frequency of broadcasts for small networks regardless of preset
-        if (numOnlineNodes <= 10) {
+        if (numOnlineNodes <= 10)
+        {
             return 0.6;
-        } else if (numOnlineNodes <= 20) {
+        }
+        else if (numOnlineNodes <= 20)
+        {
             return 0.7;
-        } else if (numOnlineNodes <= 30) {
+        }
+        else if (numOnlineNodes <= 30)
+        {
             return 0.8;
-        } else if (numOnlineNodes <= 40) {
+        }
+        else if (numOnlineNodes <= 40)
+        {
             return 1.0;
-        } else {
+        }
+        else
+        {
             float throttlingFactor = 0.075;
             if (config.lora.use_preset && config.lora.modem_preset == meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_SLOW)
                 throttlingFactor = 0.04;

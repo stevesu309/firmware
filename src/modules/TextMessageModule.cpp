@@ -5,6 +5,8 @@
 #include "buzz.h"
 #include "configuration.h"
 #include "graphics/Screen.h"
+#include "main.h"
+
 TextMessageModule *textMessageModule;
 
 ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp)
@@ -18,8 +20,14 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     devicestate.rx_text_message = mp;
     devicestate.has_rx_text_message = true;
 
+    // 保存最新的消息
+#ifdef RED_BANK_S3
+    redBankController->saveMeshPacket(mp);
+#endif
+    powerFSM.trigger(EVENT_RECEIVED_MSG);
     // Only trigger screen wake if configuration allows it
-    if (shouldWakeOnReceivedMessage()) {
+    if (shouldWakeOnReceivedMessage())
+    {
         powerFSM.trigger(EVENT_RECEIVED_MSG);
     }
     notifyObservers(&mp);

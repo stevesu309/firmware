@@ -33,6 +33,7 @@ void EInkDynamicDisplay::display()
 // Screen requests a RESPONSIVE frame
 bool EInkDynamicDisplay::forceDisplay(uint32_t msecLimit)
 {
+    LOG_INFO("is forcing display update...");
     addFrameFlag(RESPONSIVE);
     return update(); // (Unutilized) Base class promises to return true if update ran
 }
@@ -70,13 +71,15 @@ void EInkDynamicDisplay::configForFullRefresh()
 void EInkDynamicDisplay::applyRefreshMode()
 {
     // Change from FULL to FAST
-    if (currentConfig == FULL && refresh == FAST) {
+    if (currentConfig == FULL && refresh == FAST)
+    {
         configForFastRefresh();
         currentConfig = FAST;
     }
 
     // Change from FAST back to FULL
-    else if (currentConfig == FAST && refresh == FULL) {
+    else if (currentConfig == FAST && refresh == FULL)
+    {
         configForFullRefresh();
         currentConfig = FULL;
     }
@@ -97,11 +100,13 @@ bool EInkDynamicDisplay::update()
 {
     // Detemine the refresh mode to use, and start the update
     bool refreshApproved = determineMode();
-    if (refreshApproved) {
+    if (refreshApproved)
+    {
         EInkDisplay::forceDisplay(0); // Bypass base class' own rate-limiting system
         storeAndReset();              // Store the result of this loop for next time. Note: call *before* endOrDetach()
         endOrDetach();                // endUpdate() right now, or set the async refresh flag (if FULL and HAS_EINK_ASYNCFULL)
-    } else
+    }
+    else
         storeAndReset(); // No update, no post-update code, just store the results
 
     return refreshApproved; // (Unutilized) Base class promises to return true if update ran
@@ -112,12 +117,14 @@ void EInkDynamicDisplay::endOrDetach()
 {
     // If the GxEPD2 version reports that it has the async modifications
 #ifdef HAS_EINK_ASYNCFULL
-    if (previousRefresh == FULL) {
+    if (previousRefresh == FULL)
+    {
         asyncRefreshRunning = true; // Set the flag - checked in determineMode(); cleared by onNotify()
 
         if (previousFrameFlags & BLOCKING)
             awaitRefresh();
-        else {
+        else
+        {
             // Async begins
             LOG_DEBUG("Async full-refresh begins (drop frames)");
             notifyLater(intervalPollAsyncRefresh, DUE_POLL_ASYNCREFRESH, true); // Hand-off to NotifiedWorkerThread
@@ -128,9 +135,10 @@ void EInkDynamicDisplay::endOrDetach()
     else if (previousRefresh == FAST)
         EInkDisplay::endUpdate(); // Still block while updating, but EInkDisplay needs us to call endUpdate() ourselves.
 
-        // Fallback - If using an unmodified version of GxEPD2 for some reason
+    // Fallback - If using an unmodified version of GxEPD2 for some reason
 #else
-    if (previousRefresh == FULL || previousRefresh == FAST) { // If refresh wasn't skipped (on unspecified..)
+    if (previousRefresh == FULL || previousRefresh == FAST)
+    { // If refresh wasn't skipped (on unspecified..)
         LOG_WARN(
             "GxEPD2 version has not been modified to support async refresh; using fallback behavior. Please update lib_deps in "
             "variant's platformio.ini file");
@@ -148,16 +156,14 @@ bool EInkDynamicDisplay::determineMode()
     checkBusyAsyncRefresh();
 #endif
     checkRateLimiting();
-
     // If too soon for a new frame, or display busy, abort early
     if (refresh == SKIPPED)
+    {
         return false; // No refresh
-
+    }
     // -- New frame is due --
-
     resetRateLimiting(); // Once determineMode() ends, will have to wait again
     hashImage();         // Generate here, so we can still copy it to previousImageHash, even if we skip the comparison check
-    LOG_DEBUG("determineMode(): "); // Begin log entry
 
     // Once mode determined, any remaining checks will bypass
     checkCosmetic();
@@ -192,11 +198,13 @@ bool EInkDynamicDisplay::determineMode()
 // Is this the very first frame?
 void EInkDynamicDisplay::checkInitialized()
 {
-    if (!initialized) {
+    if (!initialized)
+    {
         // Undo GxEPD2_BW::partialWindow(), if set by developer in EInkDisplay::connect()
         configForFullRefresh();
 
         // Clear any existing image, so we can draw logo with fast-refresh, but also to set GxEPD2_EPD::_initial_write
+        // adafruitDisplay3C->clearScreen(); //注释
         adafruitDisplay->clearScreen();
 
         LOG_DEBUG("initialized, ");
@@ -213,7 +221,8 @@ void EInkDynamicDisplay::checkForPromotion()
     // If a frame was skipped (rate, display busy), then promote a BACKGROUND frame
     // Because we DID want a RESPONSIVE/COSMETIC/DEMAND_FULL frame last time, we just didn't get it
 
-    switch (previousReason) {
+    switch (previousReason)
+    {
     case ASYNC_REFRESH_BLOCKED_DEMANDFAST:
         addFrameFlag(DEMAND_FAST);
         break;
@@ -237,8 +246,10 @@ void EInkDynamicDisplay::checkRateLimiting()
         return;
 
     // Skip update: too soon for BACKGROUND
-    if (frameFlags == BACKGROUND) {
-        if (Throttle::isWithinTimespanMs(previousRunMs, 30000)) {
+    if (frameFlags == BACKGROUND)
+    {
+        if (Throttle::isWithinTimespanMs(previousRunMs, 30000))
+        {
             refresh = SKIPPED;
             reason = EXCEEDED_RATELIMIT_FULL;
             return;
@@ -250,8 +261,10 @@ void EInkDynamicDisplay::checkRateLimiting()
         return;
 
     // Skip update: too soon for RESPONSIVE
-    if (frameFlags & RESPONSIVE) {
-        if (Throttle::isWithinTimespanMs(previousRunMs, 1000)) {
+    if (frameFlags & RESPONSIVE)
+    {
+        if (Throttle::isWithinTimespanMs(previousRunMs, 1000))
+        {
             refresh = SKIPPED;
             reason = EXCEEDED_RATELIMIT_FAST;
             LOG_DEBUG("refresh=SKIPPED, reason=EXCEEDED_RATELIMIT_FAST, frameFlags=0x%x", frameFlags);
@@ -268,7 +281,8 @@ void EInkDynamicDisplay::checkCosmetic()
         return;
 
     // A full refresh is requested for cosmetic purposes: we have a decision
-    if (frameFlags & COSMETIC) {
+    if (frameFlags & COSMETIC)
+    {
         refresh = FULL;
         reason = FLAGGED_COSMETIC;
         LOG_DEBUG("refresh=FULL, reason=FLAGGED_COSMETIC, frameFlags=0x%x", frameFlags);
@@ -283,7 +297,8 @@ void EInkDynamicDisplay::checkDemandingFast()
         return;
 
     // A fast refresh is demanded: we have a decision
-    if (frameFlags & DEMAND_FAST) {
+    if (frameFlags & DEMAND_FAST)
+    {
         refresh = FAST;
         reason = FLAGGED_DEMAND_FAST;
         LOG_DEBUG("refresh=FAST, reason=FLAGGED_DEMAND_FAST, frameFlags=0x%x", frameFlags);
@@ -303,7 +318,8 @@ void EInkDynamicDisplay::checkFrameMatchesPrevious()
 
 #if !defined(EINK_BACKGROUND_USES_FAST)
     // If BACKGROUND, and last update was FAST: redraw the same image in FULL (for display health + image quality)
-    if (frameFlags == BACKGROUND && fastRefreshCount > 0) {
+    if (frameFlags == BACKGROUND && fastRefreshCount > 0)
+    {
         refresh = FULL;
         reason = REDRAW_WITH_FULL;
         LOG_DEBUG("refresh=FULL, reason=REDRAW_WITH_FULL, frameFlags=0x%x", frameFlags);
@@ -325,7 +341,8 @@ void EInkDynamicDisplay::checkConsecutiveFastRefreshes()
         return;
 
     // Bypass limit if UNLIMITED_FAST mode is active
-    if (frameFlags & UNLIMITED_FAST) {
+    if (frameFlags & UNLIMITED_FAST)
+    {
         refresh = FAST;
         reason = NO_OBJECTIONS;
         LOG_DEBUG("refresh=FAST, reason=UNLIMITED_FAST_MODE_ACTIVE, frameFlags=0x%x", frameFlags);
@@ -333,7 +350,8 @@ void EInkDynamicDisplay::checkConsecutiveFastRefreshes()
     }
 
     // If too many FAST refreshes consecutively - force a FULL refresh
-    if (fastRefreshCount >= EINK_LIMIT_FASTREFRESH) {
+    if (fastRefreshCount >= EINK_LIMIT_FASTREFRESH)
+    {
         refresh = FULL;
         reason = EXCEEDED_LIMIT_FASTREFRESH;
         LOG_DEBUG("refresh=FULL, reason=EXCEEDED_LIMIT_FASTREFRESH, frameFlags=0x%x", frameFlags);
@@ -346,7 +364,8 @@ void EInkDynamicDisplay::checkFastRequested()
     if (refresh != UNSPECIFIED)
         return;
 
-    if (frameFlags == BACKGROUND) {
+    if (frameFlags == BACKGROUND)
+    {
 #ifdef EINK_BACKGROUND_USES_FAST
         // If we want BACKGROUND to use fast. (FULL only when a limit is hit)
         refresh = FAST;
@@ -362,7 +381,8 @@ void EInkDynamicDisplay::checkFastRequested()
     }
 
     // Sanity: confirm that we did ask for a RESPONSIVE frame.
-    if (frameFlags & RESPONSIVE) {
+    if (frameFlags & RESPONSIVE)
+    {
         refresh = FAST;
         reason = NO_OBJECTIONS;
         LOG_DEBUG("refresh=FAST, reason=NO_OBJECTIONS, fastRefreshCount=%lu, frameFlags=0x%x", fastRefreshCount, frameFlags);
@@ -381,7 +401,8 @@ void EInkDynamicDisplay::hashImage()
     imageHash = 0;
 
     // Sum all bytes of the image buffer together
-    for (uint16_t b = 0; b < (displayWidth / 8) * displayHeight; b++) {
+    for (uint16_t b = 0; b < (displayWidth / 8) * displayHeight; b++)
+    {
         imageHash ^= buffer[b] << b;
     }
 }
@@ -394,7 +415,8 @@ void EInkDynamicDisplay::storeAndReset()
     previousReason = reason;
 
     // Only store image hash if the display will update
-    if (refresh != SKIPPED) {
+    if (refresh != SKIPPED)
+    {
         previousImageHash = imageHash;
     }
 
@@ -414,8 +436,10 @@ void EInkDynamicDisplay::countGhostPixels()
     ghostPixelCount = 0;
 
     // Check new image, bit by bit, for any white pixels at locations marked "dirty"
-    for (uint16_t i = 0; i < displayBufferSize; i++) {
-        for (uint8_t bit = 0; bit < 7; bit++) {
+    for (uint16_t i = 0; i < displayBufferSize; i++)
+    {
+        for (uint8_t bit = 0; bit < 7; bit++)
+        {
 
             const bool dirty = (dirtyPixels[i] >> bit) & 1;       // Has pixel location been drawn to since full-refresh?
             const bool shouldBeBlank = !((buffer[i] >> bit) & 1); // Is pixel location white in the new image?
@@ -443,7 +467,8 @@ void EInkDynamicDisplay::checkExcessiveGhosting()
     countGhostPixels();
 
     // If too many ghost pixels, select full refresh
-    if (ghostPixelCount > EINK_LIMIT_GHOSTING_PX) {
+    if (ghostPixelCount > EINK_LIMIT_GHOSTING_PX)
+    {
         refresh = FULL;
         reason = EXCEEDED_GHOSTINGLIMIT;
         LOG_DEBUG("refresh=FULL, reason=EXCEEDED_GHOSTINGLIMIT, frameFlags=0x%x", frameFlags);
@@ -462,7 +487,8 @@ void EInkDynamicDisplay::resetGhostPixelTracking()
 void EInkDynamicDisplay::onNotify(uint32_t notification)
 {
     // Which task
-    switch (notification) {
+    switch (notification)
+    {
     case DUE_POLL_ASYNCREFRESH:
         pollAsyncRefresh();
         break;
@@ -501,7 +527,8 @@ void EInkDynamicDisplay::pollAsyncRefresh()
         return;
 
     // Still running, check back later
-    if (adafruitDisplay->epd2.isBusy()) {
+    if (adafruitDisplay->epd2.isBusy())
+    {
         // Schedule next call of pollAsyncRefresh()
         NotifiedWorkerThread::notifyLater(intervalPollAsyncRefresh, DUE_POLL_ASYNCREFRESH, true);
         return;
@@ -525,7 +552,8 @@ void EInkDynamicDisplay::checkBusyAsyncRefresh()
         return;
 
     // Full refresh still running
-    if (adafruitDisplay->epd2.isBusy()) {
+    if (adafruitDisplay->epd2.isBusy())
+    {
         // No refresh
         refresh = SKIPPED;
 

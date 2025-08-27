@@ -87,7 +87,8 @@ meshtastic_MeshPacket *MeshModule::allocErrorResponse(meshtastic_Routing_Error e
 
 void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char *specificModule)
 {
-    if (specificModule) {
+    if (specificModule)
+    {
         LOG_DEBUG("Calling specific module: %s", specificModule);
     }
     // LOG_DEBUG("In call modules");
@@ -104,11 +105,13 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
     auto ourNodeNum = nodeDB->getNodeNum();
     bool toUs = isBroadcast(mp.to) || isToUs(&mp);
 
-    for (auto i = modules->begin(); i != modules->end(); ++i) {
+    for (auto i = modules->begin(); i != modules->end(); ++i)
+    {
         auto &pi = **i;
 
         // If specificModule is provided, only call that specific module
-        if (specificModule && (!pi.name || strcmp(pi.name, specificModule) != 0)) {
+        if (specificModule && (!pi.name || strcmp(pi.name, specificModule) != 0))
+        {
             continue;
         }
 
@@ -117,14 +120,16 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
         /// We only call modules that are interested in the packet (and the message is destined to us or we are promiscious)
         bool wantsPacket = (isDecoded || pi.encryptedOk) && (pi.isPromiscuous || toUs) && pi.wantPacket(&mp);
 
-        if ((src == RX_SRC_LOCAL) && !(pi.loopbackOk)) {
+        if ((src == RX_SRC_LOCAL) && !(pi.loopbackOk))
+        {
             // new case, monitor separately for now, then FIXME merge above
             wantsPacket = false;
         }
 
         assert(!pi.myReply); // If it is !null it means we have a bug, because it should have been sent the previous time
 
-        if (wantsPacket) {
+        if (wantsPacket)
+        {
             LOG_DEBUG("Module '%s' wantsPacket=%d", pi.name, wantsPacket);
 
             moduleFound = true;
@@ -140,16 +145,21 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
 
             bool rxChannelOk = !pi.boundChannel || (mp.from == 0) || (ch && strcasecmp(ch->settings.name, pi.boundChannel) == 0);
 
-            if (!rxChannelOk) {
+            if (!rxChannelOk)
+            {
                 // no one should have already replied!
                 assert(!currentReply);
 
-                if (isDecoded && mp.decoded.want_response) {
+                if (isDecoded && mp.decoded.want_response)
+                {
                     printPacket("packet on wrong channel, returning error", &mp);
                     currentReply = pi.allocErrorResponse(meshtastic_Routing_Error_NOT_AUTHORIZED, &mp);
-                } else
+                }
+                else
                     printPacket("packet on wrong channel, but can't respond", &mp);
-            } else {
+            }
+            else
+            {
                 ProcessMessage handled = pi.handleReceived(mp);
 
                 pi.alterReceived(mp);
@@ -162,22 +172,27 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
                 // because currently when the phone sends things, it sends things using the local node ID as the from address.  A
                 // better solution (FIXME) would be to let phones have their own distinct addresses and we 'route' to them like
                 // any other node.
-                if (isDecoded && mp.decoded.want_response && toUs && (!isFromUs(&mp) || isToUs(&mp)) && !currentReply) {
+                if (isDecoded && mp.decoded.want_response && toUs && (!isFromUs(&mp) || isToUs(&mp)) && !currentReply)
+                {
                     pi.sendResponse(mp);
                     ignoreRequest = ignoreRequest || pi.ignoreRequest; // If at least one module asks it, we may ignore a request
                     LOG_INFO("Asked module '%s' to send a response", pi.name);
-                } else {
+                }
+                else
+                {
                     LOG_DEBUG("Module '%s' considered", pi.name);
                 }
 
                 // If the requester didn't ask for a response we might need to discard unused replies to prevent memory leaks
-                if (pi.myReply) {
+                if (pi.myReply)
+                {
                     LOG_DEBUG("Discard an unneeded response");
                     packetPool.release(pi.myReply);
                     pi.myReply = NULL;
                 }
 
-                if (handled == ProcessMessage::STOP) {
+                if (handled == ProcessMessage::STOP)
+                {
                     LOG_DEBUG("Module '%s' handled and skipped other processing", pi.name);
                     break;
                 }
@@ -187,12 +202,16 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
         pi.currentRequest = NULL;
     }
 
-    if (isDecoded && mp.decoded.want_response && toUs) {
-        if (currentReply) {
+    if (isDecoded && mp.decoded.want_response && toUs)
+    {
+        if (currentReply)
+        {
             printPacket("Send response", currentReply);
             service->sendToMesh(currentReply);
             currentReply = NULL;
-        } else if (mp.from != ourNodeNum && !ignoreRequest) {
+        }
+        else if (mp.from != ourNodeNum && !ignoreRequest)
+        {
             // Note: if the message started with the local node or a module asked to ignore the request, we don't want to send a
             // no response reply
 
@@ -207,7 +226,8 @@ void MeshModule::callModules(meshtastic_MeshPacket &mp, RxSource src, const char
         }
     }
 
-    if (!moduleFound && isDecoded) {
+    if (!moduleFound && isDecoded)
+    {
         LOG_DEBUG("No modules interested in portnum=%d, src=%s", mp.decoded.portnum, (src == RX_SRC_LOCAL) ? "LOCAL" : "REMOTE");
     }
 }
@@ -226,10 +246,13 @@ meshtastic_MeshPacket *MeshModule::allocReply()
 void MeshModule::sendResponse(const meshtastic_MeshPacket &req)
 {
     auto r = allocReply();
-    if (r) {
+    if (r)
+    {
         setReplyTo(r, req);
         currentReply = r;
-    } else {
+    }
+    else
+    {
         // Ignore - this is now expected behavior for routing module (because it ignores some replies)
         // LOG_WARN("Client requested response but this module did not provide");
     }
@@ -241,8 +264,8 @@ void MeshModule::sendResponse(const meshtastic_MeshPacket &req)
 void setReplyTo(meshtastic_MeshPacket *p, const meshtastic_MeshPacket &to)
 {
     assert(p->which_payload_variant == meshtastic_MeshPacket_decoded_tag); // Should already be set by now
-    p->to = getFrom(&to);    // Make sure that if we are sending to the local node, we use our local node addr, not 0
-    p->channel = to.channel; // Use the same channel that the request came in on
+    p->to = getFrom(&to);                                                  // Make sure that if we are sending to the local node, we use our local node addr, not 0
+    p->channel = to.channel;                                               // Use the same channel that the request came in on
     p->hop_limit = routingModule->getHopLimitForResponse(to.hop_start, to.hop_limit);
 
     // No need for an ack if we are just delivering locally (it just generates an ignored ack)
@@ -259,25 +282,33 @@ std::vector<MeshModule *> MeshModule::GetMeshModulesWithUIFrames(int startIndex)
     // Fill with nullptr up to startIndex
     modulesWithUIFrames.resize(startIndex, nullptr);
 
-    if (modules) {
-        for (auto i = modules->begin(); i != modules->end(); ++i) {
+    if (modules)
+    {
+        for (auto i = modules->begin(); i != modules->end(); ++i)
+        {
             auto &pi = **i;
-            if (pi.wantUIFrame()) {
+            if (pi.wantUIFrame())
+            {
                 LOG_DEBUG("%s wants a UI Frame", pi.name);
                 modulesWithUIFrames.push_back(&pi);
             }
         }
     }
+    else
+        LOG_INFO("no modules");
     return modulesWithUIFrames;
 }
 
 void MeshModule::observeUIEvents(Observer<const UIFrameEvent *> *observer)
 {
-    if (modules) {
-        for (auto i = modules->begin(); i != modules->end(); ++i) {
+    if (modules)
+    {
+        for (auto i = modules->begin(); i != modules->end(); ++i)
+        {
             auto &pi = **i;
             Observable<const UIFrameEvent *> *observable = pi.getUIFrameObservable();
-            if (observable != NULL) {
+            if (observable != NULL)
+            {
                 LOG_DEBUG("%s wants a UI Frame", pi.name);
                 observer->observe(observable);
             }
@@ -290,15 +321,20 @@ AdminMessageHandleResult MeshModule::handleAdminMessageForAllModules(const mesht
                                                                      meshtastic_AdminMessage *response)
 {
     AdminMessageHandleResult handled = AdminMessageHandleResult::NOT_HANDLED;
-    if (modules) {
-        for (auto i = modules->begin(); i != modules->end(); ++i) {
+    if (modules)
+    {
+        for (auto i = modules->begin(); i != modules->end(); ++i)
+        {
             auto &pi = **i;
             AdminMessageHandleResult h = pi.handleAdminMessageForModule(mp, request, response);
-            if (h == AdminMessageHandleResult::HANDLED_WITH_RESPONSE) {
+            if (h == AdminMessageHandleResult::HANDLED_WITH_RESPONSE)
+            {
                 // In case we have a response it always has priority.
                 LOG_DEBUG("Reply prepared by module '%s' of variant: %d", pi.name, response->which_payload_variant);
                 handled = h;
-            } else if ((handled != AdminMessageHandleResult::HANDLED_WITH_RESPONSE) && (h == AdminMessageHandleResult::HANDLED)) {
+            }
+            else if ((handled != AdminMessageHandleResult::HANDLED_WITH_RESPONSE) && (h == AdminMessageHandleResult::HANDLED))
+            {
                 // In case the message is handled it should be populated, but will not overwrite
                 //   a result with response.
                 handled = h;
@@ -313,10 +349,12 @@ AdminMessageHandleResult MeshModule::handleAdminMessageForAllModules(const mesht
 // Only considered if setFrames is triggered by a UIFrameEvent
 bool MeshModule::isRequestingFocus()
 {
-    if (_requestingFocus) {
+    if (_requestingFocus)
+    {
         _requestingFocus = false; // Consume the request
         return true;
-    } else
+    }
+    else
         return false;
 }
 #endif

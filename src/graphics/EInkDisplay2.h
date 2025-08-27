@@ -28,7 +28,7 @@ class EInkDisplay : public OLEDDisplay
     /// thereafter we do once per 5 minutes
     uint32_t slowUpdateMsec = 5 * 60 * 1000;
 
-  public:
+public:
     /* constructor
     FIXME - the parameters are not used, just a temporary hack to keep working like the old displays
     */
@@ -52,12 +52,30 @@ class EInkDisplay : public OLEDDisplay
     virtual void endUpdate();
 
     /**
+     * Set the rotation of the display.
+     * @param rotation:
+     * - 0: portrait (0 degrees)
+     * - 2: left rotation (90 degrees)
+     * - 3: right rotation (270 degrees)
+     *
+     * This method adjusts the display orientation based on the provided rotation value.
+     * Ensure that the value is one of the valid options (0, 2, or 3) to avoid undefined behavior.
+     */
+    void setRotation(uint8_t rotation);
+
+    /**
+     * Fill the screen with a given color
+     * @param color: 0=black, 1=white
+     */
+    void fillScreen(uint8_t color);
+
+    /**
      * shim to make the abstraction happy
      *
      */
     void setDetected(uint8_t detected);
 
-  protected:
+protected:
     // the header size of the buffer used, e.g. for the SPI command header
     virtual int getBufferOffset(void) override { return 0; }
 
@@ -74,13 +92,17 @@ class EInkDisplay : public OLEDDisplay
     GxEPD2_Multi<GXEPD2_DRIVER_0, GXEPD2_DRIVER_1> *adafruitDisplay = NULL;
 #else
     // AdafruitGFX display object (for single display model) - instantiated in connect(), variant specific
+#ifdef RED_BANK_S3
+    GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> *adafruitDisplay = NULL;
+#else
     GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT> *adafruitDisplay = NULL;
+#endif
 #endif
 
     // If display uses HSPI
-#if defined(HELTEC_WIRELESS_PAPER) || defined(HELTEC_WIRELESS_PAPER_V1_0) || defined(HELTEC_VISION_MASTER_E213) ||               \
-    defined(HELTEC_VISION_MASTER_E290) || defined(TLORA_T3S3_EPAPER) || defined(CROWPANEL_ESP32S3_5_EPAPER) ||                   \
-    defined(CROWPANEL_ESP32S3_4_EPAPER) || defined(CROWPANEL_ESP32S3_2_EPAPER) || defined(ELECROW_ThinkNode_M5)
+#if defined(HELTEC_WIRELESS_PAPER) || defined(HELTEC_WIRELESS_PAPER_V1_0) || defined(HELTEC_VISION_MASTER_E213) || \
+    defined(HELTEC_VISION_MASTER_E290) || defined(TLORA_T3S3_EPAPER) || defined(CROWPANEL_ESP32S3_5_EPAPER) ||     \
+    defined(CROWPANEL_ESP32S3_4_EPAPER) || defined(CROWPANEL_ESP32S3_2_EPAPER) || defined(ELECROW_ThinkNode_M5) || defined(RED_BANK_S3)
     SPIClass *hspi = NULL;
 #endif
 
@@ -88,8 +110,9 @@ class EInkDisplay : public OLEDDisplay
     SPIClass *spi1 = NULL;
 #endif
 
-  private:
+private:
     // FIXME quick hack to limit drawing to a very slow rate
+    bool firstUpdate = true; // Add this line
     uint32_t lastDrawMsec = 0;
 };
 
