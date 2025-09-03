@@ -1,4 +1,5 @@
 #include "ChannelMessageRenderer.h"
+
 #include "NodeDB.h"
 #include "graphics/Screen.h"
 #include "main.h"
@@ -93,6 +94,7 @@ namespace graphics
       static char tempBuf[237];
       int width = display->getWidth();
       int height = display->getHeight();
+#ifdef RED_BANK_S3
 
       if (redBankController->getCurrentRotation() == 0 && width > height)
       {
@@ -292,6 +294,7 @@ namespace graphics
 
       snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
       display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
+#endif
     }
   }
 }

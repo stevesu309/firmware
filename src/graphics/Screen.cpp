@@ -472,7 +472,7 @@ namespace graphics
             screenOn = on;
         }
     }
-
+#ifdef RED_BANK_S3
     void onFrameFixed(uint8_t currentFrame)
     {
         if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame))
@@ -492,6 +492,7 @@ namespace graphics
 
         channelPacketBrowseIndex = packetListSize - 1;
     }
+#endif
     void Screen::setup()
     {
 
@@ -1141,8 +1142,10 @@ namespace graphics
         ui->setOverlays(overlays, sizeof(overlays) / sizeof(overlays[0]));
 
         prevFrame = -1; // Force drawNodeInfo to pick a new node (because our list
-                        // just changed)
+// just changed)
+#ifdef RED_BANK_S3
         channelIndex = 0;
+#endif
         uint8_t frameIndex = 0;
         // Focus on a specific frame, in the frame set we just created
         switch (focus)

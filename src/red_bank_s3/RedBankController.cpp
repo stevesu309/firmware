@@ -67,6 +67,7 @@ namespace RedBankS3
 
     void RedBankController::setup()
     {
+#ifdef RED_BANK_S3
         pinMode(KEY1_ADC_PIN, INPUT);
         pinMode(KEY2_ADC_PIN, INPUT);
         pinMode(PIN_LORA_EN, OUTPUT);
@@ -78,6 +79,7 @@ namespace RedBankS3
         AntennaManager::init(config.lora.region);
 
         applyRotation(); // 应用屏幕旋转
+#endif
     }
 
     void RedBankController::rotateScreenLeft()
@@ -163,6 +165,7 @@ namespace RedBankS3
 
     void RedBankController::loop()
     {
+#ifdef RED_BANK_S3
         // 使用天线管理器处理天线切换
         AntennaManager::switchAntennaForRegion(config.lora.region);
         scanAdcKeypad(); // ADC按键扫描
@@ -258,6 +261,7 @@ namespace RedBankS3
                 LOG_DEBUG("Combo key active, skipping individual key processing");
             }
         }
+#endif
     }
 
     bool RedBankController::isMeshPacketListEmpty(uint8_t channel)
