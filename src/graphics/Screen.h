@@ -35,6 +35,7 @@ namespace graphics
 } // namespace graphics
 
 bool shouldWakeOnReceivedMessage();
+void onFrameFixed(uint8_t currentFrame);
 
 #if !HAS_SCREEN
 #include "power.h"
@@ -629,7 +630,7 @@ namespace graphics
 #ifdef USE_EINK
         /// Draw an image to remain on E-Ink display after screen off
         void setScreensaverFrames(FrameCallback einkScreensaver = NULL);
-        OLEDDisplay *getDisplayDevice() { return dispdev; }
+        // OLEDDisplay *getDisplayDevice() { return dispdev; }
         uint16_t getCurrentWidth() { return displayWidth; }
         uint16_t getCurrentHeight() { return displayHeight; }
 #endif

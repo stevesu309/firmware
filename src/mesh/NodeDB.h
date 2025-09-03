@@ -300,11 +300,11 @@ private:
 
 private:
     bool duplicateWarned = false;
-    uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
-    uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
-    uint32_t lastSort = 0;          // When last sorted the nodeDB
+    // uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
+    // uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
+    uint32_t lastSort = 0; // When last sorted the nodeDB
     /// Find a node in our DB, create an empty NodeInfoLite if missing
-    meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
+    // meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
 
     /*
      * Internal boolean to track sorting paused

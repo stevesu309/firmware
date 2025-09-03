@@ -265,9 +265,9 @@ bool EInkDisplay::connect()
         adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
         adafruitDisplay->init(115200, true, 10, false);
 
-        adafruitDisplay->setRotation(0);
-        this->displayWidth = 176;
-        this->displayHeight = 264;
+        // adafruitDisplay->setRotation(3);
+        // this->displayWidth = 176;
+        // this->displayHeight = 264;
         adafruitDisplay->fillScreen(GxEPD_WHITE);
         LOG_DEBUG("Display initialized successfully");
     }

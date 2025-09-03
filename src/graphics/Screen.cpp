@@ -73,13 +73,7 @@ extern uint16_t TFT_MESH;
 
 #ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
-int currentPageIndex = 0;
-int selectedLine = 0;
-int actualChannelIndex = 0;
-bool isInChannelFrame = false;
-static uint16_t channelFrameBeginIndex;
-static uint16_t channelPacketBrowseIndex;
-// int validChannelCount = 0;
+#include "ChannelMessageRenderer.h"
 #endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
@@ -294,13 +288,6 @@ namespace graphics
     /// nodes
     static size_t nodeIndex;
     static int8_t prevFrame = -1;
-#ifdef RED_BANK_S3
-#define MAX_VALID_CHANNELS 8
-
-    static int validChannelIndices[MAX_VALID_CHANNELS]; // 有效频道在 channelFile.channels[] 中的索引
-    static int validChannelCount = 0;
-    static size_t channelIndex;
-#endif
 
     // Combined dynamic node list frame cycling through LastHeard, HopSignal, and Distance modes
     // Uses a single frame and changes data every few seconds (E-Ink variant is separate)
@@ -485,59 +472,15 @@ namespace graphics
             screenOn = on;
         }
     }
-#if defined(RED_BANK_S3)
-
-    bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex)
-    {
-        uint8_t i = 0;
-        uint8_t channelCnt = sizeof(validChannelIndices) / sizeof(validChannelIndices[0]);
-
-        for (i = 0; i < channelCnt; ++i)
-        {
-            if (validChannelIndices[i] == channelIndex)
-            {
-                break;
-            }
-        }
-
-        if (i >= channelCnt)
-        {
-            return (false);
-        }
-
-        *frameIndex = i;
-        return (true);
-    }
-
-    bool isBrowsingChannelPacketFrame(uint8_t currentFrame)
-    {
-        if (validChannelCount == 0)
-        {
-            return (false);
-        }
-
-        if ((currentFrame >= channelFrameBeginIndex) &&
-            (currentFrame < (channelFrameBeginIndex + validChannelCount)))
-        {
-            return (true);
-        }
-
-        return (false);
-    }
-
-    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
-    {
-        return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
-    }
 
     void onFrameFixed(uint8_t currentFrame)
     {
-        if (!isBrowsingChannelPacketFrame(currentFrame))
+        if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame))
         {
             return;
         }
 
-        channelIndex = getBrowsingChannelIndex(currentFrame);
+        channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(currentFrame);
 
         uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
         if (packetListSize == 0)
@@ -549,8 +492,6 @@ namespace graphics
 
         channelPacketBrowseIndex = packetListSize - 1;
     }
-#endif
-
     void Screen::setup()
     {
 
@@ -1040,6 +981,31 @@ namespace graphics
         normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
         indicatorIcons.push_back(icon_mail);
 
+#if defined(RED_BANK_S3)
+        validChannelCount = 0;
+        channelFrameBeginIndex = numframes;
+
+        int numChannels = channelFile.channels_count;
+        LOG_DEBUG("Found %d channels in channelFile", numChannels);
+
+        for (size_t i = 0; i < numChannels; i++)
+        {
+            if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
+                channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY)
+            {
+                validChannelIndices[validChannelCount] = i;
+                LOG_DEBUG("Added channel %d (role: %d) at index %d", i, channelFile.channels[i].role, validChannelCount);
+                validChannelCount++;
+
+                normalFrames[numframes++] = graphics::ChannelMessageRenderer::drawChannelTextMessageFrame;
+                indicatorIcons.push_back(icon_mail);
+            }
+        }
+
+        LOG_DEBUG("Added %d channel message frames, begin at %d, total frames: %d",
+                  validChannelCount, channelFrameBeginIndex, numframes);
+#endif
+
 #ifndef USE_EINK
         fsi.positions.nodelist = numframes;
         normalFrames[numframes++] = graphics::NodeListRenderer::drawDynamicNodeListScreen;
@@ -1193,7 +1159,7 @@ namespace graphics
             LOG_INFO("textMessageChannel = %d,shouldDrawMessage(&devicestate.rx_text_message) = %d", textMessageChannel, shouldDrawMessage(&devicestate.rx_text_message));
             if (!shouldDrawMessage(&devicestate.rx_text_message))
             {
-                if (getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
+                if (graphics::ChannelMessageRenderer::getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
                 {
                     LOG_INFO("frameIndex = %d", frameIndex);
                     ui->switchToFrame(fsi.positions.channelMessage + frameIndex);
@@ -1424,12 +1390,12 @@ namespace graphics
             return;
         }
 
-        if (!isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
+        if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
         {
             return;
         }
 
-        channelIndex = getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+        channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
 
         uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
         if (packetListSize == 0)
@@ -1456,12 +1422,12 @@ namespace graphics
             return;
         }
 
-        if (!isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
+        if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame))
         {
             return;
         }
 
-        channelIndex = getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+        channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
 
         uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
         if (packetListSize == 0)

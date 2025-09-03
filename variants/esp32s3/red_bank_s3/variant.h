@@ -2,7 +2,6 @@
 
 // #define I2C_SDA 5
 // #define I2C_SCL 4
-// #define SPI_HOST SPI2_HOST
 #define USE_SX1262
 #define HAS_WIRE 0 // 没有iic设备
 
@@ -89,16 +88,9 @@
 
 #endif
 
+#define PIN_LORA_EN 42 // LoRa 模块电源控制引脚
 // #define HAS_SDCARD // Have SPI interface SD card slot
 // #define SDCARD_USE_SPI1
-
-// #define USE_SH1106
-// #define BUTTON_PRE_MESH_PACKET 1    // 定义GPIO40引脚，查看上一条消息
-// #define BUTTON_NEX_MESH_PACKET 2    // 定义GPIO38引脚，查看下一条消息
-// #define BUTTON_PRE_CHANNEL_PACKET 1 // 定义GPIO39引脚，查看上一个channel
-
-// #define BUTTON_NEX_CHANNEL_PACKET 2 // 定义GPIO41引脚，查看下一个channel
-// #define BUTTON_NEX_PAGE_PACKET 2    // 定义GPIO42引脚，查看下一页
 
 // #define HAS_GPS
 #define PIN_GPS_EN (21)       // GNSS模块电源控制引脚

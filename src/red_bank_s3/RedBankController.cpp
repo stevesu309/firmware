@@ -3,11 +3,12 @@
 #include "DebugConfiguration.h"
 #include "main.h"
 #include "FSCommon.h"
-#include "../variants/red_bank_s3/variant.h"
+#include "variant.h"
 #include "graphics/Screen.h"
 #include "graphics/EInkDisplay2.h"
 #include "GxEPD2_BW.h"
 #include "AntennaManager.h"
+
 namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
@@ -68,13 +69,15 @@ namespace RedBankS3
     {
         pinMode(KEY1_ADC_PIN, INPUT);
         pinMode(KEY2_ADC_PIN, INPUT);
+        pinMode(PIN_LORA_EN, OUTPUT);
+        digitalWrite(PIN_LORA_EN, HIGH);
 
-        currentRotation = 0;
+        currentRotation = 3; // 默认旋转角度
 
         // 初始化天线管理器
         AntennaManager::init(config.lora.region);
 
-        applyRotation(); // 屏幕旋转
+        applyRotation(); // 应用屏幕旋转
     }
 
     void RedBankController::rotateScreenLeft()
@@ -129,12 +132,26 @@ namespace RedBankS3
             OLEDDisplay *oledDisplay = static_cast<OLEDDisplay *>(einkDisplay);
 
             einkDisplay->setRotation(currentRotation);
-            if (currentRotation != 0)
+            LOG_INFO("Applied rotation %d to EInk display", currentRotation);
+            LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
+
+            // 根据旋转角度动态调整屏幕几何
+            if (currentRotation == 1 || currentRotation == 3)
+            {
+                // 横屏模式：宽264，高176
                 oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+                LOG_INFO("Set landscape geometry: 264x176");
+            }
             else
+            {
+                // 竖屏模式：宽176，高264
                 oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
-            // einkDisplay->fillScreen(GxEPD_WHITE);
-            // screen->forceDisplay(true);
+                LOG_INFO("Set portrait geometry: 176x264");
+            }
+
+            // 强制刷新屏幕
+            einkDisplay->fillScreen(GxEPD_WHITE);
+            screen->forceDisplay(true);
             EINK_ADD_FRAMEFLAG(einkDisplay, DEMAND_FAST);
 
 #else
@@ -149,40 +166,96 @@ namespace RedBankS3
         // 使用天线管理器处理天线切换
         AntennaManager::switchAntennaForRegion(config.lora.region);
         scanAdcKeypad(); // ADC按键扫描
+
+        // 组合按键旋转检测
+        // LEFT+UP = 左旋，RIGHT+UP = 右旋
+        // 使用静态变量跟踪组合按键状态，避免重复触发
+        // 当组合按键被触发时，会阻止单独按键功能的执行
+        static bool leftUpCombo = false;
+        static bool rightUpCombo = false;
+        static uint32_t lastComboTime = 0;
+
+        // 检测LEFT+UP组合（左旋）
+        if (key1_last == KeypadKey::UP && key2_last == KeypadKey::LEFT)
+        {
+            if (!leftUpCombo && (millis() - lastComboTime) > 200)
+            { // 500ms防抖
+                leftUpCombo = true;
+                lastComboTime = millis();
+                rotateScreenLeft();
+                LOG_INFO("LEFT+UP combination triggered - Screen rotated LEFT");
+            }
+        }
+        else if (leftUpCombo)
+        {
+            leftUpCombo = false;
+        }
+
+        // 检测RIGHT+UP组合（右旋）
+        if (key1_last == KeypadKey::UP && key2_last == KeypadKey::RIGHT)
+        {
+            if (!rightUpCombo && (millis() - lastComboTime) > 200)
+            { // 500ms防抖
+                rightUpCombo = true;
+                lastComboTime = millis();
+                rotateScreenRight();
+                LOG_INFO("RIGHT+UP combination triggered - Screen rotated RIGHT");
+            }
+        }
+        else if (rightUpCombo)
+        {
+            rightUpCombo = false;
+        }
+
+        // 检查是否有组合按键被触发，如果有则跳过单独按键处理
+        bool comboTriggered = leftUpCombo || rightUpCombo;
+
         if (screen)
         {
             delay(200);
-            switch (key1_last)
-            {
-            case KeypadKey::UP:
-                screen->showPrevPacket();
-                break;
-            case KeypadKey::ENTER:
-                rotateScreenLeft(); // ENTER = 向左旋转
-                break;
-            case KeypadKey::ESC:
-                rotateScreenRight(); // ESC = 向右旋转
-                break;
-            default:
-                break;
-            }
 
-            switch (key2_last)
+            // 只有当没有组合按键被触发时，才处理单独按键功能
+            if (!comboTriggered)
             {
-            case KeypadKey::DOWN:
-                screen->showNextPacket();
-                break;
-            case KeypadKey::LEFT:
-                screen->showPrevFrame();
-                break;
-            case KeypadKey::RIGHT:
-                if (!screen->getScreenOn())
-                    screen->setOn(true);
-                else
-                    screen->showNextFrame();
-                break;
-            default:
-                break;
+                // 按键1功能处理
+                switch (key1_last)
+                {
+                case KeypadKey::UP:
+                    screen->showPrevPacket();
+                    break;
+                case KeypadKey::ENTER:
+                    LOG_DEBUG("ENTER key pressed (currently unused)");
+                    break;
+                case KeypadKey::ESC:
+                    LOG_DEBUG("ESC key pressed (currently unused)");
+                    break;
+                default:
+                    break;
+                }
+
+                // 按键2功能处理
+                switch (key2_last)
+                {
+                case KeypadKey::DOWN:
+                    screen->showNextPacket();
+                    break;
+                case KeypadKey::LEFT:
+                    screen->showPrevFrame();
+                    break;
+                case KeypadKey::RIGHT:
+                    if (!screen->getScreenOn())
+                        screen->setOn(true);
+                    else
+                        screen->showNextFrame();
+                    break;
+                default:
+                    break;
+                }
+            }
+            else
+            {
+                // 组合按键被触发时，记录调试信息
+                LOG_DEBUG("Combo key active, skipping individual key processing");
             }
         }
     }
@@ -282,7 +355,7 @@ namespace RedBankS3
         return (direction);
     }
 
-    // void RedBankController::_handleShuttingDownButtonPress()
+    // void RedBankController::_handleShuttingDownButtonPress()  //关机
     // {
     //     static bool lastShuttingDownButtonState = HIGH;
     //     bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);

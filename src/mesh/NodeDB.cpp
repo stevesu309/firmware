@@ -1591,7 +1591,7 @@ bool NodeDB::saveToDisk(int saveWhat)
     return success;
 }
 
-#if 1
+#if defined(RED_BANK_S3)
 bool NodeDB::saveChannelPacketToDisk(uint8_t channel_index, uint8_t packet_index, const meshtastic_MeshPacket &mp)
 {
     char packetFileName[64];
