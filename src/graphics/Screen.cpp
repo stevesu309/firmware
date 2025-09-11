@@ -661,6 +661,7 @@ namespace graphics
         // If requested, make sure queued commands are run, and UI has rendered a new frame
         if (forceUiUpdate)
         {
+            LOG_INFO("Force E-Ink display update");
             // Force a display refresh, in addition to the UI update
             // Changing the GPS status bar icon apparently doesn't register as a change in image
             // (False negative of the image hashing algorithm used to skip identical frames)
@@ -1599,6 +1600,20 @@ namespace graphics
             ui->update();
 
             menuHandler::handleMenuSwitch(dispdev);
+// #ifdef RED_BANK_S3
+//             // RED_BANK_S3: 菜单选择后退出菜单状态
+//             if (redBankController && redBankController->isMenuActive()) {
+//                 redBankController->setMenuActive(false);
+//             }
+// #endif
+#ifdef RED_BANK_S3
+            // RED_BANK_S3: 只有在菜单真正关闭时才退出菜单状态
+            // 检查菜单是否仍然显示，如果不显示则退出菜单状态
+            if (redBankController && redBankController->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing())
+            {
+                redBankController->setMenuActive(false);
+            }
+#endif
             return 0;
         }
 
@@ -1614,10 +1629,11 @@ namespace graphics
                 if (module && module->interceptingKeyboardInput())
                     inputIntercepted = true;
             }
-
+            LOG_INFO("Screen::handleInputEvent: inputIntercepted=%d", inputIntercepted);
             // If no modules are using the input, move between frames
             if (!inputIntercepted)
             {
+                LOG_INFO("Screen::handleInputEvent: event->inputEvent=%d", event->inputEvent);
                 if (event->inputEvent == INPUT_BROKER_LEFT || event->inputEvent == INPUT_BROKER_ALT_PRESS)
                 {
                     showPrevFrame();
@@ -1680,6 +1696,13 @@ namespace graphics
                     {
                         menuHandler::wifiBaseMenu();
                     }
+#ifdef RED_BANK_S3
+                    // RED_BANK_S3: 菜单呼出后设置菜单激活状态
+                    if (redBankController)
+                    {
+                        redBankController->setMenuActive(true);
+                    }
+#endif
                 }
                 else if (event->inputEvent == INPUT_BROKER_BACK)
                 {

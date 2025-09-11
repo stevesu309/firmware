@@ -1433,7 +1433,7 @@ GnssModel_t GPS::probe(int serialSpeed)
         LOG_INFO("Baud set to %d", _serial_gps->baudRate());
     }
     else
-        LOG_INFO("1111Baud already set to %d", _serial_gps->baudRate());
+        LOG_INFO("Baud already set to %d", _serial_gps->baudRate());
 #endif
 
     memset(&ublox_info, 0, sizeof(ublox_info));

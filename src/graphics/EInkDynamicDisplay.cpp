@@ -162,8 +162,9 @@ bool EInkDynamicDisplay::determineMode()
         return false; // No refresh
     }
     // -- New frame is due --
-    resetRateLimiting(); // Once determineMode() ends, will have to wait again
-    hashImage();         // Generate here, so we can still copy it to previousImageHash, even if we skip the comparison check
+    resetRateLimiting();            // Once determineMode() ends, will have to wait again
+    hashImage();                    // Generate here, so we can still copy it to previousImageHash, even if we skip the comparison check
+    LOG_DEBUG("determineMode(): "); // Begin log entry
 
     // Once mode determined, any remaining checks will bypass
     checkCosmetic();

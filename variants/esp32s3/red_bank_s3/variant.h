@@ -50,7 +50,6 @@
 #define LORA_CS 7
 
 #endif
-
 // 这是v8版的引脚定义
 #if 1
 
@@ -96,3 +95,10 @@
 #define PIN_GPS_EN (21)       // GNSS模块电源控制引脚
 #define GPS_EN_ACTIVE (HIGH)  // 输出使能为高电平
 #define GPS_RESET_MODE (HIGH) // 复位为低电平，但是这个引脚接了一个NPN，高电平导通，导通就是低电平复位，所以是高电平复位
+
+// Button configuration for RED_BANK_S3
+#define BUTTON_PIN 2 // 使用 KEY2_ADC_PIN 对应的物理引脚作为 RIGHT 按键
+#define BUTTON_ACTIVE_LOW true
+#define BUTTON_ACTIVE_PULLUP true
+#define BUTTON_NEED_PULLUP
+#define HAS_BUTTON 1

@@ -23,7 +23,6 @@ namespace graphics
     bool getFrameIndexByChannelIndex(uint8_t channelIndex, uint8_t *frameIndex);
     bool isBrowsingChannelPacketFrame(uint8_t currentFrame);
     uint8_t getBrowsingChannelIndex(uint8_t currentFrame);
-
     extern OLEDDisplay *display;
     extern OLEDDisplayUi *ui;
     extern std::vector<std::string> messages;

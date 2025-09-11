@@ -1,5 +1,6 @@
 #pragma once
 #include "graphics/fonts/OLEDDisplayFontsAR.h"
+// #include "graphics/fonts/chinese_test_font_16.h"
 #ifdef OLED_PL
 #include "graphics/fonts/OLEDDisplayFontsPL.h"
 #endif
@@ -87,8 +88,10 @@
 #if defined(RED_BANK_S3) && defined(USE_EINK)
 #undef FONT_SMALL
 #undef FONT_MEDIUM
+// #undef FONT_LARGE
 #define FONT_SMALL Arimo_Regular_14
 #define FONT_MEDIUM Arimo_Regular_16
+// #define FONT_LARGE chinese_font22
 #endif
 
 #if defined(CROWPANEL_ESP32S3_5_EPAPER) && defined(USE_EINK)

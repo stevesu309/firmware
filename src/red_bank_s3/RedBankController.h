@@ -43,6 +43,12 @@ namespace RedBankS3
         void rotateScreenRight();                                 // 向右旋转（ESC按键）
         void applyRotation();                                     // 使用旋转
         uint8_t getCurrentRotation() { return currentRotation; }; // 获取当前旋转角度
+
+        // 菜单按钮相关
+        void handleRightButtonPress();                           // 处理 RIGHT 按键按下
+        void handleRightButtonRelease();                         // 处理 RIGHT 按键释放
+        bool isMenuActive();                                     // 检查菜单是否激活
+        void setMenuActive(bool active);                         // 设置菜单激活状态
     private:
         // 消息列表容量
         static const int MESH_PACKET_LIST_CAPCITY = 10;
@@ -58,5 +64,11 @@ namespace RedBankS3
         void _previousMeshPacket();
         void _nextMeshPacket();
         void _handleShuttingDownButtonPress();
+
+        // RIGHT 按键状态管理
+        bool rightButtonPressed = false;                          // RIGHT 按键是否按下
+        uint32_t rightButtonPressTime = 0;                        // RIGHT 按键按下时间
+        static const uint32_t LONG_PRESS_THRESHOLD = 500;         // 长按阈值（毫秒）
+        bool menuActive = false;                                  // 菜单是否激活
     };
 }

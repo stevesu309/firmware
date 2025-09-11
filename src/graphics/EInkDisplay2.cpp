@@ -268,7 +268,7 @@ bool EInkDisplay::connect()
         // adafruitDisplay->setRotation(3);
         // this->displayWidth = 176;
         // this->displayHeight = 264;
-        adafruitDisplay->fillScreen(GxEPD_WHITE);
+        // adafruitDisplay->fillScreen(GxEPD_WHITE);
         LOG_DEBUG("Display initialized successfully");
     }
 #elif defined(PCA10059) || defined(ME25LS01)

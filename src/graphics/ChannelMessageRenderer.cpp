@@ -7,12 +7,14 @@
 #include "graphics/draw/UIRenderer.h"
 #include "graphics/ScreenFonts.h"
 #include "graphics/fonts/OLEDDisplayFontsAR.h"
+#include "OLEDDisplay.h"
+
 #define MAX_VALID_CHANNELS 8
 int validChannelIndices[MAX_VALID_CHANNELS];
 int validChannelCount = 0;
 size_t channelIndex = 0;
 uint16_t channelFrameBeginIndex = 0;
-uint16_t channelPacketBrowseIndex = 0;
+uint16_t channelPacketBrowseIndex = -1;
 namespace graphics
 {
 
@@ -38,8 +40,10 @@ namespace graphics
       else
       {
         // 横屏模式使用标准小字体 (Arimo_Regular_16, 高度16像素)
-        selection.font = FONT_MEDIUM;
-        selection.height = FONT_HEIGHT_MEDIUM;
+        // selection.font = FONT_MEDIUM;
+        // selection.height = FONT_HEIGHT_MEDIUM;
+        selection.font = FONT_LARGE;
+        selection.height = _fontHeight(FONT_LARGE);
       }
       return selection;
     }
@@ -90,6 +94,9 @@ namespace graphics
     /// Draw the last text message we received
     void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
+#if 0
+      display->drawStringUTF8(0, 80, "你好世界否夫哦一万丈事情Hello World");
+#else
       // the max length of this buffer is much longer than we can possibly print
       static char tempBuf[237];
       int width = display->getWidth();
@@ -106,7 +113,6 @@ namespace graphics
       }
 
       display->setTextAlignment(TEXT_ALIGN_LEFT);
-
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
       FontSelection fontSel = selectFontForRotation(currentRotation);
@@ -134,21 +140,13 @@ namespace graphics
                  localActualChannelIndex, validChannelCount);
         return;
       }
-      char tetle[23];
-      if (currentRotation == 0)
-      {
-        // 竖屏模式使用更短的标题
-        snprintf(tetle, sizeof(tetle), "Ch Msg: %d/%d", localActualChannelIndex + 1, validChannelCount);
-      }
-      else
-      {
-        // 横屏模式使用完整标题
-        snprintf(tetle, sizeof(tetle), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
-      }
+      char title[23];
+      // 横屏模式使用完整标题
+      snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
 
       display->setTextAlignment(TEXT_ALIGN_CENTER);
-      display->setFont(selectedFont); // 确保标题也使用选中的字体
-      display->drawString(x + width / 2, y, tetle);
+      display->setFont(selectedFont);
+      display->drawString(x + width / 2, y, title);
 
       // display channel name
       const char *name = channelFile.channels[localActualChannelIndex].settings.name;
@@ -156,22 +154,10 @@ namespace graphics
 
       if (strlen(name) > 0)
       {
-        if (currentRotation == 0)
-        {
-          // 竖屏模式使用更短的前缀
-          if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
-            snprintf(displayName, sizeof(displayName), "P: %s", name);
-          else
-            snprintf(displayName, sizeof(displayName), "S: %s", name);
-        }
+        if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+          snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
         else
-        {
-          // 横屏模式使用完整前缀
-          if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
-            snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
-          else
-            snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
-        }
+          snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
       }
       else
       {
@@ -203,22 +189,6 @@ namespace graphics
           name = "Long_fast";
           break;
         }
-        if (currentRotation == 0)
-        {
-          // 竖屏模式使用更短的前缀
-          if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
-            snprintf(displayName, sizeof(displayName), "P: %s", name);
-          else
-            snprintf(displayName, sizeof(displayName), "S: %s", name);
-        }
-        else
-        {
-          // 横屏模式使用完整前缀
-          if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
-            snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
-          else
-            snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
-        }
       }
       // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
       // EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
@@ -226,6 +196,8 @@ namespace graphics
       display->setFont(selectedFont); // 确保channel名称也使用选中的字体
 
       display->drawString(x + 5, y + selectedFontHeight, displayName);
+      // display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
+
       display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
       display->drawLine(x, y + selectedFontHeight * 2, x + width, y + selectedFontHeight * 2);
@@ -249,7 +221,6 @@ namespace graphics
       }
 
       const meshtastic_MeshPacket &mp = redBankController->getRecentMeshPacket(localActualChannelIndex, channelPacketBrowseIndex);
-
       // added by QCB end
       meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(getFrom(&mp));
 
@@ -293,7 +264,10 @@ namespace graphics
       display->setFont(selectedFont); // 确保消息内容也使用选中的字体
 
       snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
-      display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
+      // display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
+      display->drawStringUTF8(0 + x, 0 + y + selectedFontHeight, tempBuf);
+
+#endif
 #endif
     }
   }

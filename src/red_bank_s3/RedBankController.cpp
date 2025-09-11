@@ -8,6 +8,7 @@
 #include "graphics/EInkDisplay2.h"
 #include "GxEPD2_BW.h"
 #include "AntennaManager.h"
+#include "input/InputBroker.h"
 
 namespace RedBankS3
 {
@@ -36,8 +37,8 @@ namespace RedBankS3
     {
         int val1 = analogRead(KEY1_ADC_PIN);
         int val2 = analogRead(KEY2_ADC_PIN);
-        key1_last = detect_key(val1, true);
-        key2_last = detect_key(val2, false);
+        KeypadKey key1_current = detect_key(val1, true);
+        KeypadKey key2_current = detect_key(val2, false);
 
         // 添加按键防抖处理
         static uint32_t lastKeyTime = 0;
@@ -48,6 +49,33 @@ namespace RedBankS3
             return;
         }
         lastKeyTime = millis();
+
+        // 检测 RIGHT 按键状态变化
+        bool rightPressed = (key2_current == KeypadKey::RIGHT);
+        
+        if (rightPressed && !rightButtonPressed) {
+            // RIGHT 按键刚按下
+            handleRightButtonPress();
+        } else if (!rightPressed && rightButtonPressed) {
+            // RIGHT 按键刚释放
+            handleRightButtonRelease();
+        }
+        
+        // 检测菜单退出：ESC 按键真正关闭菜单
+        if (menuActive && key1_current == KeypadKey::ESC) {
+            // 发送INPUT_BROKER_CANCEL事件来真正关闭菜单
+            InputEvent event;
+            event.inputEvent = INPUT_BROKER_CANCEL;
+            event.source = "RedBankController";
+            event.kbchar = 0;
+            event.touchX = 0;
+            event.touchY = 0;
+            inputBroker->injectInputEvent(&event);
+            LOG_INFO("ESC pressed - closing menu");
+        }
+
+        key1_last = key1_current;
+        key2_last = key2_current;
     }
 
     KeypadKey RedBankController::getKey1() { return key1_last; }
@@ -246,10 +274,8 @@ namespace RedBankS3
                     screen->showPrevFrame();
                     break;
                 case KeypadKey::RIGHT:
-                    if (!screen->getScreenOn())
-                        screen->setOn(true);
-                    else
-                        screen->showNextFrame();
+                    // RIGHT 按键现在通过 handleRightButtonPress/Release 处理
+                    // 这里不再处理，避免重复触发
                     break;
                 default:
                     break;
@@ -371,5 +397,82 @@ namespace RedBankS3
     //     }
     //     lastShuttingDownButtonState = curState;
     // }
+
+    void RedBankController::handleRightButtonPress()
+    {
+        rightButtonPressed = true;
+        rightButtonPressTime = millis();
+        LOG_DEBUG("RIGHT button pressed");
+    }
+
+    void RedBankController::handleRightButtonRelease()
+    {
+        if (!rightButtonPressed) return;
+        
+        uint32_t pressDuration = millis() - rightButtonPressTime;
+        rightButtonPressed = false;
+        
+        LOG_DEBUG("RIGHT button released after %d ms", pressDuration);
+        
+        if (menuActive) {
+            // 在菜单状态下
+            if (pressDuration >= LONG_PRESS_THRESHOLD) {
+                // 长按：确定选项
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_SELECT;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Menu: Long press - Select option");
+            } else {
+                // 短按：下一项（菜单使用 UP/DOWN 导航）
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_DOWN;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Menu: Short press - Next item");
+            }
+        } else {
+            // 在正常状态下
+            if (pressDuration >= LONG_PRESS_THRESHOLD) {
+                // 长按：呼出菜单
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_SELECT;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                menuActive = true;
+                LOG_INFO("Normal: Long press - Open menu");
+            } else {
+                // 短按：下一帧
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_RIGHT;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Normal: Short press - Next frame");
+            }
+        }
+    }
+
+    bool RedBankController::isMenuActive()
+    {
+        return menuActive;
+    }
+
+    void RedBankController::setMenuActive(bool active)
+    {
+        menuActive = active;
+        LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
+    }
 
 }
