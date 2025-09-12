@@ -26,6 +26,7 @@ EInkDynamicDisplay::~EInkDynamicDisplay()
 // Screen requests a BACKGROUND frame
 void EInkDynamicDisplay::display()
 {
+    LOG_INFO("EInkDynamicDisplay::display() called");
     addFrameFlag(BACKGROUND);
     update();
 }

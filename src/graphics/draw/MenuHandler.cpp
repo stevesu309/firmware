@@ -1497,7 +1497,6 @@ namespace graphics
 
     void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     {
-        LOG_INFO("Menu Queue: %d", menuQueue);
         if (menuQueue != menu_none)
             test_count = 0;
         switch (menuQueue)

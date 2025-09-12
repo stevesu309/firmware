@@ -120,7 +120,7 @@ void EInkDisplay::display(void)
     // We don't allow regular 'dumb' display() calls to draw on eink until we've shown
     // at least one forceDisplay() keyframe.  This prevents flashing when we should the critical
     // bootscreen (that we want to look nice)
-
+    LOG_INFO("EInkDisplay::display() called");
     if (lastDrawMsec)
     {
         forceDisplay(slowUpdateMsec); // Show the first screen a few seconds after boot, then slower
@@ -264,7 +264,8 @@ bool EInkDisplay::connect()
         auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, hspi);
         adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
         adafruitDisplay->init(115200, true, 10, false);
-
+        adafruitDisplay->setRotation(3);
+        adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
         // adafruitDisplay->setRotation(3);
         // this->displayWidth = 176;
         // this->displayHeight = 264;

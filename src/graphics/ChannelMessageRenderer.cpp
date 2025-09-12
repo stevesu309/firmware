@@ -190,13 +190,18 @@ namespace graphics
           break;
         }
       }
+      LOG_INFO("selectedFontHeight %d name: %s\n", selectedFontHeight, name);
+      if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+        snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
+      else
+        snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
       // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
       // EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       display->setFont(selectedFont); // 确保channel名称也使用选中的字体
 
-      display->drawString(x + 5, y + selectedFontHeight, displayName);
-      // display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
+      // display->drawString(x + 5, y + selectedFontHeight, displayName);
+      display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
 
       display->setTextAlignment(TEXT_ALIGN_RIGHT);
 

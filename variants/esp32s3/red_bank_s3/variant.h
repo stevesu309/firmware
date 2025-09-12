@@ -68,8 +68,8 @@
 #define LORA_DIO1 10    // SX1262 IRQ
 #define LORA_DIO2 9     // SX1262 BUSY
 #define LORA_DIO3       // Not connected on PCB, but internally on the TTGO SX1262, if DIO3 is high the TXCO is enabled
-#define LORA_ANT_900 48 // 天线选择引脚 US United States 902.0 - 928.0
-#define LORA_ANT_413 47 // 天线选择引脚 CN China 470.0 - 510.0
+#define LORA_ANT_900 47 // 天线选择引脚 US United States 902.0 - 928.0
+#define LORA_ANT_413 48 // 天线选择引脚 CN China 470.0 - 510.0
 #ifdef USE_SX1262
 #define SX126X_CS 7    // FIXME - we really should define LORA_CS instead
 #define SX126X_DIO1 10 // LORA_DIO1

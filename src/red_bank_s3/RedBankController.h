@@ -45,10 +45,18 @@ namespace RedBankS3
         uint8_t getCurrentRotation() { return currentRotation; }; // 获取当前旋转角度
 
         // 菜单按钮相关
-        void handleRightButtonPress();                           // 处理 RIGHT 按键按下
-        void handleRightButtonRelease();                         // 处理 RIGHT 按键释放
-        bool isMenuActive();                                     // 检查菜单是否激活
-        void setMenuActive(bool active);                         // 设置菜单激活状态
+        void handleRightButtonPress();   // 处理 RIGHT 按键按下
+        void handleRightButtonRelease(); // 处理 RIGHT 按键释放
+        void handleEnterButtonPress();   // 处理 ENTER 按键按下
+        void handleEnterButtonRelease(); // 处理 ENTER 按键释放
+        void handleEscButtonPress();     // 处理 ESC 按键按下
+        void handleEscButtonRelease();   // 处理 ESC 按键释放
+        void handleUpButtonPress();      // 处理 UP 按键按下
+        void handleUpButtonRelease();    // 处理 UP 按键释放
+        void handleDownButtonPress();    // 处理 DOWN 按键按下
+        void handleDownButtonRelease();  // 处理 DOWN 按键释放
+        bool isMenuActive();             // 检查菜单是否激活
+        void setMenuActive(bool active); // 设置菜单激活状态
     private:
         // 消息列表容量
         static const int MESH_PACKET_LIST_CAPCITY = 10;
@@ -65,10 +73,18 @@ namespace RedBankS3
         void _nextMeshPacket();
         void _handleShuttingDownButtonPress();
 
-        // RIGHT 按键状态管理
-        bool rightButtonPressed = false;                          // RIGHT 按键是否按下
-        uint32_t rightButtonPressTime = 0;                        // RIGHT 按键按下时间
-        static const uint32_t LONG_PRESS_THRESHOLD = 500;         // 长按阈值（毫秒）
-        bool menuActive = false;                                  // 菜单是否激活
+        // 按键状态管理
+        bool rightButtonPressed = false;                  // RIGHT 按键是否按下
+        bool enterButtonPressed = false;                  // ENTER 按键是否按下
+        bool escButtonPressed = false;                    // ESC 按键是否按下
+        bool upButtonPressed = false;                     // UP 按键是否按下
+        bool downButtonPressed = false;                   // DOWN 按键是否按下
+        uint32_t rightButtonPressTime = 0;                // RIGHT 按键按下时间
+        uint32_t enterButtonPressTime = 0;                // ENTER 按键按下时间
+        uint32_t escButtonPressTime = 0;                  // ESC 按键按下时间
+        uint32_t upButtonPressTime = 0;                   // UP 按键按下时间
+        uint32_t downButtonPressTime = 0;                 // DOWN 按键按下时间
+        static const uint32_t LONG_PRESS_THRESHOLD = 500; // 长按阈值（毫秒）
+        bool menuActive = false;                          // 菜单是否激活
     };
 }
