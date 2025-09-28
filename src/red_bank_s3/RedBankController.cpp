@@ -9,7 +9,7 @@
 #include "GxEPD2_BW.h"
 #include "AntennaManager.h"
 #include "input/InputBroker.h"
-
+#include "GxEPD2_BW.h"
 namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
@@ -51,12 +51,21 @@ namespace RedBankS3
         lastKeyTime = millis();
 
         // 检测所有按键状态变化
+        bool leftPressed = (key2_current == KeypadKey::LEFT);
         bool rightPressed = (key2_current == KeypadKey::RIGHT);
         bool enterPressed = (key1_current == KeypadKey::ENTER);
         bool escPressed = (key1_current == KeypadKey::ESC);
         bool upPressed = (key1_current == KeypadKey::UP);
         bool downPressed = (key2_current == KeypadKey::DOWN);
-
+        // LEFT 按键处理
+        // if (leftPressed && !leftButtonPressed)
+        // {
+        //     handleLeftButtonPress();
+        // }
+        // else if (!leftPressed && leftButtonPressed)
+        // {
+        //     handleleftButtonRelease();
+        // }
         // ENTER 按键处理
         if (enterPressed && !enterButtonPressed)
         {
@@ -183,7 +192,7 @@ namespace RedBankS3
 #ifdef USE_EINK
             EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
             OLEDDisplay *oledDisplay = static_cast<OLEDDisplay *>(einkDisplay);
-
+            // einkDisplay->fillScreen(1);
             einkDisplay->setRotation(currentRotation);
             LOG_INFO("Applied rotation %d to EInk display", currentRotation);
             LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
@@ -202,14 +211,10 @@ namespace RedBankS3
                 LOG_INFO("Set portrait geometry: 176x264");
             }
 
-            // 强制刷新屏幕
-            // einkDisplay->fillScreen(GxEPD_WHITE);
+            // einkDisplay->clearPixel(einkDisplay->width(), einkDisplay->height()); // 清屏
             // screen->forceDisplay(true);
-            // EINK_ADD_FRAMEFLAG(einkDisplay, DEMAND_FAST);
+            EINK_ADD_FRAMEFLAG(einkDisplay, COSMETIC);
 
-#else
-            screen->dispdev->setRotation(currentRotation);
-            LOG_INFO("Applied rotation %d to display", currentRotation);
 #endif
         }
     }
@@ -221,10 +226,7 @@ namespace RedBankS3
         AntennaManager::switchAntennaForRegion(config.lora.region);
         scanAdcKeypad(); // ADC按键扫描
 
-        // 组合按键旋转检测
         // LEFT+UP = 左旋，RIGHT+UP = 右旋
-        // 使用静态变量跟踪组合按键状态，避免重复触发
-        // 当组合按键被触发时，会阻止单独按键功能的执行
         static bool leftUpCombo = false;
         static bool rightUpCombo = false;
         static uint32_t lastComboTime = 0;
@@ -233,7 +235,7 @@ namespace RedBankS3
         if (key1_last == KeypadKey::UP && key2_last == KeypadKey::LEFT)
         {
             if (!leftUpCombo && (millis() - lastComboTime) > 200)
-            { // 500ms防抖
+            { // 200ms防抖
                 leftUpCombo = true;
                 lastComboTime = millis();
                 rotateScreenLeft();
@@ -249,7 +251,7 @@ namespace RedBankS3
         if (key1_last == KeypadKey::UP && key2_last == KeypadKey::RIGHT)
         {
             if (!rightUpCombo && (millis() - lastComboTime) > 200)
-            { // 500ms防抖
+            { // 200ms防抖
                 rightUpCombo = true;
                 lastComboTime = millis();
                 rotateScreenRight();
@@ -267,12 +269,9 @@ namespace RedBankS3
         if (screen)
         {
             delay(200);
-
-            // 只有当没有组合按键被触发时，才处理单独按键功能
             if (!comboTriggered)
             {
-                // 按键处理现在通过 scanAdcKeypad() 中的新处理函数完成
-                // 这里只保留 LEFT/RIGHT 的页面切换功能
+                // 按键处理通过scanAdcKeypad()函数完成
                 switch (key2_last)
                 {
                 case KeypadKey::LEFT:
@@ -353,14 +352,20 @@ namespace RedBankS3
 
         for (i = 0; i < 8; ++i)
         {
-            LOG_INFO("restoring channel %d packets...", i);
-            channelPackets[i].erase(channelPackets[i].begin(), channelPackets[i].end());
-
-            for (j = 0; j < 10; ++j)
+            if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
+                channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY)
             {
-                if (nodeDB->restoreMeshPacket(i, j, mp))
+
+                LOG_INFO("restoring channel %d packets...", i);
+                channelPackets[i].erase(channelPackets[i].begin(), channelPackets[i].end());
+                LOG_INFO("channel %d packets size = %d", i, channelPackets[i].size());
+                for (j = 0; j < 10; ++j)
                 {
-                    push_packet(i, mp);
+
+                    if (nodeDB->restoreMeshPacket(i, j, mp))
+                    {
+                        push_packet(i, mp);
+                    }
                 }
             }
         }
@@ -421,6 +426,29 @@ namespace RedBankS3
     {
         menuActive = active;
         LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
+    }
+
+    // LEFT 按键处理函数
+    void RedBankController::handleLeftButtonPress()
+    {
+        leftButtonPressed = true;
+        leftButtonPressTime = millis();
+        LOG_DEBUG("LEFT button pressed");
+    }
+
+    void RedBankController::handleleftButtonRelease()
+    {
+        if (!leftButtonPressed)
+            return;
+
+        uint32_t pressDuration = millis() - leftButtonPressTime;
+        leftButtonPressed = false;
+
+        if (pressDuration < LONG_PRESS_THRESHOLD)
+        {
+            EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
+            einkDisplay->fillScreen(1);
+        }
     }
 
     // ENTER 按键处理函数

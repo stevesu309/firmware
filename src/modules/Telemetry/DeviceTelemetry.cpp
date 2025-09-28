@@ -27,14 +27,18 @@ int32_t DeviceTelemetryModule::runOnce()
                                                   default_telemetry_broadcast_interval_secs, numOnlineNodes))) &&
         airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil() &&
         config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
-        config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN) {
+        config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN)
+    {
         sendTelemetry();
         lastSentToMesh = uptimeLastMs;
-    } else if (service->isToPhoneQueueEmpty()) {
+    }
+    else if (service->isToPhoneQueueEmpty())
+    {
         // Just send to phone when it's not our time to send to mesh yet
         // Only send while queue is empty (phone assumed connected)
         sendTelemetry(NODENUM_BROADCAST, true);
-        if (lastSentStatsToPhone == 0 || (uptimeLastMs - lastSentStatsToPhone) >= sendStatsToPhoneIntervalMs) {
+        if (lastSentStatsToPhone == 0 || (uptimeLastMs - lastSentStatsToPhone) >= sendStatsToPhoneIntervalMs)
+        {
             sendLocalStatsToPhone();
             lastSentStatsToPhone = uptimeLastMs;
         }
@@ -48,7 +52,8 @@ bool DeviceTelemetryModule::handleReceivedProtobuf(const meshtastic_MeshPacket &
     if (config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER)
         return false;
 
-    if (t->which_variant == meshtastic_Telemetry_device_metrics_tag) {
+    if (t->which_variant == meshtastic_Telemetry_device_metrics_tag)
+    {
 #if defined(DEBUG_PORT) && !defined(DEBUG_MUTE)
         const char *sender = getSenderShortName(mp);
 
@@ -63,23 +68,30 @@ bool DeviceTelemetryModule::handleReceivedProtobuf(const meshtastic_MeshPacket &
 
 meshtastic_MeshPacket *DeviceTelemetryModule::allocReply()
 {
-    if (currentRequest) {
+    if (currentRequest)
+    {
         auto req = *currentRequest;
         const auto &p = req.decoded;
         meshtastic_Telemetry scratch;
         meshtastic_Telemetry *decoded = NULL;
         memset(&scratch, 0, sizeof(scratch));
-        if (pb_decode_from_bytes(p.payload.bytes, p.payload.size, &meshtastic_Telemetry_msg, &scratch)) {
+        if (pb_decode_from_bytes(p.payload.bytes, p.payload.size, &meshtastic_Telemetry_msg, &scratch))
+        {
             decoded = &scratch;
-        } else {
+        }
+        else
+        {
             LOG_ERROR("Error decoding DeviceTelemetry module!");
             return NULL;
         }
         // Check for a request for device metrics
-        if (decoded->which_variant == meshtastic_Telemetry_device_metrics_tag) {
+        if (decoded->which_variant == meshtastic_Telemetry_device_metrics_tag)
+        {
             LOG_INFO("Device telemetry reply to request");
             return allocDataProtobuf(getDeviceTelemetry());
-        } else if (decoded->which_variant == meshtastic_Telemetry_local_stats_tag) {
+        }
+        else if (decoded->which_variant == meshtastic_Telemetry_local_stats_tag)
+        {
             LOG_INFO("Device telemetry reply w/ LocalStats to request");
             return allocDataProtobuf(getLocalStatsTelemetry());
         }
@@ -121,14 +133,16 @@ meshtastic_Telemetry DeviceTelemetryModule::getLocalStatsTelemetry()
     telemetry.variant.local_stats.air_util_tx = airTime->utilizationTXPercent();
     telemetry.variant.local_stats.num_online_nodes = numOnlineNodes;
     telemetry.variant.local_stats.num_total_nodes = nodeDB->getNumMeshNodes();
-    if (RadioLibInterface::instance) {
+    if (RadioLibInterface::instance)
+    {
         telemetry.variant.local_stats.num_packets_tx = RadioLibInterface::instance->txGood;
         telemetry.variant.local_stats.num_packets_rx = RadioLibInterface::instance->rxGood + RadioLibInterface::instance->rxBad;
         telemetry.variant.local_stats.num_packets_rx_bad = RadioLibInterface::instance->rxBad;
         telemetry.variant.local_stats.num_tx_relay = RadioLibInterface::instance->txRelay;
     }
 #ifdef ARCH_PORTDUINO
-    if (SimRadio::instance) {
+    if (SimRadio::instance)
+    {
         telemetry.variant.local_stats.num_packets_tx = SimRadio::instance->txGood;
         telemetry.variant.local_stats.num_packets_rx = SimRadio::instance->rxGood + SimRadio::instance->rxBad;
         telemetry.variant.local_stats.num_packets_rx_bad = SimRadio::instance->rxBad;
@@ -138,7 +152,8 @@ meshtastic_Telemetry DeviceTelemetryModule::getLocalStatsTelemetry()
     telemetry.variant.local_stats.heap_total_bytes = memGet.getHeapSize();
     telemetry.variant.local_stats.heap_free_bytes = memGet.getFreeHeap();
 #endif
-    if (router) {
+    if (router)
+    {
         telemetry.variant.local_stats.num_rx_dupe = router->rxDupe;
         telemetry.variant.local_stats.num_tx_relay_canceled = router->txRelayCanceled;
     }
@@ -178,10 +193,13 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 
     nodeDB->updateTelemetry(nodeDB->getNodeNum(), telemetry, RX_SRC_LOCAL);
-    if (phoneOnly) {
+    if (phoneOnly)
+    {
         LOG_INFO("Send packet to phone");
         service->sendToPhone(p);
-    } else {
+    }
+    else
+    {
         LOG_INFO("Send packet to mesh");
         service->sendToMesh(p, RX_SRC_LOCAL, true);
     }

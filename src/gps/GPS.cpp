@@ -553,6 +553,7 @@ static const int rareSerialSpeeds[3] = {4800, 57600, GPS_BAUDRATE};
  */
 bool GPS::setup()
 {
+    LOG_INFO("setup GPS,didSerialInit = %d", didSerialInit);
     if (!didSerialInit)
     {
         int msglen = 0;
@@ -1278,6 +1279,7 @@ int32_t GPS::runOnce()
     if (!GPSInitFinished)
     {
         LOG_INFO("GPS not initialized, running probe");
+        LOG_INFO("_serial_gps = %p,config.position.gps_mode = %d", _serial_gps, config.position.gps_mode);
         if (!_serial_gps || config.position.gps_mode == meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
         {
             LOG_INFO("GPS set to not-present. Skip probe");
@@ -1289,7 +1291,7 @@ int32_t GPS::runOnce()
             return 2000; // Setup failed, re-run in two seconds
         }
 
-        config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; // 强制启动GNSS
+        // config.position.gps_mode = meshtastic_Config_PositionConfig_GpsMode_ENABLED; // 强制启动GNSS
         // We have now loaded our saved preferences from flash
         if (config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_ENABLED)
         {

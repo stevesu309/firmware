@@ -511,6 +511,7 @@ namespace graphics
         }
         else
         {
+            dispdev->setBrightness(71);
             brightness = uiconfig.screen_brightness;
         }
 
@@ -973,15 +974,15 @@ namespace graphics
 #endif
 
         // Declare this early so it’s available in FOCUS_PRESERVE block
-        bool willInsertTextMessage = shouldDrawMessage(&devicestate.rx_text_message);
+        // bool willInsertTextMessage = shouldDrawMessage(&devicestate.rx_text_message);
 
-        fsi.positions.home = numframes;
-        normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
-        indicatorIcons.push_back(icon_home);
+        // fsi.positions.home = numframes;
+        // normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
+        // indicatorIcons.push_back(icon_home);
 
-        fsi.positions.textMessage = numframes;
-        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
-        indicatorIcons.push_back(icon_mail);
+        // fsi.positions.textMessage = numframes;
+        // normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
+        // indicatorIcons.push_back(icon_mail);
 
 #if defined(RED_BANK_S3)
         validChannelCount = 0;
@@ -1600,14 +1601,7 @@ namespace graphics
             ui->update();
 
             menuHandler::handleMenuSwitch(dispdev);
-// #ifdef RED_BANK_S3
-//             // RED_BANK_S3: 菜单选择后退出菜单状态
-//             if (redBankController && redBankController->isMenuActive()) {
-//                 redBankController->setMenuActive(false);
-//             }
-// #endif
 #ifdef RED_BANK_S3
-            // RED_BANK_S3: 只有在菜单真正关闭时才退出菜单状态
             // 检查菜单是否仍然显示，如果不显示则退出菜单状态
             if (redBankController && redBankController->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing())
             {

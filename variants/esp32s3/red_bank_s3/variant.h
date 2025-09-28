@@ -1,4 +1,4 @@
-#define RED_BANK_S3
+// #define RED_BANK_S3
 
 // #define I2C_SDA 5
 // #define I2C_SCL 4

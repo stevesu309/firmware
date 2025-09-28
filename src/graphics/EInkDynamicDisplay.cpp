@@ -26,7 +26,6 @@ EInkDynamicDisplay::~EInkDynamicDisplay()
 // Screen requests a BACKGROUND frame
 void EInkDynamicDisplay::display()
 {
-    LOG_INFO("EInkDynamicDisplay::display() called");
     addFrameFlag(BACKGROUND);
     update();
 }
@@ -53,6 +52,9 @@ void EInkDynamicDisplay::configForFastRefresh()
 #if defined(PRIVATE_HW)
 #else
     // Otherwise:
+#ifdef RED_BANK_S3
+    adafruitDisplay->fillRect(0, 0, adafruitDisplay->width(), adafruitDisplay->height(), GxEPD_WHITE);
+#endif
     adafruitDisplay->setPartialWindow(0, 0, adafruitDisplay->width(), adafruitDisplay->height());
 #endif
 }

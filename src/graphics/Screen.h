@@ -684,7 +684,6 @@ namespace graphics
         void handleShowNextPacket();
         void handleShowPrevPacket();
 #endif
-        void handlePrint(const char *text);
         void handleStartFirmwareUpdateScreen();
 
         // Info collected by setFrames method.

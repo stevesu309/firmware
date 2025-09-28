@@ -8,7 +8,8 @@
 #include "graphics/ScreenFonts.h"
 #include "graphics/fonts/OLEDDisplayFontsAR.h"
 #include "OLEDDisplay.h"
-
+#include <U8g2lib.h>
+#include "graphics/fonts/ChineseFont.h"
 #define MAX_VALID_CHANNELS 8
 int validChannelIndices[MAX_VALID_CHANNELS];
 int validChannelCount = 0;
@@ -94,8 +95,10 @@ namespace graphics
     /// Draw the last text message we received
     void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-#if 0
-      display->drawStringUTF8(0, 80, "你好世界否夫哦一万丈事情Hello World");
+#if 1
+      drawChineseStringWithLineBreak(display, 10, 30, "的一是不了在人有我他这为之大来以个中上们到说国和地也子时道出而要于就下得可你年生自会那后能对着事其里所去行过家十用\n这是第二行测试文本\n第三行包含中英文混合：Hello World 测试");
+      // display->drawStringUTF8(0, 80, "你好世界 Hello World 测试中文显示");
+
 #else
       // the max length of this buffer is much longer than we can possibly print
       static char tempBuf[237];
@@ -111,7 +114,9 @@ namespace graphics
       {
         std::swap(width, height);
       }
-
+      // display->setColor(EINK_WHITE);
+      // display->fillRect(0, 0, display->getWidth(), display->getHeight());
+      // display->setColor(EINK_BLACK);
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
@@ -122,6 +127,7 @@ namespace graphics
       display->setFont(selectedFont);
       if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
       {
+        LOG_INFO("config.display.displaymode == INVERTED\n");
         display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + selectedFontHeight);
         display->setColor(BLACK);
       }
@@ -129,7 +135,7 @@ namespace graphics
       // added by QCB begin
       if (validChannelCount == 0)
       {
-        LOG_INFO("validChannelCount1 = %d\n", validChannelCount);
+        LOG_INFO("validChannelCount = 0\n");
         return;
       }
 
@@ -141,11 +147,10 @@ namespace graphics
         return;
       }
       char title[23];
-      // 横屏模式使用完整标题
       snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
 
       display->setTextAlignment(TEXT_ALIGN_CENTER);
-      display->setFont(selectedFont);
+      // display->setFont(selectedFont);
       display->drawString(x + width / 2, y, title);
 
       // display channel name
@@ -189,19 +194,17 @@ namespace graphics
           name = "Long_fast";
           break;
         }
+        if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
+          snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
+        else
+          snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
       }
-      LOG_INFO("selectedFontHeight %d name: %s\n", selectedFontHeight, name);
-      if (channelFile.channels[localActualChannelIndex].role == meshtastic_Channel_Role_PRIMARY)
-        snprintf(displayName, sizeof(displayName), "Pri Ch: %s", name);
-      else
-        snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
       // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
       // EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
       display->setTextAlignment(TEXT_ALIGN_LEFT);
-      display->setFont(selectedFont); // 确保channel名称也使用选中的字体
 
-      // display->drawString(x + 5, y + selectedFontHeight, displayName);
-      display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
+      display->drawString(x + 5, y + selectedFontHeight, displayName);
+      // display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
 
       display->setTextAlignment(TEXT_ALIGN_RIGHT);
 
@@ -241,7 +244,6 @@ namespace graphics
       bool useTimestamp = deltaToTimestamp(seconds, &timestampHours, &timestampMinutes, &daysAgo);
 
       // If bold, draw twice, shifting right by one pixel
-      display->setFont(selectedFont); // 确保时间戳也使用选中的字体
       for (uint8_t xOff = 0; xOff <= (config.display.heading_bold ? 1 : 0); xOff++)
       {
         // Show a timestamp if received today, but longer than 15 minutes ago
@@ -265,12 +267,9 @@ namespace graphics
         }
       }
 
-      display->setColor(WHITE);
-      display->setFont(selectedFont); // 确保消息内容也使用选中的字体
-
       snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
       // display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
-      display->drawStringUTF8(0 + x, 0 + y + selectedFontHeight, tempBuf);
+      drawChineseString(display, 0 + x, 0 + y + selectedFontHeight, tempBuf);
 
 #endif
 #endif
