@@ -57,15 +57,27 @@ namespace RedBankS3
         bool escPressed = (key1_current == KeypadKey::ESC);
         bool upPressed = (key1_current == KeypadKey::UP);
         bool downPressed = (key2_current == KeypadKey::DOWN);
+
         // LEFT 按键处理
-        // if (leftPressed && !leftButtonPressed)
-        // {
-        //     handleLeftButtonPress();
-        // }
-        // else if (!leftPressed && leftButtonPressed)
-        // {
-        //     handleleftButtonRelease();
-        // }
+        if (leftPressed && !leftButtonPressed)
+        {
+            handleLeftButtonPress();
+        }
+        else if (!leftPressed && leftButtonPressed)
+        {
+            handleLeftButtonRelease();
+        }
+
+        // RIGHT 按键处理
+        if (rightPressed && !rightButtonPressed)
+        {
+            handleRightButtonPress();
+        }
+        else if (!rightPressed && rightButtonPressed)
+        {
+            handleRightButtonRelease();
+        }
+
         // ENTER 按键处理
         if (enterPressed && !enterButtonPressed)
         {
@@ -224,7 +236,6 @@ namespace RedBankS3
 #ifdef RED_BANK_S3
         // 使用天线管理器处理天线切换
         AntennaManager::switchAntennaForRegion(config.lora.region);
-        scanAdcKeypad(); // ADC按键扫描
 
         // LEFT+UP = 左旋，RIGHT+UP = 右旋
         static bool leftUpCombo = false;
@@ -266,40 +277,45 @@ namespace RedBankS3
         // 检查是否有组合按键被触发，如果有则跳过单独按键处理
         bool comboTriggered = leftUpCombo || rightUpCombo;
 
-        if (screen)
+        if (!comboTriggered)
         {
-            delay(200);
-            if (!comboTriggered)
-            {
-                // 按键处理通过scanAdcKeypad()函数完成
-                switch (key2_last)
-                {
-                case KeypadKey::LEFT:
-                    screen->showPrevFrame();
-                    break;
-                case KeypadKey::RIGHT:
-                    // screen->showNextFrame();
-                    InputEvent event;
-                    event.inputEvent = INPUT_BROKER_RIGHT;
-                    event.source = "RedBankController";
-                    event.kbchar = 0;
-                    event.touchX = 0;
-                    event.touchY = 0;
-                    inputBroker->injectInputEvent(&event);
-                    menuActive = false;
-                    LOG_INFO("INPUT_BROKER_RIGHT event injected");
-
-                    break;
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                // 组合按键被触发时，记录调试信息
-                LOG_DEBUG("Combo key active, skipping individual key processing");
-            }
+            scanAdcKeypad(); // ADC按键扫描
         }
+
+        // if (screen)
+        // {
+        //     delay(200);
+        //     if (!comboTriggered)
+        //     {
+        //         // 按键处理通过scanAdcKeypad()函数完成
+        //         switch (key2_last)
+        //         {
+        //         case KeypadKey::LEFT:
+        //             screen->showPrevFrame();
+        //             break;
+        //         case KeypadKey::RIGHT:
+        //             // screen->showNextFrame();
+        //             InputEvent event;
+        //             event.inputEvent = INPUT_BROKER_RIGHT;
+        //             event.source = "RedBankController";
+        //             event.kbchar = 0;
+        //             event.touchX = 0;
+        //             event.touchY = 0;
+        //             inputBroker->injectInputEvent(&event);
+        //             menuActive = false;
+        //             LOG_INFO("INPUT_BROKER_RIGHT event injected");
+
+        //             break;
+        //         default:
+        //             break;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         // 组合按键被触发时，记录调试信息
+        //         LOG_DEBUG("Combo key active, skipping individual key processing");
+        //     }
+        // }
 #endif
     }
 
@@ -436,7 +452,7 @@ namespace RedBankS3
         LOG_DEBUG("LEFT button pressed");
     }
 
-    void RedBankController::handleleftButtonRelease()
+    void RedBankController::handleLeftButtonRelease()
     {
         if (!leftButtonPressed)
             return;
@@ -444,10 +460,81 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - leftButtonPressTime;
         leftButtonPressed = false;
 
-        if (pressDuration < LONG_PRESS_THRESHOLD)
+        LOG_DEBUG("LEFT button released after %d ms", pressDuration);
+
+        // 检查是否在overlay banner（地区选择菜单等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive)
         {
-            EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
-            einkDisplay->fillScreen(1);
+            // 在overlay banner状态下，LEFT短按映射为UP（向上选择）
+            if (pressDuration < LONG_PRESS_THRESHOLD)
+            {
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_UP;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Overlay active: LEFT -> UP (Previous option)");
+            }
+        }
+        else
+        {
+            // 在正常状态下的LEFT按键行为（如果需要的话）
+            if (pressDuration < LONG_PRESS_THRESHOLD)
+            {
+                LOG_INFO("Normal: LEFT short press");
+                screen->showPrevFrame();
+            }
+        }
+    }
+
+    // RIGHT 按键处理函数
+    void RedBankController::handleRightButtonPress()
+    {
+        rightButtonPressed = true;
+        rightButtonPressTime = millis();
+        LOG_DEBUG("RIGHT button pressed");
+    }
+
+    void RedBankController::handleRightButtonRelease()
+    {
+        if (!rightButtonPressed)
+            return;
+
+        uint32_t pressDuration = millis() - rightButtonPressTime;
+        rightButtonPressed = false;
+
+        LOG_DEBUG("RIGHT button released after %d ms", pressDuration);
+
+        // 检查是否在overlay banner（地区选择菜单等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive)
+        {
+            // 在overlay banner状态下，RIGHT短按映射为DOWN（向下选择）
+            if (pressDuration < LONG_PRESS_THRESHOLD)
+            {
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_DOWN;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Overlay active: RIGHT -> DOWN (Next option)");
+            }
+        }
+        else
+        {
+            // 在正常状态下的RIGHT按键行为（如果需要的话）
+            if (pressDuration < LONG_PRESS_THRESHOLD)
+            {
+                LOG_INFO("Normal: RIGHT short press");
+                screen->showNextFrame();
+            }
         }
     }
 
@@ -469,9 +556,12 @@ namespace RedBankS3
 
         LOG_DEBUG("ENTER button released after %d ms", pressDuration);
 
-        if (menuActive)
+        // 检查是否在overlay banner（地区选择菜单等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive || menuActive)
         {
-            // 在菜单状态下，短按ENTER确定选择
+            // 在overlay banner或菜单状态下，短按ENTER确定选择
             if (pressDuration < LONG_PRESS_THRESHOLD)
             {
                 InputEvent event;
@@ -481,7 +571,7 @@ namespace RedBankS3
                 event.touchX = 0;
                 event.touchY = 0;
                 inputBroker->injectInputEvent(&event);
-                LOG_INFO("Menu: Short press - Select option");
+                LOG_INFO("Overlay/Menu: Short press - Select option");
             }
         }
         else

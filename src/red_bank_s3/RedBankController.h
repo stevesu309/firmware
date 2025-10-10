@@ -45,18 +45,20 @@ namespace RedBankS3
         uint8_t getCurrentRotation() { return currentRotation; }; // 获取当前旋转角度
 
         // 菜单按钮相关
-        void handleLeftButtonPress();    // 处理 LEFT 按键按下
-        void handleleftButtonRelease();  // 处理 LEFT 按键释放
-        void handleEnterButtonPress();   // 处理 ENTER 按键按下
-        void handleEnterButtonRelease(); // 处理 ENTER 按键释放
-        void handleEscButtonPress();     // 处理 ESC 按键按下
-        void handleEscButtonRelease();   // 处理 ESC 按键释放
-        void handleUpButtonPress();      // 处理 UP 按键按下
-        void handleUpButtonRelease();    // 处理 UP 按键释放
-        void handleDownButtonPress();    // 处理 DOWN 按键按下
-        void handleDownButtonRelease();  // 处理 DOWN 按键释放
-        bool isMenuActive();             // 检查菜单是否激活
-        void setMenuActive(bool active); // 设置菜单激活状态
+        void handleLeftButtonPress();     // 处理 LEFT 按键按下
+        void handleLeftButtonRelease();   // 处理 LEFT 按键释放
+        void handleRightButtonPress();    // 处理 RIGHT 按键按下
+        void handleRightButtonRelease();  // 处理 RIGHT 按键释放
+        void handleEnterButtonPress();    // 处理 ENTER 按键按下
+        void handleEnterButtonRelease();  // 处理 ENTER 按键释放
+        void handleEscButtonPress();      // 处理 ESC 按键按下
+        void handleEscButtonRelease();    // 处理 ESC 按键释放
+        void handleUpButtonPress();       // 处理 UP 按键按下
+        void handleUpButtonRelease();     // 处理 UP 按键释放
+        void handleDownButtonPress();     // 处理 DOWN 按键按下
+        void handleDownButtonRelease();   // 处理 DOWN 按键释放
+        bool isMenuActive();              // 检查菜单是否激活
+        void setMenuActive(bool active);  // 设置菜单激活状态
     private:
         // 消息列表容量
         static const int MESH_PACKET_LIST_CAPCITY = 10;

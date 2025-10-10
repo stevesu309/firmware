@@ -974,15 +974,15 @@ namespace graphics
 #endif
 
         // Declare this early so it’s available in FOCUS_PRESERVE block
-        // bool willInsertTextMessage = shouldDrawMessage(&devicestate.rx_text_message);
+        bool willInsertTextMessage = shouldDrawMessage(&devicestate.rx_text_message);
 
-        // fsi.positions.home = numframes;
-        // normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
-        // indicatorIcons.push_back(icon_home);
+        fsi.positions.home = numframes;
+        normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
+        indicatorIcons.push_back(icon_home);
 
-        // fsi.positions.textMessage = numframes;
-        // normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
-        // indicatorIcons.push_back(icon_mail);
+        fsi.positions.textMessage = numframes;
+        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
+        indicatorIcons.push_back(icon_mail);
 
 #if defined(RED_BANK_S3)
         validChannelCount = 0;

@@ -8,8 +8,8 @@
 #include "graphics/ScreenFonts.h"
 #include "graphics/fonts/OLEDDisplayFontsAR.h"
 #include "OLEDDisplay.h"
-#include <U8g2lib.h>
 #include "graphics/fonts/ChineseFont.h"
+#include "PowerStatus.h"
 #define MAX_VALID_CHANNELS 8
 int validChannelIndices[MAX_VALID_CHANNELS];
 int validChannelCount = 0;
@@ -97,7 +97,44 @@ namespace graphics
     {
 #if 1
       drawChineseStringWithLineBreak(display, 10, 30, "的一是不了在人有我他这为之大来以个中上们到说国和地也子时道出而要于就下得可你年生自会那后能对着事其里所去行过家十用\n这是第二行测试文本\n第三行包含中英文混合：Hello World 测试");
-      // display->drawStringUTF8(0, 80, "你好世界 Hello World 测试中文显示");
+
+      // 显示电池电压信息
+      if (powerStatus)
+      {
+        int batteryVoltageMv = powerStatus->getBatteryVoltageMv();
+        int chargePercent = powerStatus->getBatteryChargePercent();
+        bool isCharging = powerStatus->getIsCharging();
+        bool usbPowered = powerStatus->getHasUSB();
+
+        char batteryInfo[64];
+        if (chargePercent == 101)
+        {
+          snprintf(batteryInfo, sizeof(batteryInfo), "External power supply: %.2fV", batteryVoltageMv / 1000.0f);
+        }
+        else if (chargePercent == 0)
+        {
+          snprintf(batteryInfo, sizeof(batteryInfo), "Unknown battery: %.2fV", batteryVoltageMv / 1000.0f);
+        }
+        else
+        {
+          if (isCharging)
+          {
+            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% Charging in progress %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
+          }
+          else if (usbPowered)
+          {
+            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% USB power supply %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
+          }
+          else
+          {
+            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
+          }
+        }
+
+        drawChineseStringWithLineBreak(display, 10, 120, batteryInfo);
+        delay(1000);
+        LOG_INFO("batteryInfo = %s\n", batteryInfo);
+      }
 
 #else
       // the max length of this buffer is much longer than we can possibly print
@@ -204,7 +241,6 @@ namespace graphics
       display->setTextAlignment(TEXT_ALIGN_LEFT);
 
       display->drawString(x + 5, y + selectedFontHeight, displayName);
-      // display->drawStringUTF8(x + 5, y + selectedFontHeight, displayName);
 
       display->setTextAlignment(TEXT_ALIGN_RIGHT);
 

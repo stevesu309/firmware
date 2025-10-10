@@ -764,8 +764,8 @@ bool GPS::setup()
             // Configure NMEA (sentences will output once per fix)
             _serial_gps->write("$PAIR062,0,1*3F\r\n"); // GGA ON
             _serial_gps->write("$PAIR062,1,0*3F\r\n"); // GLL OFF
-            _serial_gps->write("$PAIR062,2,0*3C\r\n"); // GSA OFF
-            _serial_gps->write("$PAIR062,3,0*3D\r\n"); // GSV OFF
+            _serial_gps->write("$PAIR062,2,1*3D\r\n"); // GSA ON (用于获取定位类型)
+            _serial_gps->write("$PAIR062,3,1*3C\r\n"); // GSV ON (用于查看卫星信息)
             _serial_gps->write("$PAIR062,4,1*3B\r\n"); // RMC ON
             _serial_gps->write("$PAIR062,5,0*3B\r\n"); // VTG OFF
             _serial_gps->write("$PAIR062,6,0*38\r\n"); // ZDA ON
@@ -1247,34 +1247,34 @@ void GPS::publishUpdate()
 
 int32_t GPS::runOnce()
 {
-    // 强制重置
-    static bool firstRun = true;
-    static uint32_t lastResetTime = 0;
+    // // 强制重置
+    // static bool firstRun = true;
+    // static uint32_t lastResetTime = 0;
 
-    if (firstRun)
-    {
-        LOG_INFO("First GPS runOnce after system restart, ensuring clean state");
-        GPSInitFinished = false;
-        GPSInitStarted = false;
-        hasValidLocation = false;
-        hasGPS = false;
-        shouldPublish = false;
-        powerState = GPS_OFF;
-        speedSelect = 0;
-        probeTries = 0;
-        gnssModel = GNSS_MODEL_UNKNOWN;
-        didSerialInit = false;
-        lastResetTime = millis();
-        firstRun = false;
-    }
+    // if (firstRun)
+    // {
+    //     LOG_INFO("First GPS runOnce after system restart, ensuring clean state");
+    //     GPSInitFinished = false;
+    //     GPSInitStarted = false;
+    //     hasValidLocation = false;
+    //     hasGPS = false;
+    //     shouldPublish = false;
+    //     powerState = GPS_OFF;
+    //     speedSelect = 0;
+    //     probeTries = 0;
+    //     gnssModel = GNSS_MODEL_UNKNOWN;
+    //     didSerialInit = false;
+    //     lastResetTime = millis();
+    //     firstRun = false;
+    // }
 
-    if (millis() - lastResetTime > 30000 && GPSInitFinished)
-    {
-        LOG_INFO("GPS state seems stale, forcing reset");
-        GPSInitFinished = false;
-        GPSInitStarted = false;
-        lastResetTime = millis();
-    }
+    // if (millis() - lastResetTime > 30000 && GPSInitFinished)
+    // {
+    //     LOG_INFO("GPS state seems stale, forcing reset");
+    //     GPSInitFinished = false;
+    //     GPSInitStarted = false;
+    //     lastResetTime = millis();
+    // }
 
     if (!GPSInitFinished)
     {
@@ -1480,35 +1480,34 @@ GnssModel_t GPS::probe(int serialSpeed)
     std::vector<ChipInfo> mtk = {{"L76B", "Quectel-L76B", GNSS_MODEL_MTK_L76B}, {"PA1010D", "1010D", GNSS_MODEL_MTK_PA1010D}, {"PA1616S", "1616S", GNSS_MODEL_MTK_PA1616S}, {"LS20031", "MC-1513", GNSS_MODEL_MTK_L76B}, {"L96", "Quectel-L96", GNSS_MODEL_MTK_L76B}, {"L80-R", "_3337_", GNSS_MODEL_MTK_L76B}, {"L80", "_3339_", GNSS_MODEL_MTK_L76B}};
 
     PROBE_FAMILY("MTK Family", "$PMTK605*31", mtk, 500);
-    uint32_t start = millis();
-    int pos = 0;
-    LOG_INFO("Finished scanning for MTK family, waiting for response...");
-    _serial_gps->write("$PAIR002*38\r\n");
+    // uint32_t start = millis();
+    // int pos = 0;
+    // LOG_INFO("Finished scanning for MTK family, waiting for response...");
+    // _serial_gps->write("$PAIR002*38\r\n");
 
-    delay(200);
+    // delay(200);
 
-    _serial_gps->write("$PAIR020*38\r\n");
-    while (millis() - start < 2000 && pos < sizeof(buffer) - 1)
-    {
-        if (_serial_gps->available())
-        {
-            char c = _serial_gps->read();
-            char iiii = Serial.readBytes((char *)&c, 1);
-            LOG_INFO("Read %d bytes from GPS", iiii);
-            buffer[pos++] = c;
-            buffer[pos] = 0;
-            LOG_INFO("Read char: %02X (%c)", (uint8_t)c, (c >= 32 && c < 127) ? c : '.');
+    // _serial_gps->write("$PAIR020*38\r\n");
+    // while (millis() - start < 2000 && pos < sizeof(buffer) - 1)
+    // {
+    //     if (_serial_gps->available())
+    //     {
+    //         char c = _serial_gps->read();
+    //         // char iiii = Serial.readBytes((char *)&c, 1);
+    //         // LOG_INFO("Read %d bytes from GPS", iiii);
+    //         buffer[pos++] = c;
+    //         buffer[pos] = 0;
+    //         LOG_INFO("Read char: %02X (%c)", (uint8_t)c, (c >= 32 && c < 127) ? c : '.');
 
-            if (strstr((const char *)buffer, "$PAIR020"))
-            {
-                LOG_INFO("Detected: %s", buffer);
-                break;
-            }
-        }
-    }
-    LOG_INFO("_serial_gps->available(): %d", _serial_gps->available());
+    //         if (strstr((const char *)buffer, "$PAIR020"))
+    //         {
+    //             LOG_INFO("Detected: %s", buffer);
+    //             break;
+    //         }
+    //     }
+    // }
+    // LOG_INFO("_serial_gps->available(): %d", _serial_gps->available());
 
-#if 1
     uint8_t cfg_rate[] = {0xB5, 0x62, 0x06, 0x08, 0x00, 0x00, 0x00, 0x00};
     UBXChecksum(cfg_rate, sizeof(cfg_rate));
     clearBuffer();
@@ -1626,7 +1625,6 @@ GnssModel_t GPS::probe(int serialSpeed)
         }
     }
     LOG_WARN("No GNSS Module22 (baudrate %d)", serialSpeed);
-#endif
 
     return GNSS_MODEL_UNKNOWN;
 }

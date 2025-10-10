@@ -268,7 +268,7 @@ bool EInkDisplay::connect()
         // 先进行全屏清屏，确保没有残影
         // adafruitDisplay->fillScreen(GxEPD_WHITE);
         // adafruitDisplay->display(false); // 全屏刷新清屏
-        // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
+        adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
         // adafruitDisplay->fillRect(0, 0, displayWidth, displayHeight, GxEPD_WHITE);
         // adafruitDisplay->setRotation(3);
         // this->displayWidth = 176;
