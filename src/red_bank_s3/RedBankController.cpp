@@ -467,7 +467,6 @@ namespace RedBankS3
 
         if (isOverlayActive)
         {
-            // 在overlay banner状态下，LEFT短按映射为UP（向上选择）
             if (pressDuration < LONG_PRESS_THRESHOLD)
             {
                 InputEvent event;
@@ -482,7 +481,6 @@ namespace RedBankS3
         }
         else
         {
-            // 在正常状态下的LEFT按键行为（如果需要的话）
             if (pressDuration < LONG_PRESS_THRESHOLD)
             {
                 LOG_INFO("Normal: LEFT short press");
@@ -529,7 +527,6 @@ namespace RedBankS3
         }
         else
         {
-            // 在正常状态下的RIGHT按键行为（如果需要的话）
             if (pressDuration < LONG_PRESS_THRESHOLD)
             {
                 LOG_INFO("Normal: RIGHT short press");

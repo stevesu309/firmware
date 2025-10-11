@@ -1465,10 +1465,11 @@ GnssModel_t GPS::probe(int serialSpeed)
     _serial_gps->write("$PAIR062,2,0*3C\r\n"); // GSA OFF to reduce volume
     _serial_gps->write("$PAIR062,3,0*3D\r\n"); // GSV OFF to reduce volume
     _serial_gps->write("$PAIR513*3D\r\n");     // save configuration
-    std::vector<ChipInfo> airoha = {{"AG3335", "$PAIR021,AG3335", GNSS_MODEL_AG3335},
-                                    {"AG3352", "$PAIR021,AG3352", GNSS_MODEL_AG3352},
-                                    {"RYS3520", "$PAIR021,REYAX_RYS3520_V2", GNSS_MODEL_AG3352},
-                                    {"SIM65M", "$PAIR021,AG3352Q_V2", GNSS_MODEL_AG3352}};
+    std::vector<ChipInfo> airoha = {
+        {"AG3335", "$PAIR021,AG3335", GNSS_MODEL_AG3335},
+        {"AG3352", "$PAIR021,AG3352", GNSS_MODEL_AG3352},
+        {"RYS3520", "$PAIR021,REYAX_RYS3520_V2", GNSS_MODEL_AG3352},
+    };
     PROBE_FAMILY("Airoha Family", "$PAIR021*39", airoha, 10000);
 
     PROBE_SIMPLE("LC86", "$PQTMVERNO*58", "$PQTMVERNO,LC86", GNSS_MODEL_AG3352, 500);
@@ -1480,33 +1481,31 @@ GnssModel_t GPS::probe(int serialSpeed)
     std::vector<ChipInfo> mtk = {{"L76B", "Quectel-L76B", GNSS_MODEL_MTK_L76B}, {"PA1010D", "1010D", GNSS_MODEL_MTK_PA1010D}, {"PA1616S", "1616S", GNSS_MODEL_MTK_PA1616S}, {"LS20031", "MC-1513", GNSS_MODEL_MTK_L76B}, {"L96", "Quectel-L96", GNSS_MODEL_MTK_L76B}, {"L80-R", "_3337_", GNSS_MODEL_MTK_L76B}, {"L80", "_3339_", GNSS_MODEL_MTK_L76B}};
 
     PROBE_FAMILY("MTK Family", "$PMTK605*31", mtk, 500);
-    // uint32_t start = millis();
-    // int pos = 0;
-    // LOG_INFO("Finished scanning for MTK family, waiting for response...");
-    // _serial_gps->write("$PAIR002*38\r\n");
+    uint32_t start = millis();
+    int pos = 0;
+    LOG_INFO("Finished scanning for MTK family, waiting for response...");
+    _serial_gps->write("$PAIR002*38\r\n");
 
-    // delay(200);
+    delay(200);
 
-    // _serial_gps->write("$PAIR020*38\r\n");
-    // while (millis() - start < 2000 && pos < sizeof(buffer) - 1)
-    // {
-    //     if (_serial_gps->available())
-    //     {
-    //         char c = _serial_gps->read();
-    //         // char iiii = Serial.readBytes((char *)&c, 1);
-    //         // LOG_INFO("Read %d bytes from GPS", iiii);
-    //         buffer[pos++] = c;
-    //         buffer[pos] = 0;
-    //         LOG_INFO("Read char: %02X (%c)", (uint8_t)c, (c >= 32 && c < 127) ? c : '.');
+    _serial_gps->write("$PAIR020*38\r\n");
+    while (millis() - start < 2000 && pos < sizeof(buffer) - 1)
+    {
+        if (_serial_gps->available())
+        {
+            char c = _serial_gps->read();
+            buffer[pos++] = c;
+            buffer[pos] = 0;
+            LOG_INFO("Read char: %02X (%c)", (uint8_t)c, (c >= 32 && c < 127) ? c : '.');
 
-    //         if (strstr((const char *)buffer, "$PAIR020"))
-    //         {
-    //             LOG_INFO("Detected: %s", buffer);
-    //             break;
-    //         }
-    //     }
-    // }
-    // LOG_INFO("_serial_gps->available(): %d", _serial_gps->available());
+            if (strstr((const char *)buffer, "$PAIR020"))
+            {
+                LOG_INFO("Detected: %s", buffer);
+                break;
+            }
+        }
+    }
+    LOG_INFO("_serial_gps->available(): %d", _serial_gps->available());
 
     uint8_t cfg_rate[] = {0xB5, 0x62, 0x06, 0x08, 0x00, 0x00, 0x00, 0x00};
     UBXChecksum(cfg_rate, sizeof(cfg_rate));
@@ -1649,6 +1648,7 @@ GnssModel_t GPS::getProbeResponse(unsigned long timeout, const std::vector<ChipI
                     if (strstr(response.c_str(), chipInfo.detectionString.c_str()) != nullptr)
                     {
                         LOG_INFO("chip %s detected", chipInfo.chipName.c_str());
+                        LOG_INFO("response: %s", response.c_str());
                         return chipInfo.driver;
                     }
                 }

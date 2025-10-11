@@ -52,9 +52,6 @@ void EInkDynamicDisplay::configForFastRefresh()
 #if defined(PRIVATE_HW)
 #else
     // Otherwise:
-#ifdef RED_BANK_S3
-    adafruitDisplay->fillRect(0, 0, adafruitDisplay->width(), adafruitDisplay->height(), GxEPD_WHITE);
-#endif
     adafruitDisplay->setPartialWindow(0, 0, adafruitDisplay->width(), adafruitDisplay->height());
 #endif
 }
@@ -208,7 +205,6 @@ void EInkDynamicDisplay::checkInitialized()
         configForFullRefresh();
 
         // Clear any existing image, so we can draw logo with fast-refresh, but also to set GxEPD2_EPD::_initial_write
-        // adafruitDisplay3C->clearScreen(); //注释
         adafruitDisplay->clearScreen();
 
         LOG_DEBUG("initialized, ");
