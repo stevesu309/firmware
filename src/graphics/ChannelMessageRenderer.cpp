@@ -95,7 +95,7 @@ namespace graphics
     /// Draw the last text message we received
     void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-#if 1
+#if 0
       drawChineseStringWithLineBreak(display, 10, 30, "的一是不了在人有我他这为之大来以个中上们到说国和地也子时道出而要于就下得可你年生自会那后能对着事其里所去行过家十用\n这是第二行测试文本\n第三行包含中英文混合：Hello World 测试");
 
       // 显示电池电压信息
@@ -305,7 +305,7 @@ namespace graphics
 
       snprintf(tempBuf, sizeof(tempBuf), "%s", mp.decoded.payload.bytes);
       // display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
-      drawChineseString(display, 0 + x, 0 + y + selectedFontHeight, tempBuf);
+      drawChineseStringWithLineBreak(display, 0 + x, 0 + y + selectedFontHeight, tempBuf);
 
 #endif
 #endif

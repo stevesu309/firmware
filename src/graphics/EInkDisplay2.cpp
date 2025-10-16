@@ -261,21 +261,15 @@ bool EInkDisplay::connect()
         hspi->begin(PIN_EINK_SCLK, -1, PIN_EINK_MOSI, PIN_EINK_CS);
 
         LOG_DEBUG("Creating GxEPD2_270 driver");
-        auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, hspi);
-        adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
+        auto lowLevel = new GxEPD2_270_GDEY027T91(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY);
+        // auto lowLevel = new GxEPD2_270(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY);
+        lowLevel->selectSPI(*hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+        adafruitDisplay = new GxEPD2_BW<GxEPD2_270_GDEY027T91, GxEPD2_270_GDEY027T91::HEIGHT>(*lowLevel);
+        // adafruitDisplay = new GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT>(*lowLevel);
         adafruitDisplay->init(115200, true, 10, false);
         adafruitDisplay->setRotation(3);
-        // 先进行全屏清屏，确保没有残影
-        // adafruitDisplay->fillScreen(GxEPD_WHITE);
-        // adafruitDisplay->display(false); // 全屏刷新清屏
 
         // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
-
-        // adafruitDisplay->fillRect(0, 0, displayWidth, displayHeight, GxEPD_WHITE);
-        // adafruitDisplay->setRotation(3);
-        // this->displayWidth = 176;
-        // this->displayHeight = 264;
-        // adafruitDisplay->fillScreen(GxEPD_WHITE);
         LOG_DEBUG("Display initialized successfully");
     }
 #elif defined(PCA10059) || defined(ME25LS01)
