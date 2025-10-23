@@ -50,8 +50,11 @@ void EInkDynamicDisplay::configForFastRefresh()
 {
     // Variant-specific code can go here
 #if defined(PRIVATE_HW)
-#else
+#if defined(RED_BANK_S3)
+    adafruitDisplay->setPartialWindow(0, 0, adafruitDisplay->width(), adafruitDisplay->height());
+#endif
     // Otherwise:
+#else
     adafruitDisplay->setPartialWindow(0, 0, adafruitDisplay->width(), adafruitDisplay->height());
 #endif
 }
@@ -61,6 +64,9 @@ void EInkDynamicDisplay::configForFullRefresh()
 {
     // Variant-specific code can go here
 #if defined(PRIVATE_HW)
+#if defined(RED_BANK_S3)
+    adafruitDisplay->setFullWindow();
+#endif
 #else
     // Otherwise:
     adafruitDisplay->setFullWindow();

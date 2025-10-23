@@ -92,12 +92,7 @@ protected:
     GxEPD2_Multi<GXEPD2_DRIVER_0, GXEPD2_DRIVER_1> *adafruitDisplay = NULL;
 #else
     // AdafruitGFX display object (for single display model) - instantiated in connect(), variant specific
-#ifdef RED_BANK_S3
-    GxEPD2_BW<GxEPD2_270_GDEY027T91, GxEPD2_270_GDEY027T91::HEIGHT> *adafruitDisplay = NULL;
-    // GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> *adafruitDisplay = NULL;
-#else
     GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT> *adafruitDisplay = NULL;
-#endif
 #endif
 
     // If display uses HSPI

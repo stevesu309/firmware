@@ -268,8 +268,8 @@ public:
             localPosition.timestamp = position.timestamp > 0 ? position.timestamp : position.time;
             return;
         }
-        LOG_DEBUG("Set local position: lat=%i lon=%i time=%u timestamp=%u", position.latitude_i, position.longitude_i,
-                  position.time, position.timestamp);
+        // LOG_DEBUG("Set local position: lat=%i lon=%i time=%u timestamp=%u", position.latitude_i, position.longitude_i,
+        //           position.time, position.timestamp);
         localPosition = position;
     }
 

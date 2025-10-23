@@ -263,13 +263,18 @@ RTCSetResult perhapsSetRTC(RTCQuality q, struct tm &t)
     // tm_year从1900年开始计算
     if (t.tm_year < 0 || t.tm_year >= 300)
     {
-        LOG_WARN("Ignore invalid GPS year=%d (out of range)", t.tm_year + 1900);
+        // LOG_WARN("Ignore invalid GPS year=%d (out of range)", t.tm_year + 1900);
         return RTCSetResultInvalidTime;
     }
 
     if (t.tm_year < 120)
     { // 2020年
-        LOG_WARN("Ignore GPS time too old: year=%d", t.tm_year + 1900);
+        // LOG_WARN("Ignore GPS time too old: year=%d", t.tm_year + 1900);
+        return RTCSetResultInvalidTime;
+    }
+    if (t.tm_year > 170)
+    { // 2070年
+        // LOG_WARN("Ignore GPS time too new (likely not locked): year=%d", t.tm_year + 1900);
         return RTCSetResultInvalidTime;
     }
 

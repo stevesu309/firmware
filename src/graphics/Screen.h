@@ -24,7 +24,11 @@ namespace graphics
     struct BannerOverlayOptions
     {
         const char *message;
-        uint32_t durationMs = 30000;
+#if defined(RED_BANK_S3)
+        uint32_t durationMs = 0;  // RED_BANK_S3: 0 = 永不超时
+#else
+        uint32_t durationMs = 30000;  // 默认30秒超时
+#endif
         const char **optionsArrayPtr = nullptr;
         const int *optionsEnumPtr = nullptr;
         uint8_t optionsCount = 0;

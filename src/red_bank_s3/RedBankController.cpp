@@ -33,6 +33,57 @@ namespace RedBankS3
             return KeypadKey::NONE;
     }
 
+    // 根据屏幕旋转角度映射物理按键到逻辑按键
+    KeypadKey RedBankController::mapKeyByRotation(KeypadKey physicalKey)
+    {
+        // 旋转角度0: 原始方向 - 上下左右保持不变
+        // 旋转角度3: 逆时针旋转90度 - 原上下左右变为右左上下
+        // 旋转角度1: 顺时针旋转90度 - 原上下左右变为左右下上
+
+        switch (currentRotation)
+        {
+        case 0:
+            // 原始方向，保持不变
+            return physicalKey;
+
+        case 3:
+            // 逆时针旋转90度：原上下左右变为右左上下
+            switch (physicalKey)
+            {
+            case KeypadKey::UP:
+                return KeypadKey::RIGHT;
+            case KeypadKey::DOWN:
+                return KeypadKey::LEFT;
+            case KeypadKey::LEFT:
+                return KeypadKey::UP;
+            case KeypadKey::RIGHT:
+                return KeypadKey::DOWN;
+            default:
+                return physicalKey;
+            }
+
+        case 1:
+            // 顺时针旋转90度：原上下左右变为左右下上
+            switch (physicalKey)
+            {
+            case KeypadKey::UP:
+                return KeypadKey::LEFT;
+            case KeypadKey::DOWN:
+                return KeypadKey::RIGHT;
+            case KeypadKey::LEFT:
+                return KeypadKey::DOWN;
+            case KeypadKey::RIGHT:
+                return KeypadKey::UP;
+            default:
+                return physicalKey;
+            }
+
+        default:
+            // 其他角度保持默认
+            return physicalKey;
+        }
+    }
+
     void RedBankController::scanAdcKeypad()
     {
         int val1 = analogRead(KEY1_ADC_PIN);
@@ -43,79 +94,90 @@ namespace RedBankS3
         // 添加按键防抖处理
         static uint32_t lastKeyTime = 0;
         if (millis() - lastKeyTime < 200)
-        { // 200ms防抖
+        {
             key1_last = KeypadKey::NONE;
             key2_last = KeypadKey::NONE;
             return;
         }
         lastKeyTime = millis();
 
-        // 检测所有按键状态变化
-        bool leftPressed = (key2_current == KeypadKey::LEFT);
-        bool rightPressed = (key2_current == KeypadKey::RIGHT);
-        bool enterPressed = (key1_current == KeypadKey::ENTER);
-        bool escPressed = (key1_current == KeypadKey::ESC);
-        bool upPressed = (key1_current == KeypadKey::UP);
-        bool downPressed = (key2_current == KeypadKey::DOWN);
+        // 检查是否是组合按键（LEFT+UP 或 RIGHT+UP）
+        bool isComboKey = (key1_current == KeypadKey::UP &&
+                           (key2_current == KeypadKey::LEFT || key2_current == KeypadKey::RIGHT));
 
-        // LEFT 按键处理
-        if (leftPressed && !leftButtonPressed)
+        if (!isComboKey)
         {
-            handleLeftButtonPress();
-        }
-        else if (!leftPressed && leftButtonPressed)
-        {
-            handleLeftButtonRelease();
-        }
+            // 使用mapKeyByRotation映射按键
+            KeypadKey mappedKey1 = mapKeyByRotation(key1_current);
+            KeypadKey mappedKey2 = mapKeyByRotation(key2_current);
 
-        // RIGHT 按键处理
-        if (rightPressed && !rightButtonPressed)
-        {
-            handleRightButtonPress();
-        }
-        else if (!rightPressed && rightButtonPressed)
-        {
-            handleRightButtonRelease();
-        }
+            // 检测映射后的逻辑按键状态
+            bool leftPressed = (mappedKey2 == KeypadKey::LEFT);
+            bool rightPressed = (mappedKey2 == KeypadKey::RIGHT);
+            bool upPressed = (mappedKey1 == KeypadKey::UP);
+            bool downPressed = (mappedKey2 == KeypadKey::DOWN);
+            bool physicalEnterPressed = (key1_current == KeypadKey::ENTER);
+            bool physicalEscPressed = (key1_current == KeypadKey::ESC);
 
-        // ENTER 按键处理
-        if (enterPressed && !enterButtonPressed)
-        {
-            handleEnterButtonPress();
-        }
-        else if (!enterPressed && enterButtonPressed)
-        {
-            handleEnterButtonRelease();
-        }
+            // LEFT 按键处理
+            if (leftPressed && !leftButtonPressed)
+            {
+                handleLeftButtonPress();
+            }
+            else if (!leftPressed && leftButtonPressed)
+            {
+                handleLeftButtonRelease();
+            }
 
-        // ESC 按键处理
-        if (escPressed && !escButtonPressed)
-        {
-            handleEscButtonPress();
-        }
-        else if (!escPressed && escButtonPressed)
-        {
-            handleEscButtonRelease();
-        }
+            // RIGHT 按键处理
+            if (rightPressed && !rightButtonPressed)
+            {
+                handleRightButtonPress();
+            }
+            else if (!rightPressed && rightButtonPressed)
+            {
+                handleRightButtonRelease();
+            }
 
-        // UP 按键处理
-        if (upPressed && !upButtonPressed)
-        {
-            handleUpButtonPress();
-        }
-        else if (!upPressed && upButtonPressed)
-        {
-            handleUpButtonRelease();
-        }
+            // ENTER 按键处理
+            if (physicalEnterPressed && !enterButtonPressed)
+            {
+                handleEnterButtonPress();
+            }
+            else if (!physicalEnterPressed && enterButtonPressed)
+            {
+                handleEnterButtonRelease();
+            }
 
-        // DOWN 按键处理
-        if (downPressed && !downButtonPressed)
-        {
-            handleDownButtonPress();
-        }
-        else if (!downPressed && downButtonPressed)
-        {
-            handleDownButtonRelease();
+            // ESC 按键处理
+            if (physicalEscPressed && !escButtonPressed)
+            {
+                handleEscButtonPress();
+            }
+            else if (!physicalEscPressed && escButtonPressed)
+            {
+                handleEscButtonRelease();
+            }
+
+            // UP 按键处理
+            if (upPressed && !upButtonPressed)
+            {
+                handleUpButtonPress();
+            }
+            else if (!upPressed && upButtonPressed)
+            {
+                handleUpButtonRelease();
+            }
+
+            // DOWN 按键处理
+            if (downPressed && !downButtonPressed)
+            {
+                handleDownButtonPress();
+            }
+            else if (!downPressed && downButtonPressed)
+            {
+                handleDownButtonRelease();
+            }
         }
 
         key1_last = key1_current;
@@ -209,19 +271,19 @@ namespace RedBankS3
             LOG_INFO("Applied rotation %d to EInk display", currentRotation);
             LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
 
-            // 根据旋转角度动态调整屏幕几何
-            if (currentRotation == 1 || currentRotation == 3)
-            {
-                // 横屏模式：宽264，高176
-                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
-                LOG_INFO("Set landscape geometry: 264x176");
-            }
-            else
-            {
-                // 竖屏模式：宽176，高264
-                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
-                LOG_INFO("Set portrait geometry: 176x264");
-            }
+            // // 根据旋转角度动态调整屏幕几何
+            // if (currentRotation == 1 || currentRotation == 3)
+            // {
+            //     // 横屏模式：宽264，高176
+            //     oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+            //     LOG_INFO("Set landscape geometry: 264x176");
+            // }
+            // else
+            // {
+            //     // 竖屏模式：宽176，高264
+            //     oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
+            //     LOG_INFO("Set portrait geometry: 176x264");
+            // }
 
             // einkDisplay->clearPixel(einkDisplay->width(), einkDisplay->height()); // 清屏
             // screen->forceDisplay(true);
@@ -236,6 +298,8 @@ namespace RedBankS3
 #ifdef RED_BANK_S3
         // 使用天线管理器处理天线切换
         AntennaManager::switchAntennaForRegion(config.lora.region);
+
+        scanAdcKeypad();
 
         // LEFT+UP = 左旋，RIGHT+UP = 右旋
         static bool leftUpCombo = false;
@@ -274,48 +338,6 @@ namespace RedBankS3
             rightUpCombo = false;
         }
 
-        // 检查是否有组合按键被触发，如果有则跳过单独按键处理
-        bool comboTriggered = leftUpCombo || rightUpCombo;
-
-        if (!comboTriggered)
-        {
-            scanAdcKeypad(); // ADC按键扫描
-        }
-
-        // if (screen)
-        // {
-        //     delay(200);
-        //     if (!comboTriggered)
-        //     {
-        //         // 按键处理通过scanAdcKeypad()函数完成
-        //         switch (key2_last)
-        //         {
-        //         case KeypadKey::LEFT:
-        //             screen->showPrevFrame();
-        //             break;
-        //         case KeypadKey::RIGHT:
-        //             // screen->showNextFrame();
-        //             InputEvent event;
-        //             event.inputEvent = INPUT_BROKER_RIGHT;
-        //             event.source = "RedBankController";
-        //             event.kbchar = 0;
-        //             event.touchX = 0;
-        //             event.touchY = 0;
-        //             inputBroker->injectInputEvent(&event);
-        //             menuActive = false;
-        //             LOG_INFO("INPUT_BROKER_RIGHT event injected");
-
-        //             break;
-        //         default:
-        //             break;
-        //         }
-        //     }
-        //     else
-        //     {
-        //         // 组合按键被触发时，记录调试信息
-        //         LOG_DEBUG("Combo key active, skipping individual key processing");
-        //     }
-        // }
 #endif
     }
 
@@ -643,7 +665,10 @@ namespace RedBankS3
 
         LOG_DEBUG("UP button released after %d ms", pressDuration);
 
-        if (menuActive)
+        // 检查是否在overlay banner（菜单、选择器等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive || menuActive)
         {
             // 在菜单状态下，短按UP控制菜单选项
             if (pressDuration < LONG_PRESS_THRESHOLD)
@@ -655,7 +680,7 @@ namespace RedBankS3
                 event.touchX = 0;
                 event.touchY = 0;
                 inputBroker->injectInputEvent(&event);
-                LOG_INFO("Menu: Short press - Previous option");
+                LOG_INFO("Overlay/Menu: Short press - Previous option");
             }
         }
         else
@@ -687,7 +712,10 @@ namespace RedBankS3
 
         LOG_DEBUG("DOWN button released after %d ms", pressDuration);
 
-        if (menuActive)
+        // 检查是否在overlay banner（菜单、选择器等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive || menuActive)
         {
             // 在菜单状态下，短按DOWN控制菜单选项
             if (pressDuration < LONG_PRESS_THRESHOLD)
@@ -699,7 +727,7 @@ namespace RedBankS3
                 event.touchX = 0;
                 event.touchY = 0;
                 inputBroker->injectInputEvent(&event);
-                LOG_INFO("Menu: Short press - Next option");
+                LOG_INFO("Overlay/Menu: Short press - Next option");
             }
         }
         else

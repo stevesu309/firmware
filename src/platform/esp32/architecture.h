@@ -192,8 +192,8 @@
 #define HW_VENDOR meshtastic_HardwareModel_LINK_32
 #elif defined(T_DECK_PRO)
 #define HW_VENDOR meshtastic_HardwareModel_T_DECK_PRO
-#elif defined(RED_BANK_S3)
-#define HW_VENDOR meshtastic_HardwareModel_REDBANK_S3
+// #elif defined(RED_BANK_S3)
+// #define HW_VENDOR meshtastic_HardwareModel_REDBANK_S3
 #endif
 
 // -----------------------------------------------------------------------------

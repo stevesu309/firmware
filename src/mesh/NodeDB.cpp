@@ -1684,8 +1684,8 @@ void NodeDB::updatePosition(uint32_t nodeId, const meshtastic_Position &p, RxSou
     if (src == RX_SRC_LOCAL)
     {
         // Local packet, fully authoritative
-        LOG_INFO("updatePosition LOCAL pos@%x time=%u lat=%d lon=%d alt=%d", p.timestamp, p.time, p.latitude_i, p.longitude_i,
-                 p.altitude);
+        // LOG_INFO("updatePosition LOCAL pos@%x time=%u lat=%d lon=%d alt=%d", p.timestamp, p.time, p.latitude_i, p.longitude_i,
+        //          p.altitude);
 
         setLocalPosition(p);
         info->position = TypeConversions::ConvertToPositionLite(p);

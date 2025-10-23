@@ -357,12 +357,33 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
         if (event->inputEvent == INPUT_BROKER_LEFT || event->inputEvent == INPUT_BROKER_RIGHT) {
             break;
         }
+#if defined(RED_BANK_S3)
+        // RED_BANK_S3: Handle ALT_LONG: always activate canned message list
+        if (event->inputEvent == INPUT_BROKER_ALT_LONG) {
+            LaunchWithDestination(NODENUM_BROADCAST);
+            return 1;
+        }
+        // RED_BANK_S3: Handle UP/DOWN: Only activate if we're sure no menu/banner is showing
+        // This prevents accidental activation when user is navigating menus
+        if (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN) {
+            // Double-check that no overlay banner is showing
+            // (菜单、选择器等都使用overlay banner)
+            if (screen && screen->isOverlayBannerShowing()) {
+                return 0; // Let menu/banner handle it
+            }
+            // Only activate on UP/DOWN if explicitly allowed
+            // This is a less aggressive approach that prevents conflicts with menus
+            // User can still use ALT_LONG to explicitly trigger canned messages
+            return 0; // Don't auto-activate on UP/DOWN in INACTIVE state
+        }
+#else
         // Handle UP/DOWN: activate canned message list!
         if (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN ||
             event->inputEvent == INPUT_BROKER_ALT_LONG) {
             LaunchWithDestination(NODENUM_BROADCAST);
             return 1;
         }
+#endif
         // Printable char (ASCII) opens free text compose
         if (event->kbchar >= 32 && event->kbchar <= 126) {
             runState = CANNED_MESSAGE_RUN_STATE_FREETEXT;
@@ -563,9 +584,21 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
     if (runState == CANNED_MESSAGE_RUN_STATE_DESTINATION_SELECTION)
         return false;
 
+#if defined(RED_BANK_S3)
+    // RED_BANK_S3: Only process input if module is in an active state
+    // This prevents INACTIVE modules from intercepting navigation events meant for menus
+    if (runState == CANNED_MESSAGE_RUN_STATE_INACTIVE || runState == CANNED_MESSAGE_RUN_STATE_DISABLED) {
+        return false; // Don't handle any input in INACTIVE/DISABLED state
+    }
+#endif
+
     // === Handle Cancel key: go inactive, clear UI state ===
+#if defined(RED_BANK_S3)
+    if (event->inputEvent == INPUT_BROKER_CANCEL || event->inputEvent == INPUT_BROKER_ALT_LONG) {
+#else
     if (runState != CANNED_MESSAGE_RUN_STATE_INACTIVE &&
         (event->inputEvent == INPUT_BROKER_CANCEL || event->inputEvent == INPUT_BROKER_ALT_LONG)) {
+#endif
         runState = CANNED_MESSAGE_RUN_STATE_INACTIVE;
         freetext = "";
         cursor = 0;
@@ -582,7 +615,7 @@ bool CannedMessageModule::handleMessageSelectorInput(const InputEvent *event, bo
 
     bool handled = false;
 
-    // Handle up/down navigation
+    // Handle up/down navigation (only when ACTIVE)
     if (isUp && messagesCount > 0) {
         runState = CANNED_MESSAGE_RUN_STATE_ACTION_UP;
         handled = true;
@@ -999,7 +1032,15 @@ int32_t CannedMessageModule::runOnce()
         return 2000;
     }
     // Highlight [Select Destination] initially when entering the message list
+#if defined(RED_BANK_S3)
+    // RED_BANK_S3: Prevent auto-activation in INACTIVE/DISABLED state
+    else if ((this->runState != CANNED_MESSAGE_RUN_STATE_FREETEXT) && 
+             (this->runState != CANNED_MESSAGE_RUN_STATE_INACTIVE) &&
+             (this->runState != CANNED_MESSAGE_RUN_STATE_DISABLED) &&
+             (this->currentMessageIndex == -1)) {
+#else
     else if ((this->runState != CANNED_MESSAGE_RUN_STATE_FREETEXT) && (this->currentMessageIndex == -1)) {
+#endif
         int selectDestination = 0;
         for (int i = 0; i < this->messagesCount; ++i) {
             if (strcmp(this->messages[i], "[Select Destination]") == 0) {

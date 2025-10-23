@@ -1190,7 +1190,11 @@ namespace graphics
 
     void menuHandler::addFavoriteMenu()
     {
+#if defined(RED_BANK_S3)
+        screen->showNodePicker("Node To Favorite", 0, [](uint32_t nodenum) -> void
+#else
         screen->showNodePicker("Node To Favorite", 30000, [](uint32_t nodenum) -> void
+#endif
                                {
         LOG_WARN("Nodenum: %u", nodenum);
         nodeDB->set_favorite(true, nodenum);
@@ -1225,7 +1229,11 @@ namespace graphics
 
     void menuHandler::traceRouteMenu()
     {
+#if defined(RED_BANK_S3)
+        screen->showNodePicker("Node to Trace", 0, [](uint32_t nodenum) -> void
+#else
         screen->showNodePicker("Node to Trace", 30000, [](uint32_t nodenum) -> void
+#endif
                                {
         LOG_INFO("Menu: Node picker selected node 0x%08x, traceRouteModule=%p", nodenum, traceRouteModule);
         if (traceRouteModule) {
@@ -1255,7 +1263,11 @@ namespace graphics
 
     void menuHandler::numberTest()
     {
+#if defined(RED_BANK_S3)
+        screen->showNumberPicker("Pick a number\n ", 0, 4,
+#else
         screen->showNumberPicker("Pick a number\n ", 30000, 4,
+#endif
                                  [](int number_picked) -> void
                                  { LOG_WARN("Nodenum: %u", number_picked); });
     }
@@ -1462,7 +1474,11 @@ namespace graphics
 
     void menuHandler::keyVerificationInitMenu()
     {
+#if defined(RED_BANK_S3)
+        screen->showNodePicker("Node to Verify", 0,
+#else
         screen->showNodePicker("Node to Verify", 30000,
+#endif
                                [](uint32_t selected) -> void
                                { keyVerificationModule->sendInitialRequest(selected); });
     }
@@ -1479,7 +1495,11 @@ namespace graphics
             static const char *optionsArray[] = {"Reject", "Accept"};
             graphics::BannerOverlayOptions options;
             options.message = message;
-            options.durationMs = 30000;
+#if defined(RED_BANK_S3)
+            options.durationMs = 0;  // RED_BANK_S3: 永不超时
+#else
+            options.durationMs = 30000;  // 默认30秒超时
+#endif
             options.optionsArrayPtr = optionsArray;
             options.optionsCount = 2;
             options.notificationType = graphics::notificationTypeEnum::selection_picker;

@@ -1233,7 +1233,6 @@ void GPS::publishUpdate()
         shouldPublish = false;
 
         // In debug logs, identify position by @timestamp:stage (stage 2 = publish)
-        LOG_DEBUG("Publish pos@%x:2, hasVal=%d, Sats=%d, GPSlock=%d", p.timestamp, hasValidLocation, p.sats_in_view, hasLock());
 
         // Notify any status instances that are observing us
         const meshtastic::GPSStatus status = meshtastic::GPSStatus(hasValidLocation, isConnected(), isPowerSaving(), p);
@@ -1854,20 +1853,20 @@ The Unix epoch (or Unix time or POSIX time or Unix timestamp) is the number of s
         t.tm_isdst = false;
         if (t.tm_mon > -1)
         {
-            LOG_DEBUG("NMEA GPS time %02d-%02d-%02d %02d:%02d:%02d age %d", d.year(), d.month(), t.tm_mday, t.tm_hour, t.tm_min,
-                      t.tm_sec, ti.age());
-            
+            // LOG_DEBUG("NMEA GPS time %02d-%02d-%02d %02d:%02d:%02d age %d", d.year(), d.month(), t.tm_mday, t.tm_hour, t.tm_min,
+            //           t.tm_sec, ti.age());
+
             RTCSetResult result = perhapsSetRTC(RTCQualityGPS, t);
             if (result == RTCSetResultInvalidTime)
             {
-                LOG_WARN("GPS time rejected: %04d-%02d-%02d %02d:%02d:%02d (likely GPS not locked)", 
-                         d.year(), d.month(), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+                // LOG_WARN("GPS time rejected: %04d-%02d-%02d %02d:%02d:%02d (likely GPS not locked)",
+                //          d.year(), d.month(), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
                 // Clear the GPS buffer if we got an invalid time
                 clearBuffer();
             }
             else if (result == RTCSetResultSuccess)
             {
-                LOG_INFO("GPS time accepted: %04d-%02d-%02d %02d:%02d:%02d", 
+                LOG_INFO("GPS time accepted: %04d-%02d-%02d %02d:%02d:%02d",
                          d.year(), d.month(), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
             }
             return true;
