@@ -97,7 +97,7 @@
 #define GPS_RESET_MODE (HIGH) // 复位为低电平，但是这个引脚接了一个NPN，高电平导通，导通就是低电平复位，所以是高电平复位
 
 // Button configuration for RED_BANK_S3
-#define BUTTON_PIN 2
+#define BUTTON_PIN 1
 #define BUTTON_ACTIVE_LOW true
 #define BUTTON_ACTIVE_PULLUP true
 #define BUTTON_NEED_PULLUP

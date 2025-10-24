@@ -38,7 +38,7 @@ namespace RedBankS3
         KeypadKey getKey2();
 
         // 屏幕旋转相关
-        uint8_t currentRotation = 0;                              // 当前旋转角度：0=竖屏, 1=左横屏, 3=右横屏
+        uint8_t currentRotation = 3;                              // 当前旋转角度：0=竖屏, 1=左横屏, 3=右横屏
         void rotateScreenLeft();                                  // 向左旋转（ENTER按键）
         void rotateScreenRight();                                 // 向右旋转（ESC按键）
         void applyRotation();                                     // 使用旋转
@@ -73,7 +73,6 @@ namespace RedBankS3
 
         void _previousMeshPacket();
         void _nextMeshPacket();
-        void _handleShuttingDownButtonPress();
         KeypadKey mapKeyByRotation(KeypadKey physicalKey);
 
         // 按键状态管理

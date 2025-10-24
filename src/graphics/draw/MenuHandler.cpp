@@ -1617,6 +1617,13 @@ namespace graphics
             break;
         }
         menuQueue = menu_none;
+#ifdef RED_BANK_S3
+        // RED_BANK_S3: 如果显示了新菜单，重新设置菜单激活状态
+        if (screen && screen->isOverlayBannerShowing() && redBankController)
+        {
+            redBankController->setMenuActive(true);
+        }
+#endif
     }
 
     void menuHandler::saveUIConfig()

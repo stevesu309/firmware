@@ -1375,8 +1375,21 @@ namespace graphics
     {
         uint16_t x_offset = display->width() / 2;
         display->setTextAlignment(TEXT_ALIGN_CENTER);
+#if defined(RED_BANK_S3)
+        if (redBankController->getCurrentRotation() != 0)
+        {
+            display->setFont(FONT_MEDIUM);
+            display->drawString(x_offset + x, display->height() / 2 - FONT_HEIGHT_MEDIUM, message);
+        }
+        else
+        {
+            display->setFont(FONT_SMALL);
+            display->drawString(x_offset + x, display->height() / 2 - FONT_HEIGHT_SMALL, message);
+        }
+#else
         display->setFont(FONT_MEDIUM);
         display->drawString(x_offset + x, 26 + y, message);
+#endif
     }
 
     std::string UIRenderer::drawTimeDelta(uint32_t days, uint32_t hours, uint32_t minutes, uint32_t seconds)

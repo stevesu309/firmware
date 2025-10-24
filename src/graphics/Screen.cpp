@@ -1624,6 +1624,33 @@ namespace graphics
                     inputIntercepted = true;
             }
             LOG_INFO("Screen::handleInputEvent: inputIntercepted=%d", inputIntercepted);
+            
+#if defined(RED_BANK_S3)
+            // RED_BANK_S3: 在频道消息帧使用UP/DOWN浏览消息包
+            // 检查当前帧是否在频道消息帧范围内
+            if (!inputIntercepted && 
+                (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN))
+            {
+                uint8_t currentFrame = ui->getUiState()->currentFrame;
+                bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+                
+                if (isChannelFrame)
+                {
+                    if (event->inputEvent == INPUT_BROKER_UP)
+                    {
+                        showPrevPacket();
+                        LOG_INFO("Screen: UP - Previous packet in channel frame");
+                    }
+                    else if (event->inputEvent == INPUT_BROKER_DOWN)
+                    {
+                        showNextPacket();
+                        LOG_INFO("Screen: DOWN - Next packet in channel frame");
+                    }
+                    // 已处理，直接返回
+                    return 0;
+                }
+            }
+#endif
             // If no modules are using the input, move between frames
             if (!inputIntercepted)
             {
@@ -1636,6 +1663,29 @@ namespace graphics
                 {
                     showNextFrame();
                 }
+#if defined(RED_BANK_S3)
+                // RED_BANK_S3: 处理UP/DOWN事件用于浏览频道消息
+                else if (event->inputEvent == INPUT_BROKER_UP)
+                {
+                    uint8_t currentFrame = ui->getUiState()->currentFrame;
+                    bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+                    if (isChannelFrame)
+                    {
+                        showPrevPacket();
+                        LOG_INFO("Screen: UP - Previous packet");
+                    }
+                }
+                else if (event->inputEvent == INPUT_BROKER_DOWN)
+                {
+                    uint8_t currentFrame = ui->getUiState()->currentFrame;
+                    bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+                    if (isChannelFrame)
+                    {
+                        showNextPacket();
+                        LOG_INFO("Screen: DOWN - Next packet");
+                    }
+                }
+#endif
                 else if (event->inputEvent == INPUT_BROKER_SELECT)
                 {
                     if (this->ui->getUiState()->currentFrame == framesetInfo.positions.home)

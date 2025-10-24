@@ -111,11 +111,11 @@ namespace RedBankS3
             KeypadKey mappedKey1 = mapKeyByRotation(key1_current);
             KeypadKey mappedKey2 = mapKeyByRotation(key2_current);
 
-            // 检测映射后的逻辑按键状态
-            bool leftPressed = (mappedKey2 == KeypadKey::LEFT);
-            bool rightPressed = (mappedKey2 == KeypadKey::RIGHT);
-            bool upPressed = (mappedKey1 == KeypadKey::UP);
-            bool downPressed = (mappedKey2 == KeypadKey::DOWN);
+            // 检测映射后的逻辑按键状态（需要同时检查两个ADC通道）
+            bool leftPressed = (mappedKey1 == KeypadKey::LEFT) || (mappedKey2 == KeypadKey::LEFT);
+            bool rightPressed = (mappedKey1 == KeypadKey::RIGHT) || (mappedKey2 == KeypadKey::RIGHT);
+            bool upPressed = (mappedKey1 == KeypadKey::UP) || (mappedKey2 == KeypadKey::UP);
+            bool downPressed = (mappedKey1 == KeypadKey::DOWN) || (mappedKey2 == KeypadKey::DOWN);
             bool physicalEnterPressed = (key1_current == KeypadKey::ENTER);
             bool physicalEscPressed = (key1_current == KeypadKey::ESC);
 
@@ -271,19 +271,19 @@ namespace RedBankS3
             LOG_INFO("Applied rotation %d to EInk display", currentRotation);
             LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
 
-            // // 根据旋转角度动态调整屏幕几何
-            // if (currentRotation == 1 || currentRotation == 3)
-            // {
-            //     // 横屏模式：宽264，高176
-            //     oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
-            //     LOG_INFO("Set landscape geometry: 264x176");
-            // }
-            // else
-            // {
-            //     // 竖屏模式：宽176，高264
-            //     oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
-            //     LOG_INFO("Set portrait geometry: 176x264");
-            // }
+            // 根据旋转角度动态调整屏幕几何
+            if (currentRotation == 1 || currentRotation == 3)
+            {
+                // 横屏模式：宽264，高176
+                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 264, 176);
+                LOG_INFO("Set landscape geometry: 264x176");
+            }
+            else
+            {
+                // 竖屏模式：宽176，高264
+                oledDisplay->setGeometry(GEOMETRY_RAWMODE, 176, 264);
+                LOG_INFO("Set portrait geometry: 176x264");
+            }
 
             // einkDisplay->clearPixel(einkDisplay->width(), einkDisplay->height()); // 清屏
             // screen->forceDisplay(true);
@@ -441,19 +441,6 @@ namespace RedBankS3
     {
         return (direction);
     }
-
-    // void RedBankController::_handleShuttingDownButtonPress()  //关机
-    // {
-    //     static bool lastShuttingDownButtonState = HIGH;
-    //     bool curState = digitalRead(BUTTON_PRE_CHANNEL_PACKET);
-    //     if (lastShuttingDownButtonState != curState && curState == HIGH)
-    //     {
-    //         if (screen)
-    //             screen->startAlert("Shutting down...");
-    //         shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
-    //     }
-    //     lastShuttingDownButtonState = curState;
-    // }
 
     bool RedBankController::isMenuActive()
     {
@@ -629,7 +616,10 @@ namespace RedBankS3
 
         LOG_DEBUG("ESC button released after %d ms", pressDuration);
 
-        if (menuActive)
+        // 检查是否在overlay banner（菜单、选择器等）状态
+        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+        if (isOverlayActive || menuActive)
         {
             // 在菜单状态下，短按ESC关闭菜单
             if (pressDuration < LONG_PRESS_THRESHOLD)
@@ -643,6 +633,17 @@ namespace RedBankS3
                 inputBroker->injectInputEvent(&event);
                 menuActive = false;
                 LOG_INFO("Menu: Short press - Close menu");
+            }
+        }
+        else
+        {
+            // 在正常状态下，长按ESC 6秒触发关机
+            if (pressDuration >= 6000)
+            {
+                // if (screen)
+                //     screen->startAlert("Shutting down...");
+                shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+                LOG_INFO("Normal: Long press 6s - Shutdown triggered");
             }
         }
     }
@@ -665,32 +666,19 @@ namespace RedBankS3
 
         LOG_DEBUG("UP button released after %d ms", pressDuration);
 
-        // 检查是否在overlay banner（菜单、选择器等）状态
-        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-
-        if (isOverlayActive || menuActive)
+        // 短按UP：统一发送INPUT_BROKER_UP事件
+        // 让InputBroker分发给所有观察者（菜单、快捷消息模块、Screen等）
+        // 由各模块自行决定是否处理
+        if (pressDuration < LONG_PRESS_THRESHOLD)
         {
-            // 在菜单状态下，短按UP控制菜单选项
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                InputEvent event;
-                event.inputEvent = INPUT_BROKER_UP;
-                event.source = "RedBankController";
-                event.kbchar = 0;
-                event.touchX = 0;
-                event.touchY = 0;
-                inputBroker->injectInputEvent(&event);
-                LOG_INFO("Overlay/Menu: Short press - Previous option");
-            }
-        }
-        else
-        {
-            // 在正常状态下，短按UP浏览上一条消息
-            if (pressDuration < LONG_PRESS_THRESHOLD && screen)
-            {
-                screen->showPrevPacket();
-                LOG_INFO("Normal: Short press - Previous packet");
-            }
+            InputEvent event;
+            event.inputEvent = INPUT_BROKER_UP;
+            event.source = "RedBankController";
+            event.kbchar = 0;
+            event.touchX = 0;
+            event.touchY = 0;
+            inputBroker->injectInputEvent(&event);
+            LOG_INFO("UP button: Inject INPUT_BROKER_UP event");
         }
     }
 
@@ -712,32 +700,19 @@ namespace RedBankS3
 
         LOG_DEBUG("DOWN button released after %d ms", pressDuration);
 
-        // 检查是否在overlay banner（菜单、选择器等）状态
-        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-
-        if (isOverlayActive || menuActive)
+        // 短按DOWN：统一发送INPUT_BROKER_DOWN事件
+        // 让InputBroker分发给所有观察者（菜单、快捷消息模块、Screen等）
+        // 由各模块自行决定是否处理
+        if (pressDuration < LONG_PRESS_THRESHOLD)
         {
-            // 在菜单状态下，短按DOWN控制菜单选项
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                InputEvent event;
-                event.inputEvent = INPUT_BROKER_DOWN;
-                event.source = "RedBankController";
-                event.kbchar = 0;
-                event.touchX = 0;
-                event.touchY = 0;
-                inputBroker->injectInputEvent(&event);
-                LOG_INFO("Overlay/Menu: Short press - Next option");
-            }
-        }
-        else
-        {
-            // 在正常状态下，短按DOWN浏览下一条消息
-            if (pressDuration < LONG_PRESS_THRESHOLD && screen)
-            {
-                screen->showNextPacket();
-                LOG_INFO("Normal: Short press - Next packet");
-            }
+            InputEvent event;
+            event.inputEvent = INPUT_BROKER_DOWN;
+            event.source = "RedBankController";
+            event.kbchar = 0;
+            event.touchX = 0;
+            event.touchY = 0;
+            inputBroker->injectInputEvent(&event);
+            LOG_INFO("DOWN button: Inject INPUT_BROKER_DOWN event");
         }
     }
 

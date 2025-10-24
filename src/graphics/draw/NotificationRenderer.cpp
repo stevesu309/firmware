@@ -151,10 +151,17 @@ void NotificationRenderer::drawNumberPicker(OLEDDisplay *display, OLEDDisplayUiS
         curSelected++;
     } else if (inEvent.inputEvent == INPUT_BROKER_LEFT) {
         curSelected--;
+#if defined(RED_BANK_S3)
+    } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
+        // RED_BANK_S3: ESC键直接关闭数字选择器（无需返回上一级）
+        resetBanner();
+        return;
+#else
     } else if ((inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) &&
                alertBannerUntil != 0) {
         resetBanner();
         return;
+#endif
     }
     if (curSelected == static_cast<int8_t>(numDigits)) {
         alertBannerCallback(currentNumber);
@@ -224,10 +231,17 @@ void NotificationRenderer::drawNodePicker(OLEDDisplay *display, OLEDDisplayUiSta
         alertBannerCallback(selectedNodenum);
         resetBanner();
         return;
+#if defined(RED_BANK_S3)
+    } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
+        // RED_BANK_S3: ESC键直接关闭节点选择器（无需返回上一级）
+        resetBanner();
+        return;
+#else
     } else if ((inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) &&
                alertBannerUntil != 0) {
         resetBanner();
         return;
+#endif
     }
 
     if (curSelected == -1)
@@ -346,10 +360,23 @@ void NotificationRenderer::drawAlertBannerOverlay(OLEDDisplay *display, OLEDDisp
             }
             resetBanner();
             return;
+#if defined(RED_BANK_S3)
+        } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
+            // RED_BANK_S3: ESC键直接触发"Back"选项（索引0），返回上一级菜单
+            if (optionsEnumPtr != nullptr) {
+                alertBannerCallback(optionsEnumPtr[0]);  // 触发"Back"选项
+                optionsEnumPtr = nullptr;
+            } else {
+                alertBannerCallback(0);  // 直接传入索引0（"Back"选项）
+            }
+            resetBanner();
+            return;
+#else
         } else if ((inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) &&
                    alertBannerUntil != 0) {
             resetBanner();
             return;
+#endif
         }
 
         if (curSelected == -1)
