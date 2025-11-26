@@ -25,7 +25,7 @@
 #define PIN_EINK_RES 47
 #define PIN_EINK_SCLK 14
 #define PIN_EINK_MOSI 11
-#define EINK_POWER_PIN 38
+// #define EINK_POWER_PIN 38
 
 #define LORA_DIO0 -1 // a No connect on the SX1262 module
 #define LORA_RESET 8
@@ -61,22 +61,22 @@
 #define PIN_EINK_RES 12
 #define PIN_EINK_SCLK 14
 #define PIN_EINK_MOSI 11
-#define EINK_POWER_PIN 38
+// #define EINK_POWER_PIN 38
 
 #define LORA_DIO0 -1 // a No connect on the SX1262 module
-#define LORA_RESET 8
+#define LORA_RESET 38
 #define LORA_DIO1 10 // SX1262 IRQ
 #define LORA_DIO2 9  // SX1262 BUSY
 #define LORA_DIO3    // Not connected on PCB, but internally on the TTGO SX1262, if DIO3 is high the TXCO is enabled
-#define LORA_ANT 47  // 天线选择引脚 LOW：900MHz HIGH：432MHz
+// #define LORA_ANT 47  // 天线选择引脚 LOW：900MHz HIGH：432MHz
 // #define LORA_ANT_413 48 // 天线选择引脚 CN China 470.0 - 510.0
 #ifdef USE_SX1262
-#define SX126X_CS 7    // FIXME - we really should define LORA_CS instead
-#define SX126X_DIO1 10 // LORA_DIO1
-#define SX126X_BUSY 9  // LORA_DIO2
-#define SX126X_RESET 8 // LORA_RESET
+#define SX126X_CS 7             // FIXME - we really should define LORA_CS instead
+#define SX126X_DIO1 10          // LORA_DIO1
+#define SX126X_BUSY 9           // LORA_DIO2
+#define SX126X_RESET LORA_RESET // LORA_RESET
 #define SX126X_DIO2_AS_RF_SWITCH
-// #define SX126X_DIO3_TCXO_VOLTAGE 1.8
+#define SX126X_DIO3_TCXO_VOLTAGE 1.8
 #endif
 #define PIN_GPS_RESET (39) // GNSS模块复位引脚
 

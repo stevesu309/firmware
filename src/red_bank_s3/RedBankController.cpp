@@ -33,6 +33,7 @@ namespace RedBankS3
             return KeypadKey::NONE;
     }
 
+#if HAS_SCREEN
     // 根据屏幕旋转角度映射物理按键到逻辑按键
     KeypadKey RedBankController::mapKeyByRotation(KeypadKey physicalKey)
     {
@@ -186,7 +187,7 @@ namespace RedBankS3
 
     KeypadKey RedBankController::getKey1() { return key1_last; }
     KeypadKey RedBankController::getKey2() { return key2_last; }
-
+#endif
     RedBankController::RedBankController()
     {
         // m_meshPacketList = new std::vector<meshtastic_MeshPacket>();
@@ -207,15 +208,15 @@ namespace RedBankS3
         pinMode(PIN_LORA_EN, OUTPUT);
         digitalWrite(PIN_LORA_EN, HIGH);
 
-        currentRotation = 3; // 默认旋转角度
-
         // 初始化天线管理器
-        AntennaManager::init(config.lora.region);
-
+        // AntennaManager::init(config.lora.region);
+#if HAS_SCREEN
         applyRotation(); // 应用屏幕旋转
+#endif
 #endif
     }
 
+#if HAS_SCREEN
     void RedBankController::rotateScreenLeft()
     {
         switch (currentRotation)
@@ -292,13 +293,13 @@ namespace RedBankS3
 #endif
         }
     }
-
+#endif
     void RedBankController::loop()
     {
 #ifdef RED_BANK_S3
         // 使用天线管理器处理天线切换
         AntennaManager::switchAntennaForRegion(config.lora.region);
-
+#if HAS_SCREEN
         scanAdcKeypad();
 
         // LEFT+UP = 左旋，RIGHT+UP = 右旋
@@ -337,7 +338,7 @@ namespace RedBankS3
         {
             rightUpCombo = false;
         }
-
+#endif
 #endif
     }
 
@@ -426,22 +427,22 @@ namespace RedBankS3
     {
         return (channelPackets[channel].size());
     }
-    void RedBankController::_previousMeshPacket()
-    {
-        screen->showPrevPacket();
-        direction = 0;
-    }
+    // void RedBankController::_previousMeshPacket()
+    // {
+    //     screen->showPrevPacket();
+    //     direction = 0;
+    // }
 
-    void RedBankController::_nextMeshPacket()
-    {
-        screen->showNextPacket();
-        direction = 1;
-    }
-    uint8_t RedBankController::getDirection(void)
-    {
-        return (direction);
-    }
-
+    // void RedBankController::_nextMeshPacket()
+    // {
+    //     screen->showNextPacket();
+    //     direction = 1;
+    // }
+    // uint8_t RedBankController::getDirection(void)
+    // {
+    //     return (direction);
+    // }
+#if HAS_SCREEN
     bool RedBankController::isMenuActive()
     {
         return menuActive;
@@ -715,5 +716,5 @@ namespace RedBankS3
             LOG_INFO("DOWN button: Inject INPUT_BROKER_DOWN event");
         }
     }
-
+#endif
 }

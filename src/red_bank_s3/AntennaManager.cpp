@@ -16,13 +16,13 @@ void AntennaManager::init(meshtastic_Config_LoRaConfig_RegionCode newRegion)
     //     digitalWrite(LORA_ANT_413, LOW); // 默认关闭
     // #endif
 
-#ifdef LORA_ANT
-    pinMode(LORA_ANT, OUTPUT);
-    digitalWrite(LORA_ANT, HIGH); // 默认开启900MHz天线
-#endif
-
+// #ifdef LORA_ANT
+// pinMode(LORA_ANT, OUTPUT);
+// digitalWrite(LORA_ANT, HIGH); // 默认开启900MHz天线
+// #endif
+#define LORA_CS 7
     // 根据当前配置设置初始天线状态 内含赋值操作 currentRegion = config.lora.region;
-    switchAntennaForRegion(newRegion);
+    // switchAntennaForRegion(newRegion);
 
     LOG_INFO("AntennaManager initialized");
 }
@@ -112,31 +112,32 @@ bool AntennaManager::needsAntennaSwitch(meshtastic_Config_LoRaConfig_RegionCode 
 void AntennaManager::switchTo432MHzAntenna()
 {
     LOG_INFO("Switching to 432MHz antenna");
+#define LORA_CS 4
 
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, LOW); // 开启432MHz天线 关闭900MHz天线
-#endif
+    // #ifdef LORA_ANT
+    //     digitalWrite(LORA_ANT, LOW); // 开启432MHz天线 关闭900MHz天线
+    // #endif
 
     // #ifdef LORA_ANT_413
     //     digitalWrite(LORA_ANT_413, HIGH); // 开启432MHz天线
     // #endif
 
-    sendAntennaSwitchNotification("Antenna switched to 432MHz");
+    // sendAntennaSwitchNotification("Antenna switched to 432MHz");
 }
 
 void AntennaManager::switchTo900MHzAntenna()
 {
     LOG_INFO("Switching to 900MHz antenna");
+#define LORA_CS 7
 
     // #ifdef LORA_ANT_413
     //     digitalWrite(LORA_ANT_413, LOW); // 关闭432MHz天线
     // #endif
+    // #ifdef LORA_ANT
+    //     digitalWrite(LORA_ANT, HIGH); // 开启900MHz天线
+    // #endif
 
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, HIGH); // 开启900MHz天线
-#endif
-
-    sendAntennaSwitchNotification("Antenna switched to 900MHz");
+    // sendAntennaSwitchNotification("Antenna switched to 900MHz");
 }
 
 const char *AntennaManager::getCurrentAntennaType()

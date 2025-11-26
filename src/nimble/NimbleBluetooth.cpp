@@ -20,7 +20,7 @@ static bool passkeyShowing;
 
 class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
 {
-  public:
+public:
     BluetoothPhoneAPI() : concurrency::OSThread("NimbleBluetooth") { nimble_queue.resize(3); }
     std::vector<NimBLEAttValue> nimble_queue;
     std::mutex nimble_mutex;
@@ -31,18 +31,21 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
     bool hasChecked = false;
     bool phoneWants = false;
 
-  protected:
+protected:
     virtual int32_t runOnce() override
     {
         std::lock_guard<std::mutex> guard(nimble_mutex);
-        if (queue_size > 0) {
-            for (uint8_t i = 0; i < queue_size; i++) {
+        if (queue_size > 0)
+        {
+            for (uint8_t i = 0; i < queue_size; i++)
+            {
                 handleToRadio(nimble_queue.at(i).data(), nimble_queue.at(i).length());
             }
             LOG_DEBUG("Queue_size %u", queue_size);
             queue_size = 0;
         }
-        if (hasChecked == false && phoneWants == true) {
+        if (hasChecked == false && phoneWants == true)
+        {
             numBytes = getFromRadio(fromRadioBytes);
             hasChecked = true;
         }
@@ -83,8 +86,10 @@ class NimbleBluetoothToRadioCallback : public NimBLECharacteristicCallbacks
     {
         auto val = pCharacteristic->getValue();
 
-        if (memcmp(lastToRadio, val.data(), val.length()) != 0) {
-            if (bluetoothPhoneAPI->queue_size < 3) {
+        if (memcmp(lastToRadio, val.data(), val.length()) != 0)
+        {
+            if (bluetoothPhoneAPI->queue_size < 3)
+            {
                 memcpy(lastToRadio, val.data(), val.length());
                 std::lock_guard<std::mutex> guard(bluetoothPhoneAPI->nimble_mutex);
                 bluetoothPhoneAPI->nimble_queue.at(bluetoothPhoneAPI->queue_size) = val;
@@ -101,7 +106,8 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
     {
         int tries = 0;
         bluetoothPhoneAPI->phoneWants = true;
-        while (!bluetoothPhoneAPI->hasChecked && tries < 100) {
+        while (!bluetoothPhoneAPI->hasChecked && tries < 100)
+        {
             bluetoothPhoneAPI->setIntervalFromNow(0);
             delay(20);
             tries++;
@@ -125,7 +131,8 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
     {
         uint32_t passkey = config.bluetooth.fixed_pin;
 
-        if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_RANDOM_PIN) {
+        if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_RANDOM_PIN)
+        {
             LOG_INFO("Use random passkey");
             // This is the passkey to be entered on peer - we pick a number >100,000 to ensure 6 digits
             passkey = random(100000, 999999);
@@ -136,8 +143,10 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         bluetoothStatus->updateStatus(new meshtastic::BluetoothStatus(std::to_string(passkey)));
 
 #if HAS_SCREEN // Todo: migrate this display code back into Screen class, and observe bluetoothStatus
-        if (screen) {
-            screen->startAlert([passkey](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) -> void {
+        if (screen)
+        {
+            screen->startAlert([passkey](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) -> void
+                               {
                 char btPIN[16] = "888888";
                 snprintf(btPIN, sizeof(btPIN), "%06u", passkey);
                 int x_offset = display->width() / 2;
@@ -155,13 +164,12 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
                 snprintf(pin, sizeof(pin), "%.3s %.3s", btPIN, btPIN + 3);
                 y_offset = display->height() == 64 ? y_offset + FONT_HEIGHT_SMALL - 5 : y_offset + FONT_HEIGHT_SMALL + 5;
                 display->drawString(x_offset + x, y_offset + y, pin);
-
+                LOG_INFO("pin is : %s",pin);
                 display->setFont(FONT_SMALL);
                 char deviceName[64];
                 snprintf(deviceName, sizeof(deviceName), "Name: %s", getDeviceName());
                 y_offset = display->height() == 64 ? y_offset + FONT_HEIGHT_LARGE - 6 : y_offset + FONT_HEIGHT_LARGE + 5;
-                display->drawString(x_offset + x, y_offset + y, deviceName);
-            });
+                display->drawString(x_offset + x, y_offset + y, deviceName); });
         }
 #endif
         passkeyShowing = true;
@@ -176,7 +184,8 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         bluetoothStatus->updateStatus(new meshtastic::BluetoothStatus(meshtastic::BluetoothStatus::ConnectionState::CONNECTED));
 
         // Todo: migrate this display code back into Screen class, and observe bluetoothStatus
-        if (passkeyShowing) {
+        if (passkeyShowing)
+        {
             passkeyShowing = false;
             if (screen)
                 screen->endAlert();
@@ -190,7 +199,8 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         bluetoothStatus->updateStatus(
             new meshtastic::BluetoothStatus(meshtastic::BluetoothStatus::ConnectionState::DISCONNECTED));
 
-        if (bluetoothPhoneAPI) {
+        if (bluetoothPhoneAPI)
+        {
             std::lock_guard<std::mutex> guard(bluetoothPhoneAPI->nimble_mutex);
             bluetoothPhoneAPI->close();
             bluetoothPhoneAPI->hasChecked = false;
@@ -246,7 +256,8 @@ bool NimbleBluetooth::isConnected()
 
 int NimbleBluetooth::getRssi()
 {
-    if (bleServer && isConnected()) {
+    if (bleServer && isConnected())
+    {
         auto service = bleServer->getServiceByUUID(MESH_SERVICE_UUID);
         uint16_t handle = service->getHandle();
         return NimBLEDevice::getClientByID(handle)->getRssi();
@@ -264,7 +275,8 @@ void NimbleBluetooth::setup()
     NimBLEDevice::init(getDeviceName());
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
 
-    if (config.bluetooth.mode != meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN) {
+    if (config.bluetooth.mode != meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN)
+    {
         NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM | BLE_SM_PAIR_AUTHREQ_SC);
         NimBLEDevice::setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
         NimBLEDevice::setSecurityRespKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
@@ -284,13 +296,16 @@ void NimbleBluetooth::setupService()
     NimBLECharacteristic *ToRadioCharacteristic;
     NimBLECharacteristic *FromRadioCharacteristic;
     // Define the characteristics that the app is looking for
-    if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN) {
+    if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN)
+    {
         ToRadioCharacteristic = bleService->createCharacteristic(TORADIO_UUID, NIMBLE_PROPERTY::WRITE);
         FromRadioCharacteristic = bleService->createCharacteristic(FROMRADIO_UUID, NIMBLE_PROPERTY::READ);
         fromNumCharacteristic = bleService->createCharacteristic(FROMNUM_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ);
         logRadioCharacteristic =
             bleService->createCharacteristic(LOGRADIO_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ, 512U);
-    } else {
+    }
+    else
+    {
         ToRadioCharacteristic = bleService->createCharacteristic(
             TORADIO_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_AUTHEN | NIMBLE_PROPERTY::WRITE_ENC);
         FromRadioCharacteristic = bleService->createCharacteristic(
@@ -314,7 +329,7 @@ void NimbleBluetooth::setupService()
 
     // Setup the battery service
     NimBLEService *batteryService = bleServer->createService(NimBLEUUID((uint16_t)0x180f)); // 0x180F is the Battery Service
-    BatteryCharacteristic = batteryService->createCharacteristic( // 0x2A19 is the Battery Level characteristic)
+    BatteryCharacteristic = batteryService->createCharacteristic(                           // 0x2A19 is the Battery Level characteristic)
         (uint16_t)0x2a19, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY, 1);
 
     NimBLE2904 *batteryLevelDescriptor = (NimBLE2904 *)BatteryCharacteristic->createDescriptor((uint16_t)0x2904);
@@ -337,7 +352,8 @@ void NimbleBluetooth::startAdvertising()
 /// Given a level between 0-100, update the BLE attribute
 void updateBatteryLevel(uint8_t level)
 {
-    if ((config.bluetooth.enabled == true) && bleServer && nimbleBluetooth->isConnected()) {
+    if ((config.bluetooth.enabled == true) && bleServer && nimbleBluetooth->isConnected())
+    {
         BatteryCharacteristic->setValue(&level, 1);
         BatteryCharacteristic->notify();
     }
@@ -351,7 +367,8 @@ void NimbleBluetooth::clearBonds()
 
 void NimbleBluetooth::sendLog(const uint8_t *logMessage, size_t length)
 {
-    if (!bleServer || !isConnected() || length > 512) {
+    if (!bleServer || !isConnected() || length > 512)
+    {
         return;
     }
     logRadioCharacteristic->notify(logMessage, length, true);

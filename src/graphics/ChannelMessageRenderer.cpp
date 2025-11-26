@@ -143,6 +143,7 @@ namespace graphics
       int height = display->getHeight();
 #ifdef RED_BANK_S3
 
+#if HAS_SCREEN
       if (redBankController->getCurrentRotation() == 0 && width > height)
       {
         std::swap(width, height); // 调换宽高
@@ -151,13 +152,14 @@ namespace graphics
       {
         std::swap(width, height);
       }
-      // display->setColor(EINK_WHITE);
-      // display->fillRect(0, 0, display->getWidth(), display->getHeight());
-      // display->setColor(EINK_BLACK);
+
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
       FontSelection fontSel = selectFontForRotation(currentRotation);
+#else
+      FontSelection fontSel = selectFontForRotation(3);
+#endif
       const uint8_t *selectedFont = fontSel.font;
       int selectedFontHeight = fontSel.height;
 
