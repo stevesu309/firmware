@@ -26,7 +26,7 @@ public:
      * @brief 获取当前天线状态
      * @return 当前激活的天线类型
      */
-    static const char* getCurrentAntennaType();
+    static const char *getCurrentAntennaType();
 
     /**
      * @brief 检查是否需要切换天线
@@ -35,12 +35,12 @@ public:
      * @return 是否需要切换天线
      */
     static bool needsAntennaSwitch(meshtastic_Config_LoRaConfig_RegionCode oldRegion,
-                                  meshtastic_Config_LoRaConfig_RegionCode newRegion);
+                                   meshtastic_Config_LoRaConfig_RegionCode newRegion);
 
 private:
-    static void switchTo432MHzAntenna();
+    static void switchTo433MHzAntenna();
     static void switchTo900MHzAntenna();
-    static void sendAntennaSwitchNotification(const char* message);
+    static void sendAntennaSwitchNotification(const char *message);
 
     // 天线状态跟踪，当前（旧的）使用的天线类型，
     static meshtastic_Config_LoRaConfig_RegionCode currentRegion;

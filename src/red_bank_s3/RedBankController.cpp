@@ -209,7 +209,7 @@ namespace RedBankS3
         digitalWrite(PIN_LORA_EN, HIGH);
 
         // 初始化天线管理器
-        // AntennaManager::init(config.lora.region);
+        AntennaManager::init(config.lora.region);
 #if HAS_SCREEN
         applyRotation(); // 应用屏幕旋转
 #endif
@@ -451,7 +451,7 @@ namespace RedBankS3
     void RedBankController::setMenuActive(bool active)
     {
         menuActive = active;
-        LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
+        // LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
     }
 
     // LEFT 按键处理函数

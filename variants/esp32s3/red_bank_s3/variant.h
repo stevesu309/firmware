@@ -68,10 +68,24 @@
 #define LORA_DIO1 10 // SX1262 IRQ
 #define LORA_DIO2 9  // SX1262 BUSY
 #define LORA_DIO3    // Not connected on PCB, but internally on the TTGO SX1262, if DIO3 is high the TXCO is enabled
-// #define LORA_ANT 47  // 天线选择引脚 LOW：900MHz HIGH：432MHz
-// #define LORA_ANT_413 48 // 天线选择引脚 CN China 470.0 - 510.0
+#define LORA_SCK 5
+#define LORA_MISO 3
+#define LORA_MOSI 6
+
+// 本板使用两个独立的 LoRa 模块：
+// - 900MHz 模块：CS 接在 GPIO7
+// - 433MHz 模块：CS 接在 GPIO4
+// 默认的 LORA_CS 仍然指向 900MHz 的 CS（GPIO7），
+// 实际选择哪个模块由 main.cpp 中的运行时逻辑根据 config.lora.region 决定。
+#define LORA_CS_900 7
+#define LORA_CS_433 4
+#define LORA_CS LORA_CS_900
+
+// #define LORA_ANT 47  // 旧设计的天线选择引脚，当前未使用
+// #define LORA_ANT_413 48 // 旧设计的天线选择引脚，当前未使用
+
 #ifdef USE_SX1262
-#define SX126X_CS 7             // FIXME - we really should define LORA_CS instead
+#define SX126X_CS LORA_CS       // 作为默认值，实际 cs 在 RED_BANK_S3 中会根据区域动态选择
 #define SX126X_DIO1 10          // LORA_DIO1
 #define SX126X_BUSY 9           // LORA_DIO2
 #define SX126X_RESET LORA_RESET // LORA_RESET
@@ -79,11 +93,6 @@
 #define SX126X_DIO3_TCXO_VOLTAGE 1.8
 #endif
 #define PIN_GPS_RESET (39) // GNSS模块复位引脚
-
-#define LORA_SCK 5
-#define LORA_MISO 3
-#define LORA_MOSI 6
-#define LORA_CS 7
 
 #endif
 
@@ -102,3 +111,6 @@
 #define BUTTON_ACTIVE_PULLUP true
 #define BUTTON_NEED_PULLUP
 #define HAS_BUTTON 1
+
+#define BATTERY_PIN 8
+#define ADC_CHANNEL ADC1_GPIO8_CHANNEL

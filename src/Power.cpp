@@ -142,7 +142,7 @@ XPowersLibInterface *PMU = NULL;
 // I'd rather not include axp20x.h as it brings Wire dependency.
 class HasBatteryLevel
 {
-  public:
+public:
     /**
      * Battery state of charge, from 0 to 100 or -1 for unknown
      */
@@ -235,14 +235,15 @@ static void adcDisable()
  */
 class AnalogBatteryLevel : public HasBatteryLevel
 {
-  public:
+public:
     /**
      * Battery state of charge, from 0 to 100 or -1 for unknown
      */
     virtual int getBatteryPercent() override
     {
 #if defined(HAS_RAKPROT) && !defined(HAS_PMU)
-        if (hasRAK()) {
+        if (hasRAK())
+        {
             return rak9154Sensor.getBusBatteryPercent();
         }
 #endif
@@ -265,11 +266,16 @@ class AnalogBatteryLevel : public HasBatteryLevel
          */
         float battery_SOC = 0.0;
         uint16_t voltage = v / NUM_CELLS; // single cell voltage (average)
-        for (int i = 0; i < NUM_OCV_POINTS; i++) {
-            if (OCV[i] <= voltage) {
-                if (i == 0) {
+        for (int i = 0; i < NUM_OCV_POINTS; i++)
+        {
+            if (OCV[i] <= voltage)
+            {
+                if (i == 0)
+                {
                     battery_SOC = 100.0; // 100% full
-                } else {
+                }
+                else
+                {
                     // interpolate between OCV[i] and OCV[i-1]
                     battery_SOC = (float)100.0 / (NUM_OCV_POINTS - 1.0) *
                                   (NUM_OCV_POINTS - 1.0 - i + ((float)voltage - OCV[i]) / (OCV[i - 1] - OCV[i]));
@@ -287,13 +293,15 @@ class AnalogBatteryLevel : public HasBatteryLevel
     {
 
 #if HAS_TELEMETRY && defined(HAS_RAKPROT) && !defined(HAS_PMU) && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        if (hasRAK()) {
+        if (hasRAK())
+        {
             return getRAKVoltage();
         }
 #endif
 
 #if HAS_TELEMETRY && !defined(HAS_PMU) && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        if (hasINA()) {
+        if (hasINA())
+        {
             return getINAVoltage();
         }
 #endif
@@ -303,7 +311,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
 #endif
 
 #ifndef BATTERY_SENSE_SAMPLES
-#define BATTERY_SENSE_SAMPLES                                                                                                    \
+#define BATTERY_SENSE_SAMPLES \
     15 // Set the number of samples, it has an effect of increasing sensitivity in complex electromagnetic environment.
 #endif
 
@@ -313,7 +321,8 @@ class AnalogBatteryLevel : public HasBatteryLevel
             config.power.adc_multiplier_override > 0 ? config.power.adc_multiplier_override : ADC_MULTIPLIER;
         // Do not call analogRead() often.
         const uint32_t min_read_interval = 5000;
-        if (!initial_read_done || !Throttle::isWithinTimespanMs(last_read_time_ms, min_read_interval)) {
+        if (!initial_read_done || !Throttle::isWithinTimespanMs(last_read_time_ms, min_read_interval))
+        {
             last_read_time_ms = millis();
 
             uint32_t raw = 0;
@@ -325,7 +334,8 @@ class AnalogBatteryLevel : public HasBatteryLevel
             scaled = esp_adc_cal_raw_to_voltage(raw, adc_characs);
             scaled *= operativeAdcMultiplier;
 #else // block for all other platforms
-            for (uint32_t i = 0; i < BATTERY_SENSE_SAMPLES; i++) {
+            for (uint32_t i = 0; i < BATTERY_SENSE_SAMPLES; i++)
+            {
                 raw += analogRead(BATTERY_PIN);
             }
             raw = raw / BATTERY_SENSE_SAMPLES;
@@ -333,12 +343,15 @@ class AnalogBatteryLevel : public HasBatteryLevel
 #endif
             adcDisable();
 
-            if (!initial_read_done) {
+            if (!initial_read_done)
+            {
                 // Flush the smoothing filter with an ADC reading, if the reading is plausibly correct
                 if (scaled > last_read_value)
                     last_read_value = scaled;
                 initial_read_done = true;
-            } else {
+            }
+            else
+            {
                 // Already initialized - filter this reading
                 last_read_value += (scaled - last_read_value) * 0.5; // Virtual LPF
             }
@@ -362,9 +375,11 @@ class AnalogBatteryLevel : public HasBatteryLevel
         uint8_t raw_c = 0; // raw reading counter
 
 #ifndef BAT_MEASURE_ADC_UNIT // ADC1
-        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++) {
+        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++)
+        {
             int val_ = adc1_get_raw(adc_channel);
-            if (val_ >= 0) { // save only valid readings
+            if (val_ >= 0)
+            { // save only valid readings
                 raw += val_;
                 raw_c++;
             }
@@ -379,22 +394,27 @@ class AnalogBatteryLevel : public HasBatteryLevel
         esp_err_t read_result;
 
         // Multiple samples
-        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++) {
+        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++)
+        {
             adc_buf = 0;
             read_result = -1;
 
             read_result = adc2_get_raw(adc_channel, ADC_WIDTH_BIT_12, &adc_buf);
-            if (read_result == ESP_OK) {
+            if (read_result == ESP_OK)
+            {
                 raw += adc_buf;
                 raw_c++; // Count valid samples
-            } else {
+            }
+            else
+            {
                 LOG_DEBUG("An attempt to sample ADC2 failed");
             }
         }
 
 #else  // Other ESP32
         int32_t adc_buf = 0;
-        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++) {
+        for (int i = 0; i < BATTERY_SENSE_SAMPLES; i++)
+        {
             // ADC2 wifi bug workaround, see
             // https://github.com/espressif/arduino-esp32/issues/102
             WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, RTC_reg_b);
@@ -421,9 +441,11 @@ class AnalogBatteryLevel : public HasBatteryLevel
     {
         int lastReading = digitalRead(ADC_V);
         // 判断值是否变化
-        for (int i = 2; i < 500; i++) {
+        for (int i = 2; i < 500; i++)
+        {
             int reading = digitalRead(ADC_V);
-            if (reading != lastReading) {
+            if (reading != lastReading)
+            {
                 return false; // 有变化，USB供电, 没接电池
             }
         }
@@ -443,13 +465,15 @@ class AnalogBatteryLevel : public HasBatteryLevel
 #ifdef EXT_PWR_DETECT
 #if defined(HELTEC_CAPSULE_SENSOR_V3) || defined(HELTEC_SENSOR_HUB)
         // if external powered that pin will be pulled down
-        if (digitalRead(EXT_PWR_DETECT) == LOW) {
+        if (digitalRead(EXT_PWR_DETECT) == LOW)
+        {
             return true;
         }
         // if it's not LOW - check the battery
 #else
         // if external powered that pin will be pulled up
-        if (digitalRead(EXT_PWR_DETECT) == HIGH) {
+        if (digitalRead(EXT_PWR_DETECT) == HIGH)
+        {
             return true;
         }
         // if it's not HIGH - check the battery
@@ -463,7 +487,8 @@ class AnalogBatteryLevel : public HasBatteryLevel
     virtual bool isCharging() override
     {
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && defined(HAS_RAKPROT) && !defined(HAS_PMU)
-        if (hasRAK()) {
+        if (hasRAK())
+        {
             return (rak9154Sensor.isCharging()) ? OptTrue : OptFalse;
         }
 #endif
@@ -471,7 +496,8 @@ class AnalogBatteryLevel : public HasBatteryLevel
         return digitalRead(EXT_CHRG_DETECT) == ext_chrg_detect_value;
 #else
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(DISABLE_INA_CHARGING_DETECTION)
-        if (hasINA()) {
+        if (hasINA())
+        {
             // get current flow from INA sensor - negative value means power flowing into the battery
             // default assuming  BATTERY+  <--> INA_VIN+ <--> SHUNT RESISTOR <--> INA_VIN- <--> LOAD
             LOG_DEBUG("Using INA on I2C addr 0x%x for charging detection", config.power.device_battery_ina_address);
@@ -488,7 +514,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
         return isVbusIn();
     }
 
-  private:
+private:
     /// If we see a battery voltage higher than physics allows - assume charger is pumping
     /// in power
 
@@ -519,16 +545,23 @@ class AnalogBatteryLevel : public HasBatteryLevel
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
     uint16_t getINAVoltage()
     {
-        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address) {
+        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address)
+        {
             return ina219Sensor.getBusVoltageMv();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
+                 config.power.device_battery_ina_address)
+        {
             return ina226Sensor.getBusVoltageMv();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA260].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA260].first ==
+                 config.power.device_battery_ina_address)
+        {
             return ina260Sensor.getBusVoltageMv();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
+                 config.power.device_battery_ina_address)
+        {
             return ina3221Sensor.getBusVoltageMv();
         }
         return 0;
@@ -536,13 +569,18 @@ class AnalogBatteryLevel : public HasBatteryLevel
 
     int16_t getINACurrent()
     {
-        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address) {
+        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address)
+        {
             return ina219Sensor.getCurrentMa();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
+                 config.power.device_battery_ina_address)
+        {
             return ina226Sensor.getCurrentMa();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
+                 config.power.device_battery_ina_address)
+        {
             return ina3221Sensor.getCurrentMa();
         }
         return 0;
@@ -550,24 +588,32 @@ class AnalogBatteryLevel : public HasBatteryLevel
 
     bool hasINA()
     {
-        if (!config.power.device_battery_ina_address) {
+        if (!config.power.device_battery_ina_address)
+        {
             return false;
         }
-        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address) {
+        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address)
+        {
             if (!ina219Sensor.isInitialized())
                 return ina219Sensor.runOnce() > 0;
             return ina219Sensor.isRunning();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA226].first ==
+                 config.power.device_battery_ina_address)
+        {
             if (!ina226Sensor.isInitialized())
                 return ina226Sensor.runOnce() > 0;
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA260].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA260].first ==
+                 config.power.device_battery_ina_address)
+        {
             if (!ina260Sensor.isInitialized())
                 return ina260Sensor.runOnce() > 0;
             return ina260Sensor.isRunning();
-        } else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
-                   config.power.device_battery_ina_address) {
+        }
+        else if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA3221].first ==
+                 config.power.device_battery_ina_address)
+        {
             if (!ina3221Sensor.isInitialized())
                 return ina3221Sensor.runOnce() > 0;
             return ina3221Sensor.isRunning();
@@ -632,18 +678,23 @@ bool Power::analogInit()
     // calibrate ADC
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, width, DEFAULT_VREF, adc_characs);
     // show ADC characterization base
-    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP)
+    {
         LOG_INFO("ADC config based on Two Point values stored in eFuse");
-    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+    }
+    else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF)
+    {
         LOG_INFO("ADC config based on reference voltage stored in eFuse");
     }
 #ifdef CONFIG_IDF_TARGET_ESP32S3
     // ESP32S3
-    else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
+    else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP_FIT)
+    {
         LOG_INFO("ADC config based on Two Point values and fitting curve coefficients stored in eFuse");
     }
 #endif
-    else {
+    else
+    {
         LOG_INFO("ADC config based on default reference voltage");
     }
 #endif // ARCH_ESP32
@@ -675,13 +726,20 @@ bool Power::analogInit()
 bool Power::setup()
 {
     bool found = false;
-    if (axpChipInit()) {
+    if (axpChipInit())
+    {
         found = true;
-    } else if (lipoInit()) {
+    }
+    else if (lipoInit())
+    {
         found = true;
-    } else if (lipoChargerInit()) {
+    }
+    else if (lipoChargerInit())
+    {
         found = true;
-    } else if (analogInit()) {
+    }
+    else if (analogInit())
+    {
         found = true;
     }
 
@@ -697,12 +755,14 @@ bool Power::setup()
 
 void Power::powerCommandsCheck()
 {
-    if (rebootAtMsec && millis() > rebootAtMsec) {
+    if (rebootAtMsec && millis() > rebootAtMsec)
+    {
         LOG_INFO("Rebooting");
         reboot();
     }
 
-    if (shutdownAtMsec && millis() > shutdownAtMsec) {
+    if (shutdownAtMsec && millis() > shutdownAtMsec)
+    {
         shutdownAtMsec = 0;
         shutdown();
     }
@@ -724,7 +784,8 @@ void Power::reboot()
     SPI.end();
     Wire.end();
     Serial1.end();
-    if (screen) {
+    if (screen)
+    {
         delete screen;
         screen = nullptr;
     }
@@ -742,7 +803,8 @@ void Power::shutdown()
 {
 
 #if HAS_SCREEN
-    if (screen) {
+    if (screen)
+    {
         screen->showSimpleBanner("Shutting Down...", 0); // stays on screen
     }
 #endif
@@ -780,16 +842,21 @@ void Power::readPowerStatus()
     OptionalBool hasBattery = OptUnknown; // These must be static because NRF_APM code doesn't run every time
     OptionalBool isChargingNow = OptUnknown;
 
-    if (batteryLevel) {
+    if (batteryLevel)
+    {
         hasBattery = batteryLevel->isBatteryConnect() ? OptTrue : OptFalse;
         usbPowered = batteryLevel->isVbusIn() ? OptTrue : OptFalse;
         isChargingNow = batteryLevel->isCharging() ? OptTrue : OptFalse;
-        if (hasBattery) {
+        if (hasBattery)
+        {
             batteryVoltageMv = batteryLevel->getBattVoltage();
             // If the AXP192 returns a valid battery percentage, use it
-            if (batteryLevel->getBatteryPercent() >= 0) {
+            if (batteryLevel->getBatteryPercent() >= 0)
+            {
                 batteryChargePercent = batteryLevel->getBatteryPercent();
-            } else {
+            }
+            else
+            {
                 // If the AXP192 returns a percentage less than 0, the feature is either not supported or there is an error
                 // In that case, we compute an estimate of the charge percent based on open circuit voltage table defined
                 // in power.h
@@ -825,12 +892,15 @@ void Power::readPowerStatus()
               powerStatus2.getBatteryVoltageMv(), powerStatus2.getBatteryChargePercent());
     newStatus.notifyObservers(&powerStatus2);
 #ifdef DEBUG_HEAP
-    if (lastheap != memGet.getFreeHeap()) {
+    if (lastheap != memGet.getFreeHeap())
+    {
         std::string threadlist = "Threads running:";
         int running = 0;
-        for (int i = 0; i < MAX_THREADS; i++) {
+        for (int i = 0; i < MAX_THREADS; i++)
+        {
             auto thread = concurrency::mainController.get(i);
-            if ((thread != nullptr) && (thread->enabled)) {
+            if ((thread != nullptr) && (thread->enabled))
+            {
                 threadlist += vformat(" %s", thread->ThreadName.c_str());
                 running++;
             }
@@ -841,7 +911,8 @@ void Power::readPowerStatus()
         lastheap = memGet.getFreeHeap();
     }
 #ifdef DEBUG_HEAP_MQTT
-    if (mqtt) {
+    if (mqtt)
+    {
         // send MQTT-Packet with Heap-Size
         uint8_t dmac[6];
         getMacAddr(dmac); // Get our hardware ID
@@ -867,11 +938,14 @@ void Power::readPowerStatus()
     // a row. NOTE: min LiIon/LiPo voltage is 2.0 to 2.5V, current OCV min is set to 3100 that is large enough.
     //
 
-    if (batteryLevel && powerStatus2.getHasBattery() && !powerStatus2.getHasUSB()) {
-        if (batteryLevel->getBattVoltage() < OCV[NUM_OCV_POINTS - 1]) {
+    if (batteryLevel && powerStatus2.getHasBattery() && !powerStatus2.getHasUSB())
+    {
+        if (batteryLevel->getBattVoltage() < OCV[NUM_OCV_POINTS - 1])
+        {
             low_voltage_counter++;
             LOG_DEBUG("Low voltage counter: %d/10", low_voltage_counter);
-            if (low_voltage_counter > 10) {
+            if (low_voltage_counter > 10)
+            {
 #ifdef ARCH_NRF52
                 // We can't trigger deep sleep on NRF52, it's freezing the board
                 LOG_DEBUG("Low voltage detected, but not trigger deep sleep");
@@ -880,7 +954,9 @@ void Power::readPowerStatus()
                 powerFSM.trigger(EVENT_LOW_BATTERY);
 #endif
             }
-        } else {
+        }
+        else
+        {
             low_voltage_counter = 0;
         }
     }
@@ -893,16 +969,19 @@ int32_t Power::runOnce()
 #ifdef HAS_PMU
     // WE no longer use the IRQ line to wake the CPU (due to false wakes from sleep), but we do poll
     // the IRQ status by reading the registers over I2C
-    if (PMU) {
+    if (PMU)
+    {
 
         PMU->getIrqStatus();
 
-        if (PMU->isVbusRemoveIrq()) {
+        if (PMU->isVbusRemoveIrq())
+        {
             LOG_INFO("USB unplugged");
             powerFSM.trigger(EVENT_POWER_DISCONNECTED);
         }
 
-        if (PMU->isVbusInsertIrq()) {
+        if (PMU->isVbusInsertIrq())
+        {
             LOG_INFO("USB plugged In");
             powerFSM.trigger(EVENT_POWER_CONNECTED);
         }
@@ -924,7 +1003,8 @@ int32_t Power::runOnce()
         }
         */
 #ifndef T_WATCH_S3 // FIXME - why is this triggering on the T-Watch S3?
-        if (PMU->isPekeyLongPressIrq()) {
+        if (PMU->isPekeyLongPressIrq())
+        {
             LOG_DEBUG("PEK long button press");
             if (screen)
                 screen->setOn(false);
@@ -966,29 +1046,38 @@ bool Power::axpChipInit()
      * It is not necessary to specify the wire pin,
      * just input the wire, because the wire has been initialized in main.cpp
      */
-    if (!PMU) {
+    if (!PMU)
+    {
         PMU = new XPowersAXP2101(*w);
-        if (!PMU->init()) {
+        if (!PMU->init())
+        {
             LOG_WARN("No AXP2101 power management");
             delete PMU;
             PMU = NULL;
-        } else {
+        }
+        else
+        {
             LOG_INFO("AXP2101 PMU init succeeded");
         }
     }
 
-    if (!PMU) {
+    if (!PMU)
+    {
         PMU = new XPowersAXP192(*w);
-        if (!PMU->init()) {
+        if (!PMU->init())
+        {
             LOG_WARN("No AXP192 power management");
             delete PMU;
             PMU = NULL;
-        } else {
+        }
+        else
+        {
             LOG_INFO("AXP192 PMU init succeeded");
         }
     }
 
-    if (!PMU) {
+    if (!PMU)
+    {
         /*
          * In XPowersLib, if the XPowersAXPxxx object is released, Wire.end() will be called at the same time.
          * In order not to affect other devices, if the initialization of the PMU fails, Wire needs to be re-initialized once,
@@ -1002,7 +1091,8 @@ bool Power::axpChipInit()
 
     batteryLevel = PMU;
 
-    if (PMU->getChipModel() == XPOWERS_AXP192) {
+    if (PMU->getChipModel() == XPOWERS_AXP192)
+    {
 
         // lora radio power channel
         PMU->setPowerChannelVoltage(XPOWERS_LDO2, 3300);
@@ -1035,10 +1125,13 @@ bool Power::axpChipInit()
 
         // Set up the charging voltage
         PMU->setChargeTargetVoltage(XPOWERS_AXP192_CHG_VOL_4V2);
-    } else if (PMU->getChipModel() == XPOWERS_AXP2101) {
+    }
+    else if (PMU->getChipModel() == XPOWERS_AXP2101)
+    {
 
         /*The alternative version of T-Beam 1.1 differs from T-Beam V1.1 in that it uses an AXP2101 power chip*/
-        if (HW_VENDOR == meshtastic_HardwareModel_TBEAM) {
+        if (HW_VENDOR == meshtastic_HardwareModel_TBEAM)
+        {
             // Unuse power channel
             PMU->disablePowerOutput(XPOWERS_DCDC2);
             PMU->disablePowerOutput(XPOWERS_DCDC3);
@@ -1067,8 +1160,10 @@ bool Power::axpChipInit()
             // GNSS VDD 3300mV
             PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
             PMU->enablePowerOutput(XPOWERS_ALDO3);
-        } else if (HW_VENDOR == meshtastic_HardwareModel_LILYGO_TBEAM_S3_CORE ||
-                   HW_VENDOR == meshtastic_HardwareModel_T_WATCH_S3) {
+        }
+        else if (HW_VENDOR == meshtastic_HardwareModel_LILYGO_TBEAM_S3_CORE ||
+                 HW_VENDOR == meshtastic_HardwareModel_T_WATCH_S3)
+        {
             // t-beam s3 core
             /**
              * gnss module power channel
@@ -1140,51 +1235,63 @@ bool Power::axpChipInit()
     PMU->enableVbusVoltageMeasure();
     PMU->enableBattVoltageMeasure();
 
-    if (PMU->isChannelAvailable(XPOWERS_DCDC1)) {
+    if (PMU->isChannelAvailable(XPOWERS_DCDC1))
+    {
         LOG_DEBUG("DC1  : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_DCDC1) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_DCDC1));
     }
-    if (PMU->isChannelAvailable(XPOWERS_DCDC2)) {
+    if (PMU->isChannelAvailable(XPOWERS_DCDC2))
+    {
         LOG_DEBUG("DC2  : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_DCDC2) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_DCDC2));
     }
-    if (PMU->isChannelAvailable(XPOWERS_DCDC3)) {
+    if (PMU->isChannelAvailable(XPOWERS_DCDC3))
+    {
         LOG_DEBUG("DC3  : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_DCDC3) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_DCDC3));
     }
-    if (PMU->isChannelAvailable(XPOWERS_DCDC4)) {
+    if (PMU->isChannelAvailable(XPOWERS_DCDC4))
+    {
         LOG_DEBUG("DC4  : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_DCDC4) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_DCDC4));
     }
-    if (PMU->isChannelAvailable(XPOWERS_LDO2)) {
+    if (PMU->isChannelAvailable(XPOWERS_LDO2))
+    {
         LOG_DEBUG("LDO2 : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_LDO2) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_LDO2));
     }
-    if (PMU->isChannelAvailable(XPOWERS_LDO3)) {
+    if (PMU->isChannelAvailable(XPOWERS_LDO3))
+    {
         LOG_DEBUG("LDO3 : %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_LDO3) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_LDO3));
     }
-    if (PMU->isChannelAvailable(XPOWERS_ALDO1)) {
+    if (PMU->isChannelAvailable(XPOWERS_ALDO1))
+    {
         LOG_DEBUG("ALDO1: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_ALDO1) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_ALDO1));
     }
-    if (PMU->isChannelAvailable(XPOWERS_ALDO2)) {
+    if (PMU->isChannelAvailable(XPOWERS_ALDO2))
+    {
         LOG_DEBUG("ALDO2: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_ALDO2) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_ALDO2));
     }
-    if (PMU->isChannelAvailable(XPOWERS_ALDO3)) {
+    if (PMU->isChannelAvailable(XPOWERS_ALDO3))
+    {
         LOG_DEBUG("ALDO3: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_ALDO3) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_ALDO3));
     }
-    if (PMU->isChannelAvailable(XPOWERS_ALDO4)) {
+    if (PMU->isChannelAvailable(XPOWERS_ALDO4))
+    {
         LOG_DEBUG("ALDO4: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_ALDO4) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_ALDO4));
     }
-    if (PMU->isChannelAvailable(XPOWERS_BLDO1)) {
+    if (PMU->isChannelAvailable(XPOWERS_BLDO1))
+    {
         LOG_DEBUG("BLDO1: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_BLDO1) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_BLDO1));
     }
-    if (PMU->isChannelAvailable(XPOWERS_BLDO2)) {
+    if (PMU->isChannelAvailable(XPOWERS_BLDO2))
+    {
         LOG_DEBUG("BLDO2: %s   Voltage:%u mV ", PMU->isPowerChannelEnable(XPOWERS_BLDO2) ? "+" : "-",
                   PMU->getPowerChannelVoltage(XPOWERS_BLDO2));
     }
@@ -1202,15 +1309,19 @@ bool Power::axpChipInit()
 #ifdef PMU_IRQ
     uint64_t pmuIrqMask = 0;
 
-    if (PMU->getChipModel() == XPOWERS_AXP192) {
+    if (PMU->getChipModel() == XPOWERS_AXP192)
+    {
         pmuIrqMask = XPOWERS_AXP192_VBUS_INSERT_IRQ | XPOWERS_AXP192_BAT_INSERT_IRQ | XPOWERS_AXP192_PKEY_SHORT_IRQ;
-    } else if (PMU->getChipModel() == XPOWERS_AXP2101) {
+    }
+    else if (PMU->getChipModel() == XPOWERS_AXP2101)
+    {
         pmuIrqMask = XPOWERS_AXP2101_VBUS_INSERT_IRQ | XPOWERS_AXP2101_BAT_INSERT_IRQ | XPOWERS_AXP2101_PKEY_SHORT_IRQ;
     }
 
     pinMode(PMU_IRQ, INPUT);
     attachInterrupt(
-        PMU_IRQ, [] { pmu_irq = true; }, FALLING);
+        PMU_IRQ, []
+        { pmu_irq = true; }, FALLING);
 
     // we do not look for AXPXXX_CHARGING_FINISHED_IRQ & AXPXXX_CHARGING_IRQ because it occurs repeatedly while there is
     // no battery also it could cause inadvertent waking from light sleep just because the battery filled
@@ -1239,21 +1350,23 @@ bool Power::axpChipInit()
  */
 class LipoBatteryLevel : public HasBatteryLevel
 {
-  private:
+private:
     MAX17048Singleton *max17048 = nullptr;
 
-  public:
+public:
     /**
      * Init the I2C MAX17048 Lipo battery level sensor
      */
     bool runOnce()
     {
-        if (max17048 == nullptr) {
+        if (max17048 == nullptr)
+        {
             max17048 = MAX17048Singleton::GetInstance();
         }
 
         // try to start if the sensor has been detected
-        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_MAX17048].first != 0) {
+        if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_MAX17048].first != 0)
+        {
             return max17048->runOnce(nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_MAX17048].second);
         }
         return false;
@@ -1317,20 +1430,22 @@ bool Power::lipoInit()
  */
 class LipoCharger : public HasBatteryLevel
 {
-  private:
+private:
     XPowersPPM *ppm = nullptr;
     BQ27220 *bq = nullptr;
 
-  public:
+public:
     /**
      * Init the I2C BQ25896 Lipo battery charger
      */
     bool runOnce()
     {
-        if (ppm == nullptr) {
+        if (ppm == nullptr)
+        {
             ppm = new XPowersPPM;
             bool result = ppm->init(Wire, I2C_SDA, I2C_SCL, BQ25896_ADDR);
-            if (result) {
+            if (result)
+            {
                 LOG_INFO("PPM BQ25896 init succeeded");
                 // Set the minimum operating voltage. Below this voltage, the PPM will protect
                 // ppm->setSysPowerDownVoltage(3100);
@@ -1358,24 +1473,30 @@ class LipoCharger : public HasBatteryLevel
                 // Turn on charging function
                 // If there is no battery connected, do not turn on the charging function
                 ppm->enableCharge();
-            } else {
+            }
+            else
+            {
                 LOG_WARN("PPM BQ25896 init failed");
                 delete ppm;
                 ppm = nullptr;
                 return false;
             }
         }
-        if (bq == nullptr) {
+        if (bq == nullptr)
+        {
             bq = new BQ27220;
             bq->setDefaultCapacity(BQ27220_DESIGN_CAPACITY);
 
             bool result = bq->init();
-            if (result) {
+            if (result)
+            {
                 LOG_DEBUG("BQ27220 design capacity: %d", bq->getDesignCapacity());
                 LOG_DEBUG("BQ27220 fullCharge capacity: %d", bq->getFullChargeCapacity());
                 LOG_DEBUG("BQ27220 remaining capacity: %d", bq->getRemainingCapacity());
                 return true;
-            } else {
+            }
+            else
+            {
                 LOG_WARN("BQ27220 init failed");
                 delete bq;
                 bq = nullptr;
@@ -1415,10 +1536,14 @@ class LipoCharger : public HasBatteryLevel
     virtual bool isCharging() override
     {
         bool isCharging = ppm->isCharging();
-        if (isCharging) {
+        if (isCharging)
+        {
             LOG_DEBUG("BQ27220 time to full charge: %d min", bq->getTimeToFull());
-        } else {
-            if (!ppm->isVbusIn()) {
+        }
+        else
+        {
+            if (!ppm->isVbusIn())
+            {
                 LOG_DEBUG("BQ27220 time to empty: %d min (%d mAh)", bq->getTimeToEmpty(), bq->getRemainingCapacity());
             }
         }

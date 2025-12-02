@@ -20,10 +20,6 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     devicestate.rx_text_message = mp;
     devicestate.has_rx_text_message = true;
 
-    // 保存最新的消息
-#ifdef RED_BANK_S3
-    redBankController->saveMeshPacket(mp);
-#endif
     powerFSM.trigger(EVENT_RECEIVED_MSG);
     // Only trigger screen wake if configuration allows it
     if (shouldWakeOnReceivedMessage())
@@ -31,6 +27,10 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
         powerFSM.trigger(EVENT_RECEIVED_MSG);
     }
     notifyObservers(&mp);
+
+#ifdef RED_BANK_S3
+    redBankController->saveMeshPacket(mp);
+#endif
 
     return ProcessMessage::CONTINUE; // Let others look at this message also if they want
 }

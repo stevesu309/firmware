@@ -254,8 +254,8 @@ bool EInkDisplay::connect()
         // pinMode(EINK_POWER_PIN, OUTPUT);
         // digitalWrite(EINK_POWER_PIN, HIGH);
         // delay(100);
-        pinMode(4, OUTPUT);
-        digitalWrite(4, LOW);
+        // pinMode(4, OUTPUT);
+        // digitalWrite(4, HIGH);
         delay(100);
         hspi = new SPIClass(HSPI);
         hspi->begin(PIN_EINK_SCLK, -1, PIN_EINK_MOSI, PIN_EINK_CS);
