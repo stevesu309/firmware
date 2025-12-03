@@ -10,12 +10,10 @@ meshtastic_Config_LoRaConfig_RegionCode AntennaManager::currentRegion = meshtast
 
 void AntennaManager::init(meshtastic_Config_LoRaConfig_RegionCode newRegion)
 {
-    // 由于切换地区会重启设备，重启后会重新初始化 RadioLib，
-    // 这里只记录当前区域，实际选择哪个 LoRa 模块（CS 引脚）
+
     // 由 main.cpp 中的 SX1262 初始化逻辑根据 config.lora.region 决定。
 
     // 根据区域设置初始天线状态（逻辑状态）
-    // 注意：不要先设置 currentRegion，让 switchAntennaForRegion 来更新它
     if (newRegion != meshtastic_Config_LoRaConfig_RegionCode_UNSET)
     {
         switchAntennaForRegion(newRegion);
@@ -114,9 +112,7 @@ bool AntennaManager::needsAntennaSwitch(meshtastic_Config_LoRaConfig_RegionCode 
 
 void AntennaManager::switchTo433MHzAntenna()
 {
-    // 对于 RED_BANK_S3，切换到 433MHz 仅意味着：
-    // - 在逻辑上当前区域为 433MHz（CN/EU_433 等）
-    // - 实际使用哪一个 LoRa 模块由 main.cpp 中的 csPin 选择决定
+    // 对于双模块版本，实际使用哪一个 LoRa 模块由 main.cpp 中的 csPin 选择决定
     LOG_INFO("Switching logical antenna to 432MHz band (handled via CS pin selection)");
     // #ifdef LORA_ANT
     //     digitalWrite(LORA_ANT, LOW); // 开启432MHz天线 关闭900MHz天线

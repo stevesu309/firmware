@@ -41,10 +41,10 @@ namespace graphics
       else
       {
         // 横屏模式使用标准小字体 (Arimo_Regular_16, 高度16像素)
-        // selection.font = FONT_MEDIUM;
-        // selection.height = FONT_HEIGHT_MEDIUM;
-        selection.font = FONT_LARGE;
-        selection.height = _fontHeight(FONT_LARGE);
+        selection.font = FONT_MEDIUM;
+        selection.height = FONT_HEIGHT_MEDIUM;
+        // selection.font = FONT_LARGE;
+        // selection.height = _fontHeight(FONT_LARGE);
       }
       return selection;
     }

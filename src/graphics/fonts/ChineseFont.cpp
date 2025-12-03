@@ -127,7 +127,8 @@ const ChineseFont chineseFont[] = {
 
 const unsigned int chineseFontCount = sizeof(chineseFont) / sizeof(chineseFont[0]);
 
-void drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf8)
+// 返回值：true = 找到并绘制了对应汉字；false = 未找到（调用方可做降级处理）
+bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf8)
 {
     for (unsigned int i = 0; i < chineseFontCount; i++)
     {
@@ -146,8 +147,11 @@ void drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf
                     }
                 }
             }
+            return true;
         }
     }
+
+    return false;
 }
 
 void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, const char *str)
@@ -155,7 +159,7 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
     int offset = 0;
     int16_t currentX = x;
     int16_t currentY = y;
-    int16_t lineHeight = 16; // 中文字符高度
+    int16_t lineHeight = 18; // 行高，按 18px 字体处理
     int16_t screenWidth = display->getWidth();
 
     while (str[offset])
@@ -176,35 +180,98 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
             currentY += lineHeight;
         }
 
-        if ((str[offset] & 0xF0) == 0xE0)
-        { // UTF-8 汉字 (3字节)
-            char buf[4] = {str[offset], str[offset + 1], str[offset + 2], 0};
+        unsigned char c = static_cast<unsigned char>(str[offset]);
 
-            // 检查中文字符是否会超出屏幕宽度
-            if (currentX + 16 > screenWidth)
-            {
-                currentX = x;
-                currentY += lineHeight;
-            }
+        // 1 字节 ASCII
+        if (c < 0x80)
+        {
+            char buf[2] = {static_cast<char>(c), 0};
 
-            drawChineseChar(display, currentX, currentY, buf);
-            currentX += 16;
-            offset += 3;
-        }
-        else
-        { // ASCII 英文
-            char buf[2] = {str[offset], 0};
-
-            // 检查英文字符是否会超出屏幕宽度
-            if (currentX + 6 > screenWidth)
+            int16_t w = display->getStringWidth(buf);
+            if (currentX + w > screenWidth)
             {
                 currentX = x;
                 currentY += lineHeight;
             }
 
             display->drawString(currentX, currentY, buf);
-            currentX += display->getStringWidth(buf);
-            offset++;
+            currentX += w;
+            offset += 1;
+        }
+        // 2 字节 UTF-8（欧洲语言常见：é、ö 等）
+        else if ((c & 0xE0) == 0xC0)
+        {
+            if (!str[offset + 1])
+                break; // 防止越界
+
+            char buf[3] = {str[offset], str[offset + 1], 0};
+
+            // 注意：OLEDDisplay 的字体实现通常按“单字节字符”计算宽度，
+            // 但这里的 UTF-8 特殊字符占用 2 个字节。
+            // 如果直接用 getStringWidth(buf)，会按两个字符的宽度计算，导致我们手动推进的 X 位置比真实视觉宽度大一倍，
+            // 看起来就像多出一个字符的空白。
+            //
+            // 为了在逻辑上把它当作“一个字符”处理，这里用一个普通 ASCII 字符的宽度作为近似值。
+            int16_t w = display->getStringWidth("A");
+            if (currentX + w > screenWidth)
+            {
+                currentX = x;
+                currentY += lineHeight;
+            }
+
+            display->drawString(currentX, currentY, buf);
+            currentX += w;
+            offset += 2;
+        }
+        // 3 字节 UTF-8（中文等）
+        else if ((c & 0xF0) == 0xE0)
+        {
+            if (!str[offset + 1] || !str[offset + 2])
+                break; // 防止越界
+
+            char buf[4] = {str[offset], str[offset + 1], str[offset + 2], 0};
+
+            // 先尝试按内置汉字点阵绘制
+            if (currentX + 16 > screenWidth)
+            {
+                currentX = x;
+                currentY += lineHeight;
+            }
+
+            bool drawn = drawChineseChar(display, currentX, currentY, buf);
+            if (drawn)
+            {
+                currentX += 16;
+            }
+            else
+            {
+                // 未找到对应汉字，退回到字体库绘制（比如其它 3 字节字符）
+                int16_t w = display->getStringWidth(buf);
+                if (currentX + w > screenWidth)
+                {
+                    currentX = x;
+                    currentY += lineHeight;
+                }
+                display->drawString(currentX, currentY, buf);
+                currentX += w;
+            }
+
+            offset += 3;
+        }
+        else
+        {
+            // 其他情况（4 字节 emoji 等），简单跳过或按单字节回退
+            // 这里按单字节占位显示，避免死循环
+            char buf[2] = {static_cast<char>(c), 0};
+            int16_t w = display->getStringWidth(buf);
+            if (currentX + w > screenWidth)
+            {
+                currentX = x;
+                currentY += lineHeight;
+            }
+            display->drawString(currentX, currentY, buf);
+            currentX += w;
+            offset += 1;
         }
     }
 }

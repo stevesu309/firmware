@@ -11,5 +11,5 @@ typedef struct
 extern const ChineseFont chineseFont[];
 extern const unsigned int chineseFontCount;
 
-void drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf8);
+bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf8);
 void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, const char *str);
