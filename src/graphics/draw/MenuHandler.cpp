@@ -14,6 +14,9 @@
 #include "modules/AdminModule.h"
 #include "modules/CannedMessageModule.h"
 #include "modules/KeyVerificationModule.h"
+#ifdef RED_BANK_S3
+#include "graphics/ChannelMessageRenderer.h"
+#endif
 
 #include "modules/TraceRouteModule.h"
 #include <functional>
@@ -572,6 +575,128 @@ namespace graphics
         };
         screen->showOverlayBanner(bannerOptions);
     }
+
+#ifdef RED_BANK_S3
+    // RED_BANK_S3: 频道历史消息页面的频道选择菜单
+    void menuHandler::channelHistoryMenu()
+    {
+        // 如果当前没有可用的频道，直接返回
+        if (validChannelCount == 0)
+        {
+            screen->showSimpleBanner("No channels", 2000);
+            return;
+        }
+
+        static const int MAX_OPTIONS = MAX_VALID_CHANNELS;
+        static const char *optionsArray[MAX_OPTIONS];
+        static int optionsEnumArray[MAX_OPTIONS];
+        static char optionLabels[MAX_OPTIONS][24];
+
+        int optionCount = 0;
+
+        for (int i = 0; i < validChannelCount && optionCount < MAX_OPTIONS; ++i)
+        {
+            int chIndex = validChannelIndices[i];
+
+            const char *name = channelFile.channels[chIndex].settings.name;
+            bool isPrimary = (channelFile.channels[chIndex].role == meshtastic_Channel_Role_PRIMARY);
+
+            const char *displayName = nullptr;
+            if (name && strlen(name) > 0)
+            {
+                displayName = name;
+            }
+            else
+            {
+                // Channel的预设名称
+                switch (config.lora.modem_preset)
+                {
+                case meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST:
+                    displayName = "Long_fast";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW:
+                    displayName = "Long_slow";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_VERY_LONG_SLOW:
+                    displayName = "Very_long_slow";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_SLOW:
+                    displayName = "Medium_slow";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST:
+                    displayName = "Medium_fast";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_SLOW:
+                    displayName = "Short_slow";
+                    break;
+                case meshtastic_Config_LoRaConfig_ModemPreset_SHORT_FAST:
+                    displayName = "Short_fast";
+                    break;
+                default:
+                    displayName = "Long_fast";
+                    break;
+                }
+            }
+
+            snprintf(optionLabels[optionCount], sizeof(optionLabels[optionCount]),
+                     isPrimary ? "Pri Ch: %s" : "Sec Ch: %s", displayName);
+
+            optionsArray[optionCount] = optionLabels[optionCount];
+            optionsEnumArray[optionCount] = chIndex; // 实际频道索引（0~7）
+            ++optionCount;
+        }
+
+        BannerOverlayOptions bannerOptions;
+        bannerOptions.message = "Select Channel";
+        bannerOptions.durationMs = 0; // RED_BANK_S3: 不自动超时
+        bannerOptions.optionsArrayPtr = optionsArray;
+        bannerOptions.optionsEnumPtr = optionsEnumArray;
+        bannerOptions.optionsCount = optionCount;
+        bannerOptions.notificationType = notificationTypeEnum::selection_picker;
+
+        // 初始选中当前正在浏览的频道
+        int initialSelected = 0;
+        for (int i = 0; i < optionCount; ++i)
+        {
+            if (optionsEnumArray[i] == static_cast<int>(channelIndex))
+            {
+                initialSelected = i;
+                break;
+            }
+        }
+        bannerOptions.InitialSelected = initialSelected;
+
+        bannerOptions.bannerCallback = [](int selectedChannel)
+        {
+            if (selectedChannel < 0 || selectedChannel >= 8)
+            {
+                return;
+            }
+
+            channelIndex = static_cast<size_t>(selectedChannel);
+
+            if (redBankController)
+            {
+                uint16_t packetListSize =
+                    redBankController->_getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+                channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
+            }
+            else
+            {
+                channelPacketBrowseIndex = 0;
+            }
+
+            if (redBankController)
+            {
+                redBankController->setMenuActive(false);
+            }
+
+            screen->runNow(); // 立即刷新，使频道历史页面更新
+        };
+
+        screen->showOverlayBanner(bannerOptions);
+    }
+#endif
 
     void menuHandler::systemBaseMenu()
     {
@@ -1196,9 +1321,9 @@ namespace graphics
         screen->showNodePicker("Node To Favorite", 30000, [](uint32_t nodenum) -> void
 #endif
                                {
-        LOG_WARN("Nodenum: %u", nodenum);
-        nodeDB->set_favorite(true, nodenum);
-        screen->setFrames(graphics::Screen::FOCUS_PRESERVE); });
+            LOG_WARN("Nodenum: %u", nodenum);
+            nodeDB->set_favorite(true, nodenum);
+            screen->setFrames(graphics::Screen::FOCUS_PRESERVE); });
     }
 
     void menuHandler::removeFavoriteMenu()
@@ -1235,10 +1360,11 @@ namespace graphics
         screen->showNodePicker("Node to Trace", 30000, [](uint32_t nodenum) -> void
 #endif
                                {
-        LOG_INFO("Menu: Node picker selected node 0x%08x, traceRouteModule=%p", nodenum, traceRouteModule);
-        if (traceRouteModule) {
-            traceRouteModule->startTraceRoute(nodenum);
-        } });
+            LOG_INFO("Menu: Node picker selected node 0x%08x, traceRouteModule=%p", nodenum, traceRouteModule);
+            if (traceRouteModule)
+            {
+                traceRouteModule->startTraceRoute(nodenum);
+            } });
     }
 
     void menuHandler::testMenu()
@@ -1496,9 +1622,9 @@ namespace graphics
             graphics::BannerOverlayOptions options;
             options.message = message;
 #if defined(RED_BANK_S3)
-            options.durationMs = 0;  // RED_BANK_S3: 永不超时
+            options.durationMs = 0; // RED_BANK_S3: 永不超时
 #else
-            options.durationMs = 30000;  // 默认30秒超时
+            options.durationMs = 30000; // 默认30秒超时
 #endif
             options.optionsArrayPtr = optionsArray;
             options.optionsCount = 2;

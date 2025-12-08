@@ -53,6 +53,8 @@ class menuHandler
     static void messageResponseMenu();
     static void homeBaseMenu();
     static void textMessageBaseMenu();
+    // RED_BANK_S3: 频道历史消息的频道选择菜单
+    static void channelHistoryMenu();
     static void systemBaseMenu();
     static void favoriteBaseMenu();
     static void positionBaseMenu();

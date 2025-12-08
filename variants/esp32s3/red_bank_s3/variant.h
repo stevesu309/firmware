@@ -3,6 +3,8 @@
 // #define I2C_SDA 5
 // #define I2C_SCL 4
 #define USE_SX1262
+#define USE_SX1268
+
 #define HAS_WIRE 0 // 没有iic设备
 
 // Leave undefined to disable our PMU IRQ handler.  DO NOT ENABLE THIS because the pmuirq can cause sperious interrupts
@@ -82,16 +84,16 @@
 #define LORA_CS LORA_CS_900
 
 // #define LORA_ANT 47  // 旧设计的天线选择引脚，当前未使用
-// #define LORA_ANT_413 48 // 旧设计的天线选择引脚，当前未使用
+// #define LORA_ANT_413 48 /
 
-#ifdef USE_SX1262
 #define SX126X_CS LORA_CS       // 作为默认值，实际 cs 在 RED_BANK_S3 中会根据区域动态选择
 #define SX126X_DIO1 10          // LORA_DIO1
 #define SX126X_BUSY 9           // LORA_DIO2
 #define SX126X_RESET LORA_RESET // LORA_RESET
 #define SX126X_DIO2_AS_RF_SWITCH
 #define SX126X_DIO3_TCXO_VOLTAGE 1.8
-#endif
+#define TCXO_OPTIONAL
+
 #define PIN_GPS_RESET (39) // GNSS模块复位引脚
 
 #endif

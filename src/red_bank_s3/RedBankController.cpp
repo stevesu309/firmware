@@ -667,9 +667,6 @@ namespace RedBankS3
 
         LOG_DEBUG("UP button released after %d ms", pressDuration);
 
-        // 短按UP：统一发送INPUT_BROKER_UP事件
-        // 让InputBroker分发给所有观察者（菜单、快捷消息模块、Screen等）
-        // 由各模块自行决定是否处理
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             InputEvent event;
@@ -701,9 +698,6 @@ namespace RedBankS3
 
         LOG_DEBUG("DOWN button released after %d ms", pressDuration);
 
-        // 短按DOWN：统一发送INPUT_BROKER_DOWN事件
-        // 让InputBroker分发给所有观察者（菜单、快捷消息模块、Screen等）
-        // 由各模块自行决定是否处理
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             InputEvent event;

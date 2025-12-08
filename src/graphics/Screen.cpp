@@ -472,27 +472,28 @@ namespace graphics
             screenOn = on;
         }
     }
-#ifdef RED_BANK_S3
-    void onFrameFixed(uint8_t currentFrame)
-    {
-        if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame))
-        {
-            return;
-        }
+    // 每个频道都显示为单独的页面
+    // #ifdef RED_BANK_S3
+    //     void onFrameFixed(uint8_t currentFrame)
+    //     {
+    //         if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame))
+    //         {
+    //             return;
+    //         }
 
-        channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(currentFrame);
+    //         channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(currentFrame);
 
-        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
-        if (packetListSize == 0)
-        {
-            LOG_INFO("packetListSize = %d\n", packetListSize);
-            channelPacketBrowseIndex = 0;
-            return;
-        }
+    //         uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+    //         if (packetListSize == 0)
+    //         {
+    //             LOG_INFO("packetListSize = %d\n", packetListSize);
+    //             channelPacketBrowseIndex = 0;
+    //             return;
+    //         }
 
-        channelPacketBrowseIndex = packetListSize - 1;
-    }
-#endif
+    //         channelPacketBrowseIndex = packetListSize - 1;
+    //     }
+    // #endif
     void Screen::setup()
     {
 
@@ -530,12 +531,14 @@ namespace graphics
         static_cast<ST7789Spi *>(dispdev)->setRGB(TFT_MESH);
 #endif
 
-// === Initialize display and UI system ===
-#if defined(RED_BANK_S3)
-        ui->init(onFrameFixed);
-#else
+        // === Initialize display and UI system ===
+        // #if defined(RED_BANK_S3)
+        //         ui->init(onFrameFixed);
+        // #else
+        //         ui->init();
+        // #endif
         ui->init();
-#endif
+
         displayWidth = dispdev->width();
         displayHeight = dispdev->height();
 
@@ -985,28 +988,64 @@ namespace graphics
         indicatorIcons.push_back(icon_mail);
 
 #if defined(RED_BANK_S3)
+        // RED_BANK_S3: 为频道历史消息构建“单一页面 + 频道列表”
         validChannelCount = 0;
-        channelFrameBeginIndex = numframes;
 
         int numChannels = channelFile.channels_count;
         LOG_DEBUG("Found %d channels in channelFile", numChannels);
 
-        for (size_t i = 0; i < numChannels; i++)
+        int primaryChannelIndex = -1;
+        for (size_t i = 0; i < numChannels && validChannelCount < MAX_VALID_CHANNELS; i++)
         {
             if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
                 channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY)
             {
                 validChannelIndices[validChannelCount] = i;
                 LOG_DEBUG("Added channel %d (role: %d) at index %d", i, channelFile.channels[i].role, validChannelCount);
-                validChannelCount++;
 
-                normalFrames[numframes++] = graphics::ChannelMessageRenderer::drawChannelTextMessageFrame;
-                indicatorIcons.push_back(icon_mail);
+                if (primaryChannelIndex == -1 && channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY)
+                {
+                    primaryChannelIndex = static_cast<int>(i);
+                }
+
+                validChannelCount++;
             }
         }
 
-        LOG_DEBUG("Added %d channel message frames, begin at %d, total frames: %d",
-                  validChannelCount, channelFrameBeginIndex, numframes);
+        // 初始化当前浏览的频道：优先 Primary Channel（第一个 PRIMARY），否则使用第一个有效频道
+        if (primaryChannelIndex >= 0)
+        {
+            channelIndex = static_cast<size_t>(primaryChannelIndex);
+        }
+        else if (validChannelCount > 0)
+        {
+            channelIndex = static_cast<size_t>(validChannelIndices[0]);
+        }
+        else
+        {
+            channelIndex = 0;
+        }
+
+        // 初始化当前频道的浏览消息索引（默认最新一条）
+        if (redBankController)
+        {
+            uint16_t packetListSize =
+                redBankController->_getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+            channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
+        }
+        else
+        {
+            channelPacketBrowseIndex = 0;
+        }
+
+        // 只有一个“频道消息”页面，作为导航栏中的一页
+        fsi.positions.channelMessage = numframes;
+        channelFrameBeginIndex = numframes; // 用于 isBrowsingChannelPacketFrame 判断
+        normalFrames[numframes++] = graphics::ChannelMessageRenderer::drawChannelTextMessageFrame;
+        indicatorIcons.push_back(icon_mail);
+
+        LOG_DEBUG("Channel message frame at %d, validChannelCount=%d, total frames: %d",
+                  fsi.positions.channelMessage, validChannelCount, numframes);
 #endif
 
 #ifndef USE_EINK
@@ -1144,10 +1183,7 @@ namespace graphics
         ui->setOverlays(overlays, sizeof(overlays) / sizeof(overlays[0]));
 
         prevFrame = -1; // Force drawNodeInfo to pick a new node (because our list
-// just changed)
-#ifdef RED_BANK_S3
-        channelIndex = 0;
-#endif
+        // just changed)
         uint8_t frameIndex = 0;
         // Focus on a specific frame, in the frame set we just created
         switch (focus)
@@ -1624,16 +1660,16 @@ namespace graphics
                     inputIntercepted = true;
             }
             LOG_INFO("Screen::handleInputEvent: inputIntercepted=%d", inputIntercepted);
-            
+
 #if defined(RED_BANK_S3)
             // RED_BANK_S3: 在频道消息帧使用UP/DOWN浏览消息包
             // 检查当前帧是否在频道消息帧范围内
-            if (!inputIntercepted && 
+            if (!inputIntercepted &&
                 (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN))
             {
                 uint8_t currentFrame = ui->getUiState()->currentFrame;
                 bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
-                
+
                 if (isChannelFrame)
                 {
                     if (event->inputEvent == INPUT_BROKER_UP)
@@ -1688,29 +1724,39 @@ namespace graphics
 #endif
                 else if (event->inputEvent == INPUT_BROKER_SELECT)
                 {
-                    if (this->ui->getUiState()->currentFrame == framesetInfo.positions.home)
+                    uint8_t currentFrame = this->ui->getUiState()->currentFrame;
+
+#ifdef RED_BANK_S3
+                    // 在频道消息页面长按 ENTER，弹出频道选择菜单（交由 MenuHandler 控制）
+                    if (currentFrame == framesetInfo.positions.channelMessage)
+                    {
+                        menuHandler::channelHistoryMenu();
+                    }
+                    else
+#endif
+                        if (currentFrame == framesetInfo.positions.home)
                     {
                         menuHandler::homeBaseMenu();
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.memory)
+                    else if (currentFrame == framesetInfo.positions.memory)
                     {
                         menuHandler::systemBaseMenu();
 #if HAS_GPS
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.gps && gps)
+                    else if (currentFrame == framesetInfo.positions.gps && gps)
                     {
                         menuHandler::positionBaseMenu();
 #endif
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.clock)
+                    else if (currentFrame == framesetInfo.positions.clock)
                     {
                         menuHandler::clockMenu();
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.lora)
+                    else if (currentFrame == framesetInfo.positions.lora)
                     {
                         menuHandler::LoraRegionPicker();
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.textMessage)
+                    else if (currentFrame == framesetInfo.positions.textMessage)
                     {
                         if (devicestate.rx_text_message.from)
                         {
@@ -1722,31 +1768,24 @@ namespace graphics
                         }
                     }
                     else if (framesetInfo.positions.firstFavorite != 255 &&
-                             this->ui->getUiState()->currentFrame >= framesetInfo.positions.firstFavorite &&
-                             this->ui->getUiState()->currentFrame <= framesetInfo.positions.lastFavorite)
+                             currentFrame >= framesetInfo.positions.firstFavorite &&
+                             currentFrame <= framesetInfo.positions.lastFavorite)
                     {
                         menuHandler::favoriteBaseMenu();
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist ||
-                             this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_lastheard ||
-                             this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_hopsignal ||
-                             this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_distance ||
-                             this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_hopsignal ||
-                             this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_bearings)
+                    else if (currentFrame == framesetInfo.positions.nodelist ||
+                             currentFrame == framesetInfo.positions.nodelist_lastheard ||
+                             currentFrame == framesetInfo.positions.nodelist_hopsignal ||
+                             currentFrame == framesetInfo.positions.nodelist_distance ||
+                             currentFrame == framesetInfo.positions.nodelist_hopsignal ||
+                             currentFrame == framesetInfo.positions.nodelist_bearings)
                     {
                         menuHandler::nodeListMenu();
                     }
-                    else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.wifi)
+                    else if (currentFrame == framesetInfo.positions.wifi)
                     {
                         menuHandler::wifiBaseMenu();
                     }
-#ifdef RED_BANK_S3
-                    // RED_BANK_S3: 菜单呼出后设置菜单激活状态
-                    if (redBankController)
-                    {
-                        redBankController->setMenuActive(true);
-                    }
-#endif
                 }
                 else if (event->inputEvent == INPUT_BROKER_BACK)
                 {

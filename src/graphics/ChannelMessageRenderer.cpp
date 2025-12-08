@@ -73,70 +73,24 @@ namespace graphics
 
     bool isBrowsingChannelPacketFrame(uint8_t currentFrame)
     {
+      // 只有单独的“频道消息”页面，currentFrame 等于该帧索引时才认为在浏览频道消息
       if (validChannelCount == 0)
       {
-        return (false);
+        return false;
       }
 
-      if ((currentFrame >= channelFrameBeginIndex) &&
-          (currentFrame < (channelFrameBeginIndex + validChannelCount)))
-      {
-        return (true);
-      }
-
-      return (false);
+      return (currentFrame == channelFrameBeginIndex);
     }
 
-    uint8_t getBrowsingChannelIndex(uint8_t currentFrame)
+    uint8_t getBrowsingChannelIndex(uint8_t /*currentFrame*/)
     {
-      return (validChannelIndices[currentFrame - channelFrameBeginIndex]);
+      // 当前浏览的频道索引直接由全局的 channelIndex 决定
+      return static_cast<uint8_t>(channelIndex);
     }
 
     /// Draw the last text message we received
     void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
     {
-#if 0
-      drawChineseStringWithLineBreak(display, 10, 30, "的一是不了在人有我他这为之大来以个中上们到说国和地也子时道出而要于就下得可你年生自会那后能对着事其里所去行过家十用\n这是第二行测试文本\n第三行包含中英文混合：Hello World 测试");
-
-      // 显示电池电压信息
-      if (powerStatus)
-      {
-        int batteryVoltageMv = powerStatus->getBatteryVoltageMv();
-        int chargePercent = powerStatus->getBatteryChargePercent();
-        bool isCharging = powerStatus->getIsCharging();
-        bool usbPowered = powerStatus->getHasUSB();
-
-        char batteryInfo[64];
-        if (chargePercent == 101)
-        {
-          snprintf(batteryInfo, sizeof(batteryInfo), "External power supply: %.2fV", batteryVoltageMv / 1000.0f);
-        }
-        else if (chargePercent == 0)
-        {
-          snprintf(batteryInfo, sizeof(batteryInfo), "Unknown battery: %.2fV", batteryVoltageMv / 1000.0f);
-        }
-        else
-        {
-          if (isCharging)
-          {
-            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% Charging in progress %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
-          }
-          else if (usbPowered)
-          {
-            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% USB power supply %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
-          }
-          else
-          {
-            snprintf(batteryInfo, sizeof(batteryInfo), "Battery: %d%% %.2fV", chargePercent, batteryVoltageMv / 1000.0f);
-          }
-        }
-
-        drawChineseStringWithLineBreak(display, 10, 120, batteryInfo);
-        delay(1000);
-        LOG_INFO("batteryInfo = %s\n", batteryInfo);
-      }
-
-#else
       // the max length of this buffer is much longer than we can possibly print
       static char tempBuf[237];
       int width = display->getWidth();
@@ -309,7 +263,6 @@ namespace graphics
       // display->drawStringMaxWidth(0 + x, 0 + y + selectedFontHeight, x + display->getWidth(), tempBuf);
       drawChineseStringWithLineBreak(display, 0 + x, 0 + y + selectedFontHeight, tempBuf);
 
-#endif
 #endif
     }
   }
