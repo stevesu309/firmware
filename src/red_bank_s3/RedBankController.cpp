@@ -596,6 +596,11 @@ namespace RedBankS3
                 menuActive = true;
                 LOG_INFO("Normal: Long press - Open menu");
             }
+            else
+            {
+                if (screen)
+                    screen->setOn(true); // 短按点亮屏幕
+            }
         }
     }
 

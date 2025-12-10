@@ -10,6 +10,7 @@
 #include "OLEDDisplay.h"
 #include "graphics/fonts/ChineseFont.h"
 #include "PowerStatus.h"
+#include "graphics/SharedUIDisplay.h"
 #define MAX_VALID_CHANNELS 8
 int validChannelIndices[MAX_VALID_CHANNELS];
 int validChannelCount = 0;
@@ -118,19 +119,6 @@ namespace graphics
       int selectedFontHeight = fontSel.height;
 
       display->setFont(selectedFont);
-      if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_INVERTED)
-      {
-        LOG_INFO("config.display.displaymode == INVERTED\n");
-        display->fillRect(0 + x, 0 + y, x + display->getWidth(), y + selectedFontHeight);
-        display->setColor(BLACK);
-      }
-
-      // added by QCB begin
-      if (validChannelCount == 0)
-      {
-        LOG_INFO("validChannelCount = 0\n");
-        return;
-      }
 
       int localActualChannelIndex = getBrowsingChannelIndex(state->currentFrame);
       if (localActualChannelIndex >= 8)
@@ -139,12 +127,15 @@ namespace graphics
                  localActualChannelIndex, validChannelCount);
         return;
       }
+
       char title[23];
       snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
 
-      display->setTextAlignment(TEXT_ALIGN_CENTER);
-      // display->setFont(selectedFont);
-      display->drawString(x + width / 2, y, title);
+      // 使用 drawCommonHeader 绘制标题栏
+      drawCommonHeader(display, x, y, title, false);
+
+      const int headerHeight = FONT_HEIGHT_SMALL + 1;
+      // y += headerHeight;
 
       // display channel name
       const char *name = channelFile.channels[localActualChannelIndex].settings.name;
@@ -192,8 +183,7 @@ namespace graphics
         else
           snprintf(displayName, sizeof(displayName), "Sec Ch: %s", name);
       }
-      // display->fillRect(x, y, 200, FONT_HEIGHT_SMALL * 2);
-      // EINK_ADD_FRAMEFLAG(display, BACKGROUND); // Take the opportunity for a full-refresh
+
       display->setTextAlignment(TEXT_ALIGN_LEFT);
 
       display->drawString(x + 5, y + selectedFontHeight, displayName);

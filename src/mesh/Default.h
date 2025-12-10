@@ -10,20 +10,20 @@
 #define TEN_SECONDS_MS 10 * 1000
 #define MAX_INTERVAL INT32_MAX // FIXME: INT32_MAX to avoid overflow issues with Apple clients but should be UINT32_MAX
 
-#define min_default_telemetry_interval_secs 30 * 60
-#define default_gps_update_interval IF_ROUTER(ONE_DAY, 2 * 60)
-#define default_telemetry_broadcast_interval_secs IF_ROUTER(ONE_DAY / 2, 60 * 60)
-#define default_broadcast_interval_secs IF_ROUTER(ONE_DAY / 2, 15 * 60)
-#define default_wait_bluetooth_secs IF_ROUTER(1, 60)
-#define default_sds_secs IF_ROUTER(ONE_DAY, UINT32_MAX) // Default to forever super deep sleep
-#define default_ls_secs IF_ROUTER(ONE_DAY, 5 * 60)
-#define default_min_wake_secs 10
-#define default_screen_on_secs IF_ROUTER(1, 60 * 10)
-#define default_node_info_broadcast_secs 3 * 60 * 60
-#define default_neighbor_info_broadcast_secs 6 * 60 * 60
-#define min_node_info_broadcast_secs 60 * 60 // No regular broadcasts of more than once an hour
+#define min_default_telemetry_interval_secs 30 * 60                               // 最小遥测数据发送间隔：30分钟
+#define default_gps_update_interval IF_ROUTER(ONE_DAY, 2 * 60)                    // GPS更新间隔：路由器=1天，普通节点=2分钟
+#define default_telemetry_broadcast_interval_secs IF_ROUTER(ONE_DAY / 2, 60 * 60) // 遥测数据广播间隔：路由器=12小时，普通节点=1小时
+#define default_broadcast_interval_secs IF_ROUTER(ONE_DAY / 2, 15 * 60)           // 广播间隔：路由器=12小时，普通节点=15分钟
+#define default_wait_bluetooth_secs IF_ROUTER(1, 60)                              // 等待蓝牙连接时间：路由器=1秒，普通节点=60秒
+#define default_sds_secs IF_ROUTER(ONE_DAY, UINT32_MAX)                           // Default to forever super deep sleep  // 超级深度睡眠间隔：路由器=永久，普通节点=永久
+#define default_ls_secs IF_ROUTER(ONE_DAY, 5 * 60)                                // 本地存储间隔：路由器=1天，普通节点=5分钟
+#define default_min_wake_secs 10                                                  // 最小唤醒时间：10秒
+#define default_screen_on_secs IF_ROUTER(1, 60 * 10)                              // 屏幕点亮时间：路由器=1秒，普通节点=600秒
+#define default_node_info_broadcast_secs 3 * 60 * 60                              // 节点信息广播间隔：3小时
+#define default_neighbor_info_broadcast_secs 6 * 60 * 60                          // 邻居信息广播间隔：6小时
+#define min_node_info_broadcast_secs 60 * 60                                      // No regular broadcasts of more than once an hour
 #define min_neighbor_info_broadcast_secs 4 * 60 * 60
-#define default_map_publish_interval_secs 60 * 60
+#define default_map_publish_interval_secs 60 * 60 // 地图发布间隔：1小时
 #ifdef USERPREFS_RINGTONE_NAG_SECS
 #define default_ringtone_nag_secs USERPREFS_RINGTONE_NAG_SECS
 #else
