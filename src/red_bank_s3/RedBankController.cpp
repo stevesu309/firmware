@@ -92,15 +92,28 @@ namespace RedBankS3
         KeypadKey key1_current = detect_key(val1, true);
         KeypadKey key2_current = detect_key(val2, false);
 
-        // 添加按键防抖处理
-        static uint32_t lastKeyTime = 0;
-        if (millis() - lastKeyTime < 200)
+        static uint32_t lastKeyChangeTime = 0;
+        static KeypadKey key1_prev = KeypadKey::NONE;
+        static KeypadKey key2_prev = KeypadKey::NONE;
+
+        // 检测按键状态是否发生变化
+        bool key1Changed = (key1_current != key1_prev);
+        bool key2Changed = (key2_current != key2_prev);
+        bool anyKeyChanged = key1Changed || key2Changed;
+
+        // 如果按键状态发生变化，更新防抖时间戳
+        if (anyKeyChanged)
         {
-            key1_last = KeypadKey::NONE;
-            key2_last = KeypadKey::NONE;
-            return;
+            uint32_t now = millis();
+            // 如果距离上次按键变化时间太短（< 50ms），可能是抖动，忽略
+            if (now - lastKeyChangeTime < 50)
+            {
+                return;
+            }
+            lastKeyChangeTime = now;
+            key1_prev = key1_current;
+            key2_prev = key2_current;
         }
-        lastKeyTime = millis();
 
         // 检查是否是组合按键（LEFT+UP 或 RIGHT+UP）
         bool isComboKey = (key1_current == KeypadKey::UP &&
@@ -459,7 +472,6 @@ namespace RedBankS3
     {
         leftButtonPressed = true;
         leftButtonPressTime = millis();
-        LOG_DEBUG("LEFT button pressed");
     }
 
     void RedBankController::handleLeftButtonRelease()
@@ -470,32 +482,10 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - leftButtonPressTime;
         leftButtonPressed = false;
 
-        LOG_DEBUG("LEFT button released after %d ms", pressDuration);
-
-        // 检查是否在overlay banner（地区选择菜单等）状态
-        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-
-        if (isOverlayActive)
+        if (pressDuration < LONG_PRESS_THRESHOLD)
         {
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                InputEvent event;
-                event.inputEvent = INPUT_BROKER_UP;
-                event.source = "RedBankController";
-                event.kbchar = 0;
-                event.touchX = 0;
-                event.touchY = 0;
-                inputBroker->injectInputEvent(&event);
-                LOG_INFO("Overlay active: LEFT -> UP (Previous option)");
-            }
-        }
-        else
-        {
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                LOG_INFO("Normal: LEFT short press");
-                screen->showPrevFrame();
-            }
+            LOG_INFO("Normal: LEFT short press");
+            screen->showPrevFrame();
         }
     }
 
@@ -504,7 +494,6 @@ namespace RedBankS3
     {
         rightButtonPressed = true;
         rightButtonPressTime = millis();
-        LOG_DEBUG("RIGHT button pressed");
     }
 
     void RedBankController::handleRightButtonRelease()
@@ -514,34 +503,10 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - rightButtonPressTime;
         rightButtonPressed = false;
-
-        LOG_DEBUG("RIGHT button released after %d ms", pressDuration);
-
-        // 检查是否在overlay banner（地区选择菜单等）状态
-        bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-
-        if (isOverlayActive)
+        if (pressDuration < LONG_PRESS_THRESHOLD)
         {
-            // 在overlay banner状态下，RIGHT短按映射为DOWN（向下选择）
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                InputEvent event;
-                event.inputEvent = INPUT_BROKER_DOWN;
-                event.source = "RedBankController";
-                event.kbchar = 0;
-                event.touchX = 0;
-                event.touchY = 0;
-                inputBroker->injectInputEvent(&event);
-                LOG_INFO("Overlay active: RIGHT -> DOWN (Next option)");
-            }
-        }
-        else
-        {
-            if (pressDuration < LONG_PRESS_THRESHOLD)
-            {
-                LOG_INFO("Normal: RIGHT short press");
-                screen->showNextFrame();
-            }
+            LOG_INFO("Normal: RIGHT short press");
+            screen->showNextFrame();
         }
     }
 
@@ -550,7 +515,6 @@ namespace RedBankS3
     {
         enterButtonPressed = true;
         enterButtonPressTime = millis();
-        LOG_DEBUG("ENTER button pressed");
     }
 
     void RedBankController::handleEnterButtonRelease()
@@ -560,8 +524,6 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - enterButtonPressTime;
         enterButtonPressed = false;
-
-        LOG_DEBUG("ENTER button released after %d ms", pressDuration);
 
         // 检查是否在overlay banner（地区选择菜单等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
@@ -609,7 +571,6 @@ namespace RedBankS3
     {
         escButtonPressed = true;
         escButtonPressTime = millis();
-        LOG_DEBUG("ESC button pressed");
     }
 
     void RedBankController::handleEscButtonRelease()
@@ -659,7 +620,6 @@ namespace RedBankS3
     {
         upButtonPressed = true;
         upButtonPressTime = millis();
-        LOG_DEBUG("UP button pressed");
     }
 
     void RedBankController::handleUpButtonRelease()
@@ -669,8 +629,6 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - upButtonPressTime;
         upButtonPressed = false;
-
-        LOG_DEBUG("UP button released after %d ms", pressDuration);
 
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {

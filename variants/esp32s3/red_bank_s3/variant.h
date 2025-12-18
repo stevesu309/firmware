@@ -83,7 +83,7 @@
 #define LORA_CS_433 4
 #define LORA_CS LORA_CS_900
 
-// #define LORA_ANT 47  // 旧设计的天线选择引脚，当前未使用
+#define LORA_ANT 47
 // #define LORA_ANT_413 48 /
 
 #define SX126X_CS LORA_CS       // 作为默认值，实际 cs 在 RED_BANK_S3 中会根据区域动态选择

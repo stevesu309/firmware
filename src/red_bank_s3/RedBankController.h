@@ -91,7 +91,7 @@ namespace RedBankS3
         uint32_t escButtonPressTime = 0;
         uint32_t upButtonPressTime = 0;
         uint32_t downButtonPressTime = 0;
-        static const uint32_t LONG_PRESS_THRESHOLD = 500;
+        static const uint32_t LONG_PRESS_THRESHOLD = 2000;
         bool menuActive = false;
 #endif // HAS_SCREEN
     };

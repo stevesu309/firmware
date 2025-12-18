@@ -33,7 +33,6 @@ void EInkDynamicDisplay::display()
 // Screen requests a RESPONSIVE frame
 bool EInkDynamicDisplay::forceDisplay(uint32_t msecLimit)
 {
-    LOG_INFO("is forcing display update...");
     addFrameFlag(RESPONSIVE);
     return update(); // (Unutilized) Base class promises to return true if update ran
 }

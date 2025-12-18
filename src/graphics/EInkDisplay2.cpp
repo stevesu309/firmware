@@ -102,11 +102,9 @@ bool EInkDisplay::forceDisplay(uint32_t msecLimit)
 // End the update process - virtual method, overriden in derived class
 void EInkDisplay::endUpdate()
 {
-    LOG_INFO("EInkDisplay::endUpdate() called");
     // Don't hibernate immediately for first update
     if (firstUpdate)
     {
-        LOG_INFO("firstUpdate");
         firstUpdate = false;
         return;
     }
@@ -120,7 +118,6 @@ void EInkDisplay::display(void)
     // We don't allow regular 'dumb' display() calls to draw on eink until we've shown
     // at least one forceDisplay() keyframe.  This prevents flashing when we should the critical
     // bootscreen (that we want to look nice)
-    LOG_INFO("EInkDisplay::display() called");
     if (lastDrawMsec)
     {
         forceDisplay(slowUpdateMsec); // Show the first screen a few seconds after boot, then slower

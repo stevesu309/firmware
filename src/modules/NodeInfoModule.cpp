@@ -14,11 +14,13 @@ bool NodeInfoModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, mes
 {
     auto p = *pptr;
 
-    if (mp.from == nodeDB->getNodeNum()) {
+    if (mp.from == nodeDB->getNodeNum())
+    {
         LOG_WARN("Ignoring packet supposed to be from our own node: %08x", mp.from);
         return false;
     }
-    if (p.is_licensed != owner.is_licensed) {
+    if (p.is_licensed != owner.is_licensed)
+    {
         LOG_WARN("Invalid nodeInfo detected, is_licensed mismatch!");
         return true;
     }
@@ -45,16 +47,22 @@ void NodeInfoModule::sendOurNodeInfo(NodeNum dest, bool wantReplies, uint8_t cha
         service->cancelSending(prevPacketId);
     shorterTimeout = _shorterTimeout;
     meshtastic_MeshPacket *p = allocReply();
-    if (p) { // Check whether we didn't ignore it
+    if (p)
+    { // Check whether we didn't ignore it
         p->to = dest;
         p->decoded.want_response = (config.device.role != meshtastic_Config_DeviceConfig_Role_TRACKER &&
                                     config.device.role != meshtastic_Config_DeviceConfig_Role_SENSOR) &&
                                    wantReplies;
+        // 添加日志：记录发送前的状态
+        LOG_INFO("NodeInfo send: dest=0x%x, wantReplies=%d, request_id=%d, priority=%d, payload_size=%d",
+                 dest, wantReplies, p->decoded.request_id, p->priority, p->decoded.payload.size);
+
         if (_shorterTimeout)
             p->priority = meshtastic_MeshPacket_Priority_DEFAULT;
         else
             p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
-        if (channel > 0) {
+        if (channel > 0)
+        {
             LOG_DEBUG("Send ourNodeInfo to channel %d", channel);
             p->channel = channel;
         }
@@ -68,39 +76,42 @@ void NodeInfoModule::sendOurNodeInfo(NodeNum dest, bool wantReplies, uint8_t cha
 
 meshtastic_MeshPacket *NodeInfoModule::allocReply()
 {
-    if (!airTime->isTxAllowedChannelUtil(false)) {
+    if (!airTime->isTxAllowedChannelUtil(false))
+    {
         ignoreRequest = true; // Mark it as ignored for MeshModule
         LOG_DEBUG("Skip send NodeInfo > 40%% ch. util");
         return NULL;
     }
     // If we sent our NodeInfo less than 5 min. ago, don't send it again as it may be still underway.
-    if (!shorterTimeout && lastSentToMesh && Throttle::isWithinTimespanMs(lastSentToMesh, 5 * 60 * 1000)) {
-        LOG_DEBUG("Skip send NodeInfo since we sent it <5min ago");
-        ignoreRequest = true; // Mark it as ignored for MeshModule
-        return NULL;
-    } else if (shorterTimeout && lastSentToMesh && Throttle::isWithinTimespanMs(lastSentToMesh, 60 * 1000)) {
-        LOG_DEBUG("Skip send NodeInfo since we sent it <60s ago");
-        ignoreRequest = true; // Mark it as ignored for MeshModule
-        return NULL;
-    } else {
-        ignoreRequest = false; // Don't ignore requests anymore
-        meshtastic_User &u = owner;
+    // if (!shorterTimeout && lastSentToMesh && Throttle::isWithinTimespanMs(lastSentToMesh, 5 * 60 * 1000)) {
+    //     LOG_DEBUG("Skip send NodeInfo since we sent it <5min ago");
+    //     ignoreRequest = true; // Mark it as ignored for MeshModule
+    //     return NULL;
+    // } else if (shorterTimeout && lastSentToMesh && Throttle::isWithinTimespanMs(lastSentToMesh, 60 * 1000)) {
+    //     LOG_DEBUG("Skip send NodeInfo since we sent it <60s ago");
+    //     ignoreRequest = true; // Mark it as ignored for MeshModule
+    //     return NULL;
+    // } else {
+    ignoreRequest = false; // Don't ignore requests anymore
+    meshtastic_User &u = owner;
 
-        // Strip the public key if the user is licensed
-        if (u.is_licensed && u.public_key.size > 0) {
-            u.public_key.bytes[0] = 0;
-            u.public_key.size = 0;
-        }
-        // Coerce unmessagable for Repeater role
-        if (u.role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
-            u.has_is_unmessagable = true;
-            u.is_unmessagable = true;
-        }
-
-        LOG_INFO("Send owner %s/%s/%s", u.id, u.long_name, u.short_name);
-        lastSentToMesh = millis();
-        return allocDataProtobuf(u);
+    // Strip the public key if the user is licensed
+    if (u.is_licensed && u.public_key.size > 0)
+    {
+        u.public_key.bytes[0] = 0;
+        u.public_key.size = 0;
     }
+    // Coerce unmessagable for Repeater role
+    if (u.role == meshtastic_Config_DeviceConfig_Role_REPEATER)
+    {
+        u.has_is_unmessagable = true;
+        u.is_unmessagable = true;
+    }
+
+    LOG_INFO("Send owner %s/%s/%s", u.id, u.long_name, u.short_name);
+    lastSentToMesh = millis();
+    return allocDataProtobuf(u);
+    // }
 }
 
 NodeInfoModule::NodeInfoModule()
@@ -118,7 +129,8 @@ int32_t NodeInfoModule::runOnce()
     bool requestReplies = currentGeneration != radioGeneration;
     currentGeneration = radioGeneration;
 
-    if (airTime->isTxAllowedAirUtil() && config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN) {
+    if (airTime->isTxAllowedAirUtil() && config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN)
+    {
         LOG_INFO("Send our nodeinfo to mesh (wantReplies=%d)", requestReplies);
         sendOurNodeInfo(NODENUM_BROADCAST, requestReplies); // Send our info (don't request replies)
     }
