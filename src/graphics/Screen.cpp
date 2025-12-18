@@ -73,7 +73,7 @@ extern uint16_t TFT_MESH;
 
 #ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
-#include "ChannelMessageRenderer.h"
+#include "graphics/draw/ChannelMessageRenderer.h"
 #endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
@@ -983,10 +983,6 @@ namespace graphics
         normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
         indicatorIcons.push_back(icon_home);
 
-        fsi.positions.textMessage = numframes;
-        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
-        indicatorIcons.push_back(icon_mail);
-
 #if defined(RED_BANK_S3)
         // RED_BANK_S3: 为频道历史消息构建“单一页面 + 频道列表”
         validChannelCount = 0;
@@ -1042,10 +1038,18 @@ namespace graphics
         fsi.positions.channelMessage = numframes;
         channelFrameBeginIndex = numframes; // 用于 isBrowsingChannelPacketFrame 判断
         normalFrames[numframes++] = graphics::ChannelMessageRenderer::drawChannelTextMessageFrame;
-        indicatorIcons.push_back(icon_mail);
+        indicatorIcons.push_back(icon_CH);
 
         LOG_DEBUG("Channel message frame at %d, validChannelCount=%d, total frames: %d",
                   fsi.positions.channelMessage, validChannelCount, numframes);
+
+        fsi.positions.textMessage = numframes;
+        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
+        indicatorIcons.push_back(icon_DM);
+#else
+        fsi.positions.textMessage = numframes;
+        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
+        indicatorIcons.push_back(icon_mail);
 #endif
 
 #ifndef USE_EINK

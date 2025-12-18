@@ -15,7 +15,7 @@
 #include "modules/CannedMessageModule.h"
 #include "modules/KeyVerificationModule.h"
 #ifdef RED_BANK_S3
-#include "graphics/ChannelMessageRenderer.h"
+#include "graphics/draw/ChannelMessageRenderer.h"
 #endif
 
 #include "modules/TraceRouteModule.h"
