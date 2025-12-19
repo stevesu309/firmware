@@ -74,6 +74,7 @@ extern uint16_t TFT_MESH;
 #ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
 #include "graphics/draw/ChannelMessageRenderer.h"
+#include "graphics/draw/DirectMsgRenderer.h"
 #endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
@@ -1044,7 +1045,7 @@ namespace graphics
                   fsi.positions.channelMessage, validChannelCount, numframes);
 
         fsi.positions.textMessage = numframes;
-        normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
+        normalFrames[numframes++] = graphics::DirectMsgRenderer::drawDirectMessageFrame;
         indicatorIcons.push_back(icon_DM);
 #else
         fsi.positions.textMessage = numframes;
@@ -1666,13 +1667,14 @@ namespace graphics
             LOG_INFO("Screen::handleInputEvent: inputIntercepted=%d", inputIntercepted);
 
 #if defined(RED_BANK_S3)
-            // RED_BANK_S3: 在频道消息帧使用UP/DOWN浏览消息包
+            // RED_BANK_S3: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
             // 检查当前帧是否在频道消息帧范围内
             if (!inputIntercepted &&
                 (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN))
             {
                 uint8_t currentFrame = ui->getUiState()->currentFrame;
                 bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+                bool isDirectMessageFrame = (currentFrame == framesetInfo.positions.textMessage);
 
                 if (isChannelFrame)
                 {
@@ -1688,6 +1690,50 @@ namespace graphics
                     }
                     // 已处理，直接返回
                     return 0;
+                }
+                else if (isDirectMessageFrame && redBankController)
+                {
+                    // 在私信页面浏览当前节点的历史消息
+                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    if (currentNode != 0)
+                    {
+                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                        if (msgCount > 0)
+                        {
+                            uint8_t currentIndex = redBankController->getCurrentDirectMessageIndex();
+                            if (event->inputEvent == INPUT_BROKER_UP)
+                            {
+                                // 向上浏览（更旧的消息）
+                                if (currentIndex > 0)
+                                {
+                                    redBankController->setCurrentDirectMessageIndex(currentIndex - 1);
+                                }
+                                else
+                                {
+                                    // 循环到最新消息
+                                    redBankController->setCurrentDirectMessageIndex(msgCount - 1);
+                                }
+                                setFastFramerate();
+                                LOG_INFO("Screen: UP - Previous direct message");
+                            }
+                            else if (event->inputEvent == INPUT_BROKER_DOWN)
+                            {
+                                // 向下浏览（更新的消息）
+                                if (currentIndex < msgCount - 1)
+                                {
+                                    redBankController->setCurrentDirectMessageIndex(currentIndex + 1);
+                                }
+                                else
+                                {
+                                    // 循环到最旧消息
+                                    redBankController->setCurrentDirectMessageIndex(0);
+                                }
+                                setFastFramerate();
+                                LOG_INFO("Screen: DOWN - Next direct message");
+                            }
+                            return 0;
+                        }
+                    }
                 }
             }
 #endif
@@ -1762,6 +1808,11 @@ namespace graphics
                     }
                     else if (currentFrame == framesetInfo.positions.textMessage)
                     {
+#ifdef RED_BANK_S3
+                        // RED_BANK_S3: 在私信页面长按 ENTER，弹出节点选择菜单
+                        menuHandler::menuQueue = menuHandler::direct_message_node_picker;
+                        menuHandler::handleMenuSwitch(dispdev);
+#else
                         if (devicestate.rx_text_message.from)
                         {
                             menuHandler::messageResponseMenu();
@@ -1770,6 +1821,7 @@ namespace graphics
                         {
                             menuHandler::textMessageBaseMenu();
                         }
+#endif
                     }
                     else if (framesetInfo.positions.firstFavorite != 255 &&
                              currentFrame >= framesetInfo.positions.firstFavorite &&

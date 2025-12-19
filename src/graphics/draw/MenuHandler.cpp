@@ -1367,6 +1367,22 @@ namespace graphics
             } });
     }
 
+    void menuHandler::directMessageNodePickerMenu()
+    {
+#if defined(RED_BANK_S3)
+        screen->showNodePicker("Select Node for DM", 0, [](uint32_t nodenum) -> void
+#else
+        screen->showNodePicker("Select Node for DM", 30000, [](uint32_t nodenum) -> void
+#endif
+                               {
+            LOG_INFO("Menu: Direct message node picker selected node 0x%08x", nodenum);
+            if (redBankController)
+            {
+                redBankController->setCurrentDirectMessageNode(nodenum);
+                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+            } });
+    }
+
     void menuHandler::testMenu()
     {
 
@@ -1741,6 +1757,11 @@ namespace graphics
         case throttle_message:
             screen->showSimpleBanner("Too Many Attempts\nTry again in 60 seconds.", 5000);
             break;
+#ifdef RED_BANK_S3
+        case direct_message_node_picker:
+            directMessageNodePickerMenu();
+            break;
+#endif
         }
         menuQueue = menu_none;
 #ifdef RED_BANK_S3

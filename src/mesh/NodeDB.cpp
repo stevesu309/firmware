@@ -1617,6 +1617,32 @@ bool NodeDB::restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, mesh
     LOG_INFO("restoring %s, state = %d", packetFileName, state);
     return (state == LoadFileResult::LOAD_SUCCESS);
 }
+
+bool NodeDB::saveDirectMessagePacketToDisk(NodeNum node_num, uint8_t packet_index, const meshtastic_MeshPacket &mp)
+{
+    char packetFileName[64];
+    snprintf(packetFileName, sizeof(packetFileName), "/prefs/dm_node%08x_msg%02x.proto", node_num, packet_index);
+
+#ifdef FSCom
+    spiLock->lock();
+    FSCom.mkdir("/prefs");
+    spiLock->unlock();
+#endif
+    return saveProto(packetFileName, meshtastic_MeshPacket_size, &meshtastic_MeshPacket_msg, &mp, true);
+}
+
+bool NodeDB::restoreDirectMessagePacket(NodeNum node_num, uint8_t packet_index, meshtastic_MeshPacket &mp)
+{
+    uint8_t state;
+    char packetFileName[64];
+
+    snprintf(packetFileName, sizeof(packetFileName), "/prefs/dm_node%08x_msg%02x.proto", node_num, packet_index);
+    state = loadProto(packetFileName, meshtastic_MeshPacket_size, sizeof(meshtastic_MeshPacket), &meshtastic_MeshPacket_msg,
+                      &mp);
+
+    LOG_INFO("restoring %s, state = %d", packetFileName, state);
+    return (state == LoadFileResult::LOAD_SUCCESS);
+}
 #endif
 
 const meshtastic_NodeInfoLite *NodeDB::readNextMeshNode(uint32_t &readIndex)

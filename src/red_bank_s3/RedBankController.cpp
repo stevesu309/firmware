@@ -10,6 +10,8 @@
 #include "AntennaManager.h"
 #include "input/InputBroker.h"
 #include "GxEPD2_BW.h"
+#include <algorithm>
+#include "meshUtils.h"
 namespace RedBankS3
 {
 #define KEY1_ADC_PIN 1 // IO1
@@ -206,6 +208,7 @@ namespace RedBankS3
         // m_meshPacketList = new std::vector<meshtastic_MeshPacket>();
         m_currentMeshPacketIndex = -1;
         restoreChannelPackets();
+        restoreDirectMessages();
     }
     RedBankController::~RedBankController()
     {
@@ -385,10 +388,15 @@ namespace RedBankS3
             LOG_INFO("RedBankController: incorrect mp.channel = 0x%x!", mp.channel);
             return;
         }
+
+        // 私信保存到私信列表
         if (mp.to != 0xffffffff)
         {
-            return; // 私信不保存
+            push_direct_message(mp);
+            return;
         }
+
+        // 频道消息保存到频道列表
         push_packet(mp.channel, mp);
 
         for (i = 0; i < channelPackets[mp.channel].size(); ++i)
@@ -423,6 +431,37 @@ namespace RedBankS3
         }
     }
 
+    void RedBankController::restoreDirectMessages(void)
+    {
+        // 遍历节点数据库，查找所有有私信的节点
+        for (size_t i = 0; i < nodeDB->getNumMeshNodes(); ++i)
+        {
+            meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(i);
+            if (!node)
+                continue;
+
+            NodeNum nodeNum = node->num;
+            meshtastic_MeshPacket mp;
+
+            // 尝试恢复该节点的私信（最多20条）
+            auto &nodeMessages = directMessagesByNode[nodeNum];
+            nodeMessages.clear(); // 清空现有消息
+
+            for (uint8_t j = 0; j < DIRECT_MESSAGE_LIST_CAPACITY; ++j)
+            {
+                if (nodeDB->restoreDirectMessagePacket(nodeNum, j, mp))
+                {
+                    nodeMessages.push_back(mp);
+                }
+            }
+
+            if (!nodeMessages.empty())
+            {
+                LOG_INFO("restored %zu direct messages for node 0x%08x", nodeMessages.size(), nodeNum);
+            }
+        }
+    }
+
     meshtastic_MeshPacket RedBankController::getRecentMeshPacket(uint8_t channel, uint8_t recent_index)
     {
         if ((channel >= 8) || (recent_index >= channelPackets[channel].size()))
@@ -439,6 +478,160 @@ namespace RedBankS3
     int RedBankController::_getMeshPacketListSize(uint8_t channel)
     {
         return (channelPackets[channel].size());
+    }
+
+    // 私信相关方法实现
+    void RedBankController::push_direct_message(const meshtastic_MeshPacket &mp)
+    {
+        // 确定对方节点号（发送者或接收者）
+        NodeNum otherNode;
+        NodeNum myNodeNum = nodeDB->getNodeNum();
+        LOG_DEBUG("myNodeNum: 0x%08x", myNodeNum);
+        LOG_DEBUG("getFrom:0x%08x", getFrom(&mp));
+        if (getFrom(&mp) == myNodeNum)
+        {
+            // 我发送的私信，对方是接收者
+            otherNode = mp.to;
+        }
+        else
+        {
+            // 我接收的私信，对方是发送者
+            otherNode = getFrom(&mp);
+        }
+
+        // 如果节点号为0或无效，不保存
+        if (otherNode == 0 || otherNode == 0xffffffff)
+        {
+            return;
+        }
+
+        // 获取或创建该节点的私信列表
+        auto &nodeMessages = directMessagesByNode[otherNode];
+
+        // 如果列表已满，删除最旧的消息
+        if (nodeMessages.size() >= DIRECT_MESSAGE_LIST_CAPACITY)
+        {
+            nodeMessages.erase(nodeMessages.begin());
+        }
+
+        // 添加新消息
+        nodeMessages.push_back(mp);
+
+        // 保存所有该节点的消息到磁盘
+        for (uint8_t i = 0; i < nodeMessages.size(); ++i)
+        {
+            nodeDB->saveDirectMessagePacketToDisk(otherNode, i, nodeMessages.at(i));
+        }
+
+        // 如果当前没有选中的节点，自动选中这个节点
+        if (currentDirectMessageNode == 0)
+        {
+            currentDirectMessageNode = otherNode;
+            currentDirectMessageIndex = nodeMessages.size() - 1;
+        }
+        // 如果当前选中的就是这个节点，更新索引到最新消息
+        else if (currentDirectMessageNode == otherNode)
+        {
+            currentDirectMessageIndex = nodeMessages.size() - 1;
+        }
+    }
+
+    bool RedBankController::isDirectMessageListEmpty()
+    {
+        return directMessagesByNode.empty();
+    }
+
+    bool RedBankController::isDirectMessageListEmptyForNode(NodeNum nodeNum)
+    {
+        auto it = directMessagesByNode.find(nodeNum);
+        return (it == directMessagesByNode.end() || it->second.empty());
+    }
+
+    meshtastic_MeshPacket RedBankController::getRecentDirectMessage(uint8_t recent_index)
+    {
+        if (currentDirectMessageNode == 0)
+        {
+            meshtastic_MeshPacket emptyPacket;
+            memset(&emptyPacket, 0, sizeof(emptyPacket));
+            return emptyPacket;
+        }
+
+        auto it = directMessagesByNode.find(currentDirectMessageNode);
+        if (it == directMessagesByNode.end() || recent_index >= it->second.size())
+        {
+            meshtastic_MeshPacket emptyPacket;
+            memset(&emptyPacket, 0, sizeof(emptyPacket));
+            return emptyPacket;
+        }
+
+        return it->second.at(recent_index);
+    }
+
+    int RedBankController::_getDirectMessageListSize()
+    {
+        if (currentDirectMessageNode == 0)
+        {
+            return 0;
+        }
+
+        auto it = directMessagesByNode.find(currentDirectMessageNode);
+        if (it == directMessagesByNode.end())
+        {
+            return 0;
+        }
+
+        return it->second.size();
+    }
+
+    int RedBankController::_getDirectMessageListSizeForNode(NodeNum nodeNum)
+    {
+        auto it = directMessagesByNode.find(nodeNum);
+        if (it == directMessagesByNode.end())
+        {
+            return 0;
+        }
+        return it->second.size();
+    }
+
+    void RedBankController::setCurrentDirectMessageNode(NodeNum nodeNum)
+    {
+        currentDirectMessageNode = nodeNum;
+        // 设置索引为最新消息
+        auto it = directMessagesByNode.find(nodeNum);
+        if (it != directMessagesByNode.end() && !it->second.empty())
+        {
+            currentDirectMessageIndex = it->second.size() - 1;
+        }
+        else
+        {
+            currentDirectMessageIndex = 0;
+        }
+    }
+
+    std::vector<NodeNum> RedBankController::getDirectMessageNodeList()
+    {
+        std::vector<NodeNum> nodeList;
+        for (const auto &pair : directMessagesByNode)
+        {
+            if (!pair.second.empty())
+            {
+                nodeList.push_back(pair.first);
+            }
+        }
+        return nodeList;
+    }
+
+    int RedBankController::getDirectMessageNodeCount()
+    {
+        int count = 0;
+        for (const auto &pair : directMessagesByNode)
+        {
+            if (!pair.second.empty())
+            {
+                count++;
+            }
+        }
+        return count;
     }
     // void RedBankController::_previousMeshPacket()
     // {

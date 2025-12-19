@@ -111,6 +111,7 @@ namespace graphics
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
+      LOG_INFO("currentRotation = %d", currentRotation);
       FontSelection fontSel = selectFontForRotation(currentRotation);
 #else
       FontSelection fontSel = selectFontForRotation(3);
@@ -129,7 +130,10 @@ namespace graphics
       }
 
       char title[23];
-      snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
+      if (currentRotation == 0)
+        snprintf(title, sizeof(title), "CH Msg : %d/%d", localActualChannelIndex + 1, validChannelCount);
+      else
+        snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
 
       // 使用 drawCommonHeader 绘制标题栏
       drawCommonHeader(display, x, y, title, false);
