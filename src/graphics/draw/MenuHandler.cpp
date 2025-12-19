@@ -1383,6 +1383,99 @@ namespace graphics
             } });
     }
 
+    void menuHandler::directMessageActionMenu()
+    {
+#ifdef RED_BANK_S3
+        enum optionsNumbers
+        {
+            Back = 0,
+            SelectNode = 1,
+            DelThis = 2,
+            DelAll = 3,
+            enumEnd = 4
+        };
+
+        static const char *optionsArray[enumEnd] = {"Back", "Select Node", "Del This", "Del All"};
+        static int optionsEnumArray[enumEnd] = {Back, SelectNode, DelThis, DelAll};
+
+        BannerOverlayOptions bannerOptions;
+        bannerOptions.message = "Direct Message";
+        bannerOptions.optionsArrayPtr = optionsArray;
+        bannerOptions.optionsEnumPtr = optionsEnumArray;
+        bannerOptions.optionsCount = enumEnd;
+        bannerOptions.durationMs = 0; // RED_BANK_S3: 不自动超时
+        bannerOptions.bannerCallback = [](int selected) -> void
+        {
+            if (selected == SelectNode)
+            {
+                menuHandler::menuQueue = menuHandler::direct_message_node_picker;
+                menuHandler::handleMenuSwitch(screen->getDisplayDevice());
+            }
+            else if (selected == DelThis)
+            {
+                if (redBankController)
+                {
+                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    if (currentNode != 0)
+                    {
+                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                        if (msgCount > 0)
+                        {
+                            menuHandler::showConfirmationBanner("Delete this message?", [currentNode]() -> void
+                                                                {
+                                if (redBankController)
+                                {
+                                    redBankController->deleteCurrentDirectMessage();
+                                    screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                                } });
+                        }
+                        else
+                        {
+                            screen->showSimpleBanner("No message to delete", 2000);
+                        }
+                    }
+                    else
+                    {
+                        screen->showSimpleBanner("No node selected", 2000);
+                    }
+                }
+            }
+            else if (selected == DelAll)
+            {
+                if (redBankController)
+                {
+                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    if (currentNode != 0)
+                    {
+                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                        if (msgCount > 0)
+                        {
+                            char confirmMsg[64];
+                            snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this node?");
+                            menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
+                                                                {
+                                if (redBankController)
+                                {
+                                    redBankController->deleteAllDirectMessagesForNode(currentNode);
+                                    screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                                } });
+                        }
+                        else
+                        {
+                            screen->showSimpleBanner("No messages to delete", 2000);
+                        }
+                    }
+                    else
+                    {
+                        screen->showSimpleBanner("No node selected", 2000);
+                    }
+                }
+            }
+        };
+        screen->showOverlayBanner(bannerOptions);
+#endif
+    }
+
     void menuHandler::testMenu()
     {
 
@@ -1760,6 +1853,9 @@ namespace graphics
 #ifdef RED_BANK_S3
         case direct_message_node_picker:
             directMessageNodePickerMenu();
+            break;
+        case direct_message_action_menu:
+            directMessageActionMenu();
             break;
 #endif
         }

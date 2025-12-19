@@ -40,6 +40,7 @@ class menuHandler
         trace_route_menu,
         throttle_message,
         direct_message_node_picker,
+        direct_message_action_menu,
     };
     static screenMenus menuQueue;
 
@@ -80,6 +81,7 @@ class menuHandler
     static void screenOptionsMenu();
     static void powerMenu();
     static void directMessageNodePickerMenu();
+    static void directMessageActionMenu();
 
   private:
     static void saveUIConfig();

@@ -1643,6 +1643,53 @@ bool NodeDB::restoreDirectMessagePacket(NodeNum node_num, uint8_t packet_index, 
     LOG_INFO("restoring %s, state = %d", packetFileName, state);
     return (state == LoadFileResult::LOAD_SUCCESS);
 }
+
+bool NodeDB::deleteDirectMessagePacketFromDisk(NodeNum node_num, uint8_t packet_index)
+{
+    char packetFileName[64];
+    snprintf(packetFileName, sizeof(packetFileName), "/prefs/dm_node%08x_msg%02x.proto", node_num, packet_index);
+
+#ifdef FSCom
+    spiLock->lock();
+    bool removed = FSCom.remove(packetFileName);
+    spiLock->unlock();
+    if (removed)
+    {
+        LOG_INFO("Deleted direct message file: %s", packetFileName);
+    }
+    return removed;
+#else
+    return false;
+#endif
+}
+
+bool NodeDB::deleteAllDirectMessagePacketsForNode(NodeNum node_num)
+{
+    bool success = true;
+#ifdef FSCom
+    spiLock->lock();
+    // Delete all message files for this node (up to DIRECT_MESSAGE_LIST_CAPACITY)
+    for (uint8_t i = 0; i < 20; ++i) // DIRECT_MESSAGE_LIST_CAPACITY = 20
+    {
+        char packetFileName[64];
+        snprintf(packetFileName, sizeof(packetFileName), "/prefs/dm_node%08x_msg%02x.proto", node_num, i);
+        if (FSCom.exists(packetFileName))
+        {
+            if (!FSCom.remove(packetFileName))
+            {
+                LOG_WARN("Failed to delete direct message file: %s", packetFileName);
+                success = false;
+            }
+            else
+            {
+                LOG_INFO("Deleted direct message file: %s", packetFileName);
+            }
+        }
+    }
+    spiLock->unlock();
+#endif
+    return success;
+}
 #endif
 
 const meshtastic_NodeInfoLite *NodeDB::readNextMeshNode(uint32_t &readIndex)

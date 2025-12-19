@@ -285,6 +285,8 @@ public:
     bool restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, meshtastic_MeshPacket &mp);
     bool saveDirectMessagePacketToDisk(NodeNum node_num, uint8_t packet_index, const meshtastic_MeshPacket &mp);
     bool restoreDirectMessagePacket(NodeNum node_num, uint8_t packet_index, meshtastic_MeshPacket &mp);
+    bool deleteDirectMessagePacketFromDisk(NodeNum node_num, uint8_t packet_index);
+    bool deleteAllDirectMessagePacketsForNode(NodeNum node_num);
 
 private:
     uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash

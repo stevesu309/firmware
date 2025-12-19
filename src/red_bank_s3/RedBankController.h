@@ -49,6 +49,8 @@ namespace RedBankS3
         void setCurrentDirectMessageIndex(uint8_t index) { currentDirectMessageIndex = index; }
         std::vector<NodeNum> getDirectMessageNodeList();
         int getDirectMessageNodeCount();
+        void deleteCurrentDirectMessage();
+        void deleteAllDirectMessagesForNode(NodeNum nodeNum);
 
 #if HAS_SCREEN
         void scanAdcKeypad();

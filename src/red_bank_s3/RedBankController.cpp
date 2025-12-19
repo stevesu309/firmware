@@ -633,6 +633,85 @@ namespace RedBankS3
         }
         return count;
     }
+
+    void RedBankController::deleteCurrentDirectMessage()
+    {
+        if (currentDirectMessageNode == 0)
+        {
+            return;
+        }
+
+        auto it = directMessagesByNode.find(currentDirectMessageNode);
+        if (it == directMessagesByNode.end() || it->second.empty())
+        {
+            return;
+        }
+
+        auto &nodeMessages = it->second;
+        if (currentDirectMessageIndex >= nodeMessages.size())
+        {
+            return;
+        }
+
+        // 删除磁盘上的文件
+        nodeDB->deleteDirectMessagePacketFromDisk(currentDirectMessageNode, currentDirectMessageIndex);
+
+        // 从内存中删除
+        nodeMessages.erase(nodeMessages.begin() + currentDirectMessageIndex);
+
+        // 重新保存剩余的消息到磁盘（重新编号）
+        for (uint8_t i = 0; i < nodeMessages.size(); ++i)
+        {
+            nodeDB->saveDirectMessagePacketToDisk(currentDirectMessageNode, i, nodeMessages.at(i));
+        }
+
+        // 删除旧的文件（如果有的话）
+        for (uint8_t i = nodeMessages.size(); i < DIRECT_MESSAGE_LIST_CAPACITY; ++i)
+        {
+            nodeDB->deleteDirectMessagePacketFromDisk(currentDirectMessageNode, i);
+        }
+
+        // 调整索引
+        if (currentDirectMessageIndex >= nodeMessages.size() && !nodeMessages.empty())
+        {
+            currentDirectMessageIndex = nodeMessages.size() - 1;
+        }
+        else if (nodeMessages.empty())
+        {
+            currentDirectMessageIndex = 0;
+        }
+
+        LOG_INFO("Deleted direct message at index %d for node 0x%08x", currentDirectMessageIndex, currentDirectMessageNode);
+    }
+
+    void RedBankController::deleteAllDirectMessagesForNode(NodeNum nodeNum)
+    {
+        if (nodeNum == 0)
+        {
+            return;
+        }
+
+        auto it = directMessagesByNode.find(nodeNum);
+        if (it == directMessagesByNode.end())
+        {
+            return;
+        }
+
+        // 删除磁盘上的所有文件
+        nodeDB->deleteAllDirectMessagePacketsForNode(nodeNum);
+
+        // 从内存中删除
+        directMessagesByNode.erase(it);
+
+        // 如果删除的是当前选中的节点，重置选中状态
+        if (currentDirectMessageNode == nodeNum)
+        {
+            currentDirectMessageNode = 0;
+            currentDirectMessageIndex = 0;
+        }
+
+        LOG_INFO("Deleted all direct messages for node 0x%08x", nodeNum);
+    }
     // void RedBankController::_previousMeshPacket()
     // {
     //     screen->showPrevPacket();

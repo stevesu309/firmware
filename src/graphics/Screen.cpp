@@ -1809,8 +1809,8 @@ namespace graphics
                     else if (currentFrame == framesetInfo.positions.textMessage)
                     {
 #ifdef RED_BANK_S3
-                        // RED_BANK_S3: 在私信页面长按 ENTER，弹出节点选择菜单
-                        menuHandler::menuQueue = menuHandler::direct_message_node_picker;
+                        // RED_BANK_S3: 在私信页面长按 ENTER，弹出操作菜单
+                        menuHandler::menuQueue = menuHandler::direct_message_action_menu;
                         menuHandler::handleMenuSwitch(dispdev);
 #else
                         if (devicestate.rx_text_message.from)
