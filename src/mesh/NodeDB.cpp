@@ -1618,6 +1618,53 @@ bool NodeDB::restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, mesh
     return (state == LoadFileResult::LOAD_SUCCESS);
 }
 
+bool NodeDB::deleteChannelPacketFromDisk(uint8_t channel_index, uint8_t packet_index)
+{
+    char packetFileName[64];
+    snprintf(packetFileName, sizeof(packetFileName), "/prefs/channel%02x_packet%02x.proto", channel_index, packet_index);
+
+#ifdef FSCom
+    spiLock->lock();
+    bool removed = FSCom.remove(packetFileName);
+    spiLock->unlock();
+    if (removed)
+    {
+        LOG_INFO("Deleted channel packet file: %s", packetFileName);
+    }
+    return removed;
+#else
+    return false;
+#endif
+}
+
+bool NodeDB::deleteAllChannelPacketsForChannel(uint8_t channel_index)
+{
+    bool success = true;
+#ifdef FSCom
+    spiLock->lock();
+    // Delete all packet files for this channel (up to MESH_PACKET_LIST_CAPCITY = 10)
+    for (uint8_t i = 0; i < 10; ++i)
+    {
+        char packetFileName[64];
+        snprintf(packetFileName, sizeof(packetFileName), "/prefs/channel%02x_packet%02x.proto", channel_index, i);
+        if (FSCom.exists(packetFileName))
+        {
+            if (!FSCom.remove(packetFileName))
+            {
+                LOG_WARN("Failed to delete channel packet file: %s", packetFileName);
+                success = false;
+            }
+            else
+            {
+                LOG_INFO("Deleted channel packet file: %s", packetFileName);
+            }
+        }
+    }
+    spiLock->unlock();
+#endif
+    return success;
+}
+
 bool NodeDB::saveDirectMessagePacketToDisk(NodeNum node_num, uint8_t packet_index, const meshtastic_MeshPacket &mp)
 {
     char packetFileName[64];

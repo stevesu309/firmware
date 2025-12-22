@@ -111,7 +111,6 @@ namespace graphics
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
-      LOG_INFO("currentRotation = %d", currentRotation);
       FontSelection fontSel = selectFontForRotation(currentRotation);
 #else
       FontSelection fontSel = selectFontForRotation(3);

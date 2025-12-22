@@ -35,6 +35,8 @@ namespace RedBankS3
         void push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp);
         void restoreChannelPackets(void);
         void restoreDirectMessages(void);
+        void deleteCurrentChannelMessage(uint8_t channel_index, uint16_t packet_index);
+        void deleteAllChannelMessagesForChannel(uint8_t channel_index);
 
         // 私信相关方法
         bool isDirectMessageListEmpty();
@@ -58,7 +60,7 @@ namespace RedBankS3
         KeypadKey getKey2();
 
         // 屏幕旋转相关
-        uint8_t currentRotation = 1;
+        uint8_t currentRotation = 0;
         void rotateScreenLeft();
         void rotateScreenRight();
         void applyRotation();
@@ -95,11 +97,8 @@ namespace RedBankS3
         int m_currentMeshPacketIndex;
         uint8_t direction;
 
-        // 移除或添加条件编译保护到这些私有函数
 #if HAS_SCREEN
-        void _previousMeshPacket();
-        void _nextMeshPacket();
-        KeypadKey mapKeyByRotation(KeypadKey physicalKey); // 只保留一个声明
+        KeypadKey mapKeyByRotation(KeypadKey physicalKey);
 
         // 按键状态管理
         bool leftButtonPressed = false;

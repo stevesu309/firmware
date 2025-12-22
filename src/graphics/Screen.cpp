@@ -1777,10 +1777,11 @@ namespace graphics
                     uint8_t currentFrame = this->ui->getUiState()->currentFrame;
 
 #ifdef RED_BANK_S3
-                    // 在频道消息页面长按 ENTER，弹出频道选择菜单（交由 MenuHandler 控制）
+                    // 在频道消息页面长按 ENTER，弹出频道消息操作菜单（交由 MenuHandler 控制）
                     if (currentFrame == framesetInfo.positions.channelMessage)
                     {
-                        menuHandler::channelHistoryMenu();
+                        menuHandler::menuQueue = menuHandler::channel_message_action_menu;
+                        menuHandler::handleMenuSwitch(dispdev);
                     }
                     else
 #endif

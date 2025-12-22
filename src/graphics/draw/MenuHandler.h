@@ -4,43 +4,46 @@
 namespace graphics
 {
 
-class menuHandler
-{
+  class menuHandler
+  {
   public:
-    enum screenMenus {
-        menu_none,
-        lora_picker,
-        no_timeout_lora_picker,
-        TZ_picker,
-        twelve_hour_picker,
-        clock_face_picker,
-        clock_menu,
-        position_base_menu,
-        gps_toggle_menu,
-        compass_point_north_menu,
-        reset_node_db_menu,
-        buzzermodemenupicker,
-        mui_picker,
-        tftcolormenupicker,
-        brightness_picker,
-        reboot_menu,
-        shutdown_menu,
-        add_favorite,
-        remove_favorite,
-        test_menu,
-        number_test,
-        wifi_toggle_menu,
-        bluetooth_toggle_menu,
-        notifications_menu,
-        screen_options_menu,
-        power_menu,
-        system_base_menu,
-        key_verification_init,
-        key_verification_final_prompt,
-        trace_route_menu,
-        throttle_message,
-        direct_message_node_picker,
-        direct_message_action_menu,
+    enum screenMenus
+    {
+      menu_none,
+      lora_picker,
+      no_timeout_lora_picker,
+      TZ_picker,
+      twelve_hour_picker,
+      clock_face_picker,
+      clock_menu,
+      position_base_menu,
+      gps_toggle_menu,
+      compass_point_north_menu,
+      reset_node_db_menu,
+      buzzermodemenupicker,
+      mui_picker,
+      tftcolormenupicker,
+      brightness_picker,
+      reboot_menu,
+      shutdown_menu,
+      add_favorite,
+      remove_favorite,
+      test_menu,
+      number_test,
+      wifi_toggle_menu,
+      bluetooth_toggle_menu,
+      notifications_menu,
+      screen_options_menu,
+      power_menu,
+      system_base_menu,
+      key_verification_init,
+      key_verification_final_prompt,
+      trace_route_menu,
+      throttle_message,
+      direct_message_node_picker,
+      direct_message_action_menu,
+      channel_message_channel_picker,
+      channel_message_action_menu,
     };
     static screenMenus menuQueue;
 
@@ -82,13 +85,14 @@ class menuHandler
     static void powerMenu();
     static void directMessageNodePickerMenu();
     static void directMessageActionMenu();
+    static void channelMessageActionMenu();
 
   private:
     static void saveUIConfig();
     static void keyVerificationInitMenu();
     static void keyVerificationFinalPrompt();
     static void BluetoothToggleMenu();
-};
+  };
 
 } // namespace graphics
 #endif

@@ -580,9 +580,11 @@ namespace graphics
     // RED_BANK_S3: 频道历史消息页面的频道选择菜单
     void menuHandler::channelHistoryMenu()
     {
+        LOG_INFO("channelHistoryMenu() called, validChannelCount=%d", validChannelCount);
         // 如果当前没有可用的频道，直接返回
         if (validChannelCount == 0)
         {
+            LOG_INFO("No channels");
             screen->showSimpleBanner("No channels", 2000);
             return;
         }
@@ -694,7 +696,9 @@ namespace graphics
             screen->runNow(); // 立即刷新，使频道历史页面更新
         };
 
+        LOG_INFO("channelHistoryMenu: About to call showOverlayBanner with %d options", optionCount);
         screen->showOverlayBanner(bannerOptions);
+        LOG_INFO("channelHistoryMenu: showOverlayBanner called");
     }
 #endif
 
@@ -1409,34 +1413,158 @@ namespace graphics
             if (selected == SelectNode)
             {
                 menuHandler::menuQueue = menuHandler::direct_message_node_picker;
-                menuHandler::handleMenuSwitch(screen->getDisplayDevice());
+                // menuHandler::handleMenuSwitch(screen->getDisplayDevice());
+                screen->runNow();
             }
             else if (selected == DelThis)
             {
-                if (redBankController)
+                NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                if (currentNode != 0)
                 {
-                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
-                    if (currentNode != 0)
+                    int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                    if (msgCount > 0)
                     {
-                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
-                        if (msgCount > 0)
-                        {
-                            menuHandler::showConfirmationBanner("Delete this message?", [currentNode]() -> void
-                                                                {
+                        menuHandler::showConfirmationBanner("Delete this message?", [currentNode]() -> void
+                                                            {
                                 if (redBankController)
                                 {
                                     redBankController->deleteCurrentDirectMessage();
                                     screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
                                 } });
-                        }
-                        else
-                        {
-                            screen->showSimpleBanner("No message to delete", 2000);
-                        }
                     }
                     else
                     {
-                        screen->showSimpleBanner("No node selected", 2000);
+                        screen->showSimpleBanner("No message to delete", 2000);
+                    }
+                }
+                else
+                {
+                    screen->showSimpleBanner("No node selected", 2000);
+                }
+            }
+            else if (selected == DelAll)
+            {
+                NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                if (currentNode != 0)
+                {
+                    int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                    if (msgCount > 0)
+                    {
+                        char confirmMsg[64];
+                        snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this node?");
+                        menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
+                                                            {
+                                if (redBankController)
+                                {
+                                    redBankController->deleteAllDirectMessagesForNode(currentNode);
+                                    screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                                } });
+                    }
+                    else
+                    {
+                        screen->showSimpleBanner("No messages to delete", 2000);
+                    }
+                }
+                else
+                {
+                    screen->showSimpleBanner("No node selected", 2000);
+                }
+            }
+        };
+        screen->showOverlayBanner(bannerOptions);
+#endif
+    }
+
+    void menuHandler::channelMessageActionMenu()
+    {
+#ifdef RED_BANK_S3
+        enum optionsNumbers
+        {
+            Back = 0,
+            SelectChannel = 1,
+            DelThis = 2,
+            DelAll = 3,
+            enumEnd = 4
+        };
+
+        static const char *optionsArray[enumEnd] = {"Back", "Select Channel", "Del This", "Del All"};
+        static int optionsEnumArray[enumEnd] = {Back, SelectChannel, DelThis, DelAll};
+
+        BannerOverlayOptions bannerOptions;
+        bannerOptions.message = "Channel Message";
+        bannerOptions.optionsArrayPtr = optionsArray;
+        bannerOptions.optionsEnumPtr = optionsEnumArray;
+        bannerOptions.optionsCount = enumEnd;
+        bannerOptions.durationMs = 0; // RED_BANK_S3: 不自动超时
+        bannerOptions.bannerCallback = [](int selected) -> void
+        {
+            LOG_INFO("Channel message action menu callback: selected=%d (Back=%d, SelectChannel=%d, DelThis=%d, DelAll=%d)",
+                     selected, Back, SelectChannel, DelThis, DelAll);
+            if (selected == SelectChannel)
+            {
+                LOG_INFO("Channel message menu: Selected Select Channel, switching to channel picker menu");
+                menuHandler::menuQueue = menuHandler::channel_message_channel_picker;
+                screen->runNow();
+            }
+            else if (selected == DelThis)
+            {
+                if (redBankController)
+                {
+                    uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
+                    uint16_t currentPacketIndex = channelPacketBrowseIndex;
+                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    if (msgCount > 0 && currentPacketIndex < msgCount)
+                    {
+                        menuHandler::showConfirmationBanner("Delete this message?", [currentChannel, currentPacketIndex]() -> void
+                                                            {
+                            if (redBankController)
+                            {
+                                // 保存删除前的索引
+                                uint16_t oldBrowseIndex = channelPacketBrowseIndex;
+                                
+                                redBankController->deleteCurrentChannelMessage(currentChannel, currentPacketIndex);
+                                
+                                // 调整浏览索引
+                                int newMsgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                                if (newMsgCount > 0)
+                                {
+                                    // 删除逻辑：
+                                    // - 如果删除的是当前浏览的消息（currentPacketIndex == oldBrowseIndex），
+                                    //   删除后原来 currentPacketIndex+1 的消息会移动到 currentPacketIndex 位置，
+                                    //   所以索引保持不变（继续显示当前位置，但已经是下一条消息了）
+                                    // - 如果删除的是当前浏览消息之前的消息（currentPacketIndex < oldBrowseIndex），
+                                    //   删除后当前浏览的消息会向前移动，索引需要减1
+                                    // - 如果删除的是当前浏览消息之后的消息（currentPacketIndex > oldBrowseIndex），
+                                    //   删除后当前浏览的消息位置不变，索引不需要改变
+                                    
+                                    if (currentPacketIndex < oldBrowseIndex)
+                                    {
+                                        // 删除的是当前浏览消息之前的消息，索引需要减1
+                                        channelPacketBrowseIndex = oldBrowseIndex - 1;
+                                    }
+                                    // 如果 currentPacketIndex == oldBrowseIndex，索引保持不变
+                                    // 如果 currentPacketIndex > oldBrowseIndex，索引保持不变
+                                    
+                                    // 确保索引在有效范围内
+                                    if (channelPacketBrowseIndex >= newMsgCount)
+                                    {
+                                        channelPacketBrowseIndex = newMsgCount - 1;
+                                    }
+                                }
+                                else
+                                {
+                                    channelPacketBrowseIndex = 0;
+                                }
+                                
+                                LOG_INFO("Deleted message at index %d, oldBrowseIndex=%d, newBrowseIndex=%d, newMsgCount=%d", 
+                                         currentPacketIndex, oldBrowseIndex, channelPacketBrowseIndex, newMsgCount);
+                                
+                                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                            } });
+                    }
+                    else
+                    {
+                        screen->showSimpleBanner("No message to delete", 2000);
                     }
                 }
             }
@@ -1444,30 +1572,24 @@ namespace graphics
             {
                 if (redBankController)
                 {
-                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
-                    if (currentNode != 0)
+                    uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
+                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    if (msgCount > 0)
                     {
-                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
-                        if (msgCount > 0)
-                        {
-                            char confirmMsg[64];
-                            snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this node?");
-                            menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
-                                                                {
-                                if (redBankController)
-                                {
-                                    redBankController->deleteAllDirectMessagesForNode(currentNode);
-                                    screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
-                                } });
-                        }
-                        else
-                        {
-                            screen->showSimpleBanner("No messages to delete", 2000);
-                        }
+                        char confirmMsg[64];
+                        snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this channel?");
+                        menuHandler::showConfirmationBanner(confirmMsg, [currentChannel]() -> void
+                                                            {
+                            if (redBankController)
+                            {
+                                redBankController->deleteAllChannelMessagesForChannel(currentChannel);
+                                channelPacketBrowseIndex = 0;
+                                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                            } });
                     }
                     else
                     {
-                        screen->showSimpleBanner("No node selected", 2000);
+                        screen->showSimpleBanner("No messages to delete", 2000);
                     }
                 }
             }
@@ -1856,6 +1978,12 @@ namespace graphics
             break;
         case direct_message_action_menu:
             directMessageActionMenu();
+            break;
+        case channel_message_channel_picker:
+            channelHistoryMenu();
+            break;
+        case channel_message_action_menu:
+            channelMessageActionMenu();
             break;
 #endif
         }

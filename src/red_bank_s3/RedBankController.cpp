@@ -39,18 +39,14 @@ namespace RedBankS3
     // 根据屏幕旋转角度映射物理按键到逻辑按键
     KeypadKey RedBankController::mapKeyByRotation(KeypadKey physicalKey)
     {
-        // 旋转角度0: 原始方向 - 上下左右保持不变
-        // 旋转角度3: 逆时针旋转90度 - 原上下左右变为右左上下
-        // 旋转角度1: 顺时针旋转90度 - 原上下左右变为左右下上
 
         switch (currentRotation)
         {
         case 0:
-            // 原始方向，保持不变
             return physicalKey;
 
         case 3:
-            // 逆时针旋转90度：原上下左右变为右左上下
+            // 逆时针旋转90度
             switch (physicalKey)
             {
             case KeypadKey::UP:
@@ -66,7 +62,7 @@ namespace RedBankS3
             }
 
         case 1:
-            // 顺时针旋转90度：原上下左右变为左右下上
+            // 顺时针旋转90度
             switch (physicalKey)
             {
             case KeypadKey::UP:
@@ -711,6 +707,62 @@ namespace RedBankS3
         }
 
         LOG_INFO("Deleted all direct messages for node 0x%08x", nodeNum);
+    }
+
+    void RedBankController::deleteCurrentChannelMessage(uint8_t channel_index, uint16_t packet_index)
+    {
+        if (channel_index >= 8)
+        {
+            return;
+        }
+
+        auto &channelMessages = channelPackets[channel_index];
+        if (packet_index >= channelMessages.size())
+        {
+            LOG_WARN("deleteCurrentChannelMessage: packet_index %d >= size %zu", packet_index, channelMessages.size());
+            return;
+        }
+
+        LOG_INFO("Deleting channel message: channel=%d, index=%d, total=%zu", channel_index, packet_index, channelMessages.size());
+
+        // 先删除所有可能存在的旧文件（防止残留）
+        for (uint8_t i = 0; i < MESH_PACKET_LIST_CAPCITY; ++i)
+        {
+            nodeDB->deleteChannelPacketFromDisk(channel_index, i);
+        }
+
+        // 从内存中删除
+        channelMessages.erase(channelMessages.begin() + packet_index);
+
+        LOG_INFO("After erase: channel %d has %zu messages", channel_index, channelMessages.size());
+
+        // 重新保存剩余的消息到磁盘（重新编号从0开始）
+        for (uint8_t i = 0; i < channelMessages.size(); ++i)
+        {
+            if (!nodeDB->saveChannelPacketToDisk(channel_index, i, channelMessages.at(i)))
+            {
+                LOG_WARN("Failed to save channel %d packet %d to disk", channel_index, i);
+            }
+        }
+
+        LOG_INFO("Deleted channel message at index %d for channel %d, remaining %zu messages", 
+                 packet_index, channel_index, channelMessages.size());
+    }
+
+    void RedBankController::deleteAllChannelMessagesForChannel(uint8_t channel_index)
+    {
+        if (channel_index >= 8)
+        {
+            return;
+        }
+
+        // 删除磁盘上的所有文件
+        nodeDB->deleteAllChannelPacketsForChannel(channel_index);
+
+        // 从内存中删除
+        channelPackets[channel_index].clear();
+
+        LOG_INFO("Deleted all channel messages for channel %d", channel_index);
     }
     // void RedBankController::_previousMeshPacket()
     // {

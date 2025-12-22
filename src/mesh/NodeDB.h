@@ -283,6 +283,8 @@ public:
 
     bool saveChannelPacketToDisk(uint8_t channel_index, uint8_t packet_index, const meshtastic_MeshPacket &mp);
     bool restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, meshtastic_MeshPacket &mp);
+    bool deleteChannelPacketFromDisk(uint8_t channel_index, uint8_t packet_index);
+    bool deleteAllChannelPacketsForChannel(uint8_t channel_index);
     bool saveDirectMessagePacketToDisk(NodeNum node_num, uint8_t packet_index, const meshtastic_MeshPacket &mp);
     bool restoreDirectMessagePacket(NodeNum node_num, uint8_t packet_index, meshtastic_MeshPacket &mp);
     bool deleteDirectMessagePacketFromDisk(NodeNum node_num, uint8_t packet_index);
