@@ -1314,7 +1314,7 @@ namespace graphics
 
         if (!navBarVisible && navBarLastShown != 0 && !cosmeticRefreshDone)
         {
-            if (millis() - navBarLastShown > 5000)
+            if (millis() - navBarLastShown > 1000)
             {                                          // 5s after hidden
                 EINK_ADD_FRAMEFLAG(display, COSMETIC); // One-time ghost cleanup
                 cosmeticRefreshDone = true;

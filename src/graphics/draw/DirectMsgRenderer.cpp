@@ -77,26 +77,30 @@ namespace graphics
       display->setFont(selectedFont);
 
       NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+      meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(currentNode);
+
+      char title[10] = "DM";
+      if (node && node->has_user && strlen(node->user.short_name) > 0)
+      {
+        snprintf(title, sizeof(title), "%s", node->user.short_name);
+      }
 
       // 检查当前节点是否有私信
       if (redBankController->isDirectMessageListEmptyForNode(currentNode))
       {
-        char title[20];
-        if (currentRotation == 0)
-          snprintf(title, sizeof(title), "DM");
-        else
-          snprintf(title, sizeof(title), "Direct Message");
         drawCommonHeader(display, x, y, title, false);
-        const char *messageString = "No messages for this node";
+        const char *messageString = "No messages with this node";
         display->setTextAlignment(TEXT_ALIGN_LEFT);
         int center_text = (width / 2) - (display->getStringWidth(messageString) / 2);
         display->drawString(center_text, y + selectedFontHeight * 2, messageString);
         return;
       }
 
+      drawCommonHeader(display, x, y, title, false);
       // 获取当前节点的消息列表大小
       uint16_t directMsgListSize = redBankController->_getDirectMessageListSizeForNode(currentNode);
       uint8_t msgIndex = redBankController->getCurrentDirectMessageIndex();
+      const meshtastic_MeshPacket &mp = redBankController->getRecentDirectMessage(msgIndex);
 
       // 确保索引有效
       if (msgIndex >= directMsgListSize)
@@ -104,28 +108,6 @@ namespace graphics
         msgIndex = directMsgListSize - 1;
         redBankController->setCurrentDirectMessageIndex(msgIndex);
       }
-
-      const meshtastic_MeshPacket &mp = redBankController->getRecentDirectMessage(msgIndex);
-
-      // 获取节点信息用于显示标题
-      meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(currentNode);
-      char nodeName[30];
-      if (node && node->has_user && strlen(node->user.short_name) > 0)
-      {
-        snprintf(nodeName, sizeof(nodeName), "%s", node->user.short_name);
-      }
-      else
-      {
-        snprintf(nodeName, sizeof(nodeName), "%08x", currentNode);
-      }
-
-      char title[50];
-      int nodeCount = redBankController->getDirectMessageNodeCount();
-      snprintf(title, sizeof(title), "DM: %s (%d/%d)", nodeName, msgIndex + 1, directMsgListSize);
-
-      drawCommonHeader(display, x, y, title, false);
-
-      const int headerHeight = FONT_HEIGHT_SMALL + 1;
 
       // 获取发送者或接收者信息
       meshtastic_NodeInfoLite *fromNode = nodeDB->getMeshNode(getFrom(&mp));

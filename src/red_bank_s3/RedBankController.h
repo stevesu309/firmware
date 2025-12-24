@@ -89,7 +89,7 @@ namespace RedBankS3
         // 消息列表
         std::vector<meshtastic_MeshPacket> channelPackets[8];
         // 私信列表 - 按节点组织，每个节点最多20条
-        static const int DIRECT_MESSAGE_LIST_CAPACITY = 20;
+        static const int DIRECT_MESSAGE_LIST_CAPACITY = 10;
         std::map<NodeNum, std::vector<meshtastic_MeshPacket>> directMessagesByNode;
         NodeNum currentDirectMessageNode = 0;  // 当前选中的节点
         uint8_t currentDirectMessageIndex = 0; // 当前浏览的消息索引
