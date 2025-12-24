@@ -1514,7 +1514,7 @@ GnssModel_t GPS::probe(int serialSpeed)
     GPS_RESPONSE response = getACK(0x06, 0x08, 750);
     if (response == GNSS_RESPONSE_NONE)
     {
-        LOG_WARN("No GNSS Module11 (baudrate %d)", serialSpeed);
+        LOG_WARN("No GNSS Module (baudrate %d)", serialSpeed);
         return GNSS_MODEL_UNKNOWN;
     }
     else if (response == GNSS_RESPONSE_FRAME_ERRORS)
@@ -1622,7 +1622,7 @@ GnssModel_t GPS::probe(int serialSpeed)
             return GNSS_MODEL_UBLOX10;
         }
     }
-    LOG_WARN("No GNSS Module22 (baudrate %d)", serialSpeed);
+    LOG_WARN("No GNSS Module (baudrate %d)", serialSpeed);
 
     return GNSS_MODEL_UNKNOWN;
 }

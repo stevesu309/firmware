@@ -44,6 +44,7 @@ namespace graphics
       direct_message_action_menu,
       channel_message_channel_picker,
       channel_message_action_menu,
+      confirmation_dialog_menu,
     };
     static screenMenus menuQueue;
 

@@ -10,6 +10,7 @@
 #include "graphics/Screen.h"
 #include "graphics/SharedUIDisplay.h"
 #include "graphics/draw/UIRenderer.h"
+#include "graphics/draw/NotificationRenderer.h"
 #include "main.h"
 #include "modules/AdminModule.h"
 #include "modules/CannedMessageModule.h"
@@ -28,6 +29,12 @@ namespace graphics
     menuHandler::screenMenus menuHandler::menuQueue = menu_none;
     bool test_enabled = false;
     uint8_t test_count = 0;
+    
+    // RED_BANK_S3: 用于延迟显示确认对话框的静态变量
+#ifdef RED_BANK_S3
+    static char pendingConfirmMessage[256];
+    static std::function<void()> pendingConfirmCallback;
+#endif
 
     void menuHandler::OnboardMessage()
     {
@@ -172,6 +179,23 @@ namespace graphics
     // Reusable confirmation prompt function
     void menuHandler::showConfirmationBanner(const char *message, std::function<void()> onConfirm)
     {
+        LOG_INFO("showConfirmationBanner called with message: %s", message);
+        
+#ifdef RED_BANK_S3
+        // RED_BANK_S3: 如果在菜单回调中调用（有 overlay banner 显示），使用 menuQueue 机制延迟显示
+        if (NotificationRenderer::isOverlayBannerShowing())
+        {
+            LOG_INFO("showConfirmationBanner: Overlay banner showing, using menuQueue mechanism");
+            strncpy(pendingConfirmMessage, message, sizeof(pendingConfirmMessage) - 1);
+            pendingConfirmMessage[sizeof(pendingConfirmMessage) - 1] = '\0';
+            pendingConfirmCallback = onConfirm;
+            menuHandler::menuQueue = menuHandler::confirmation_dialog_menu;
+            screen->runNow();
+            return;
+        }
+#endif
+        
+        // 直接显示确认对话框（没有 overlay banner 显示时，如 CannedMessageModule）
         static const char *confirmOptions[] = {"No", "Yes"};
         BannerOverlayOptions confirmBanner;
         confirmBanner.message = message;
@@ -179,13 +203,48 @@ namespace graphics
         confirmBanner.optionsCount = 2;
         confirmBanner.bannerCallback = [onConfirm](int confirmSelected) -> void
         {
+            LOG_INFO("Confirmation banner callback: selected=%d (0=No, 1=Yes)", confirmSelected);
             if (confirmSelected == 1)
             {
+                LOG_INFO("User confirmed, executing callback");
                 onConfirm();
+            }
+            else
+            {
+                LOG_INFO("User cancelled (selected No)");
+            }
+        };
+        LOG_INFO("showConfirmationBanner: About to call showOverlayBanner");
+        screen->showOverlayBanner(confirmBanner);
+        LOG_INFO("showConfirmationBanner: showOverlayBanner called");
+    }
+    
+#ifdef RED_BANK_S3
+    // RED_BANK_S3: 显示延迟的确认对话框（通过 menuQueue 调用）
+    static void showPendingConfirmationDialog()
+    {
+        LOG_INFO("showPendingConfirmationDialog: message=%s", pendingConfirmMessage);
+        static const char *confirmOptions[] = {"No", "Yes"};
+        BannerOverlayOptions confirmBanner;
+        confirmBanner.message = pendingConfirmMessage;
+        confirmBanner.optionsArrayPtr = confirmOptions;
+        confirmBanner.optionsCount = 2;
+        confirmBanner.bannerCallback = [](int confirmSelected) -> void
+        {
+            LOG_INFO("Pending confirmation banner callback: selected=%d (0=No, 1=Yes)", confirmSelected);
+            if (confirmSelected == 1)
+            {
+                LOG_INFO("User confirmed, executing pending callback");
+                pendingConfirmCallback();
+            }
+            else
+            {
+                LOG_INFO("User cancelled (selected No)");
             }
         };
         screen->showOverlayBanner(confirmBanner);
     }
+#endif
 
     void menuHandler::ClockFacePicker()
     {
@@ -1413,7 +1472,6 @@ namespace graphics
             if (selected == SelectNode)
             {
                 menuHandler::menuQueue = menuHandler::direct_message_node_picker;
-                // menuHandler::handleMenuSwitch(screen->getDisplayDevice());
                 screen->runNow();
             }
             else if (selected == DelThis)
@@ -1498,8 +1556,6 @@ namespace graphics
         bannerOptions.durationMs = 0; // RED_BANK_S3: 不自动超时
         bannerOptions.bannerCallback = [](int selected) -> void
         {
-            LOG_INFO("Channel message action menu callback: selected=%d (Back=%d, SelectChannel=%d, DelThis=%d, DelAll=%d)",
-                     selected, Back, SelectChannel, DelThis, DelAll);
             if (selected == SelectChannel)
             {
                 LOG_INFO("Channel message menu: Selected Select Channel, switching to channel picker menu");
@@ -1508,35 +1564,33 @@ namespace graphics
             }
             else if (selected == DelThis)
             {
+                LOG_INFO("Channel DelThis: selected, checking redBankController");
                 if (redBankController)
                 {
                     uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
                     uint16_t currentPacketIndex = channelPacketBrowseIndex;
                     int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    LOG_INFO("Channel DelThis: currentChannel=%d, currentPacketIndex=%d, msgCount=%d",
+                             currentChannel, currentPacketIndex, msgCount);
                     if (msgCount > 0 && currentPacketIndex < msgCount)
                     {
+                        LOG_INFO("Channel DelThis: Calling showConfirmationBanner");
                         menuHandler::showConfirmationBanner("Delete this message?", [currentChannel, currentPacketIndex]() -> void
                                                             {
                             if (redBankController)
                             {
                                 // 保存删除前的索引
                                 uint16_t oldBrowseIndex = channelPacketBrowseIndex;
+                                LOG_INFO("Channel DelThis CONFIRM: before delete, channel=%d, packetIndex=%d, oldBrowseIndex=%d",
+                                         currentChannel, currentPacketIndex, oldBrowseIndex);
                                 
                                 redBankController->deleteCurrentChannelMessage(currentChannel, currentPacketIndex);
                                 
                                 // 调整浏览索引
                                 int newMsgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                                LOG_INFO("Channel DelThis CONFIRM: after delete, newMsgCount=%d", newMsgCount);
                                 if (newMsgCount > 0)
                                 {
-                                    // 删除逻辑：
-                                    // - 如果删除的是当前浏览的消息（currentPacketIndex == oldBrowseIndex），
-                                    //   删除后原来 currentPacketIndex+1 的消息会移动到 currentPacketIndex 位置，
-                                    //   所以索引保持不变（继续显示当前位置，但已经是下一条消息了）
-                                    // - 如果删除的是当前浏览消息之前的消息（currentPacketIndex < oldBrowseIndex），
-                                    //   删除后当前浏览的消息会向前移动，索引需要减1
-                                    // - 如果删除的是当前浏览消息之后的消息（currentPacketIndex > oldBrowseIndex），
-                                    //   删除后当前浏览的消息位置不变，索引不需要改变
-                                    
                                     if (currentPacketIndex < oldBrowseIndex)
                                     {
                                         // 删除的是当前浏览消息之前的消息，索引需要减1
@@ -1984,6 +2038,9 @@ namespace graphics
             break;
         case channel_message_action_menu:
             channelMessageActionMenu();
+            break;
+        case confirmation_dialog_menu:
+            showPendingConfirmationDialog();
             break;
 #endif
         }
