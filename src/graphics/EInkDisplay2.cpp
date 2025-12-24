@@ -262,7 +262,7 @@ bool EInkDisplay::connect()
         lowLevel->selectSPI(*hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
         adafruitDisplay = new GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT>(*lowLevel);
         adafruitDisplay->init(115200, true, 10, false);
-        adafruitDisplay->setRotation(1);
+        adafruitDisplay->setRotation(0);
 
         // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
         LOG_DEBUG("Display initialized successfully");
