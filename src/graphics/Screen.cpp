@@ -1646,7 +1646,7 @@ namespace graphics
             // 检查菜单是否仍然显示，如果不显示则退出菜单状态
             if (redBankController && redBankController->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing())
             {
-                redBankController->setMenuActive(false);
+                redBankController->setMenuActive(false); // setMenuActive 内部会处理刷新
             }
 #endif
             return 0;

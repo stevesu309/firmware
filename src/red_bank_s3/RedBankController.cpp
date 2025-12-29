@@ -190,6 +190,28 @@ namespace RedBankS3
             {
                 handleDownButtonRelease();
             }
+
+            // ENTER 按键长按检查（在按下期间持续检查）
+            if (physicalEnterPressed && enterButtonPressed && !enterLongPressTriggered)
+            {
+                uint32_t pressDuration = millis() - enterButtonPressTime;
+                bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+                
+                // 在正常状态下，如果长按时间达到阈值，立即触发菜单
+                if (!isOverlayActive && !menuActive && pressDuration >= LONG_PRESS_THRESHOLD)
+                {
+                    enterLongPressTriggered = true; // 标记已触发，防止重复
+                    InputEvent event;
+                    event.inputEvent = INPUT_BROKER_SELECT;
+                    event.source = "RedBankController";
+                    event.kbchar = 0;
+                    event.touchX = 0;
+                    event.touchY = 0;
+                    inputBroker->injectInputEvent(&event);
+                    menuActive = true;
+                    LOG_INFO("Normal: Long press detected - Open menu immediately");
+                }
+            }
         }
 
         key1_last = key1_current;
@@ -816,8 +838,17 @@ namespace RedBankS3
 
     void RedBankController::setMenuActive(bool active)
     {
+        bool wasActive = menuActive;
         menuActive = active;
         // LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
+        
+        // 菜单关闭时进行全面刷新（类似底部导航栏隐藏后的刷新）
+        if (wasActive && !active && screen && screen->getDisplayDevice())
+        {
+#ifdef USE_EINK
+            EINK_ADD_FRAMEFLAG(screen->getDisplayDevice(), COSMETIC); // Full refresh when menu closes
+#endif
+        }
     }
 
     // LEFT 按键处理函数
@@ -868,6 +899,7 @@ namespace RedBankS3
     {
         enterButtonPressed = true;
         enterButtonPressTime = millis();
+        enterLongPressTriggered = false; // 重置长按触发标志
     }
 
     void RedBankController::handleEnterButtonRelease()
@@ -876,7 +908,9 @@ namespace RedBankS3
             return;
 
         uint32_t pressDuration = millis() - enterButtonPressTime;
+        bool wasLongPressTriggered = enterLongPressTriggered;
         enterButtonPressed = false;
+        enterLongPressTriggered = false; // 重置标志
 
         // 检查是否在overlay banner（地区选择菜单等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
@@ -898,8 +932,9 @@ namespace RedBankS3
         }
         else
         {
-            // 在正常状态下，长按ENTER呼出菜单
-            if (pressDuration >= LONG_PRESS_THRESHOLD)
+            // 在正常状态下，如果长按已经在按下期间触发，这里不需要重复触发
+            // 如果还没有触发（可能时间刚好达到阈值），则在这里触发
+            if (!wasLongPressTriggered && pressDuration >= LONG_PRESS_THRESHOLD)
             {
                 InputEvent event;
                 event.inputEvent = INPUT_BROKER_SELECT;
@@ -909,12 +944,13 @@ namespace RedBankS3
                 event.touchY = 0;
                 inputBroker->injectInputEvent(&event);
                 menuActive = true;
-                LOG_INFO("Normal: Long press - Open menu");
+                LOG_INFO("Normal: Long press on release - Open menu");
             }
-            else
+            else if (pressDuration < LONG_PRESS_THRESHOLD)
             {
+                // 短按点亮屏幕
                 if (screen)
-                    screen->setOn(true); // 短按点亮屏幕
+                    screen->setOn(true);
             }
         }
     }
@@ -951,7 +987,7 @@ namespace RedBankS3
                 event.touchX = 0;
                 event.touchY = 0;
                 inputBroker->injectInputEvent(&event);
-                menuActive = false;
+                setMenuActive(false); // 使用 setMenuActive 以触发刷新
                 LOG_INFO("Menu: Short press - Close menu");
             }
         }

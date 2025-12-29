@@ -104,6 +104,7 @@ namespace RedBankS3
         bool leftButtonPressed = false;
         bool rightButtonPressed = false;
         bool enterButtonPressed = false;
+        bool enterLongPressTriggered = false; // 标记长按是否已触发，防止重复触发
         bool escButtonPressed = false;
         bool upButtonPressed = false;
         bool downButtonPressed = false;
