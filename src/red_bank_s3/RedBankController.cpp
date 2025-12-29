@@ -456,6 +456,35 @@ namespace RedBankS3
                 LOG_INFO("restored %zu direct messages for node 0x%08x", nodeMessages.size(), nodeNum);
             }
         }
+        
+        // 如果当前没有选中的节点，自动选中第一个有消息的节点
+        if (currentDirectMessageNode == 0)
+        {
+            bool foundNodeWithMessages = false;
+            for (const auto &pair : directMessagesByNode)
+            {
+                if (!pair.second.empty())
+                {
+                    currentDirectMessageNode = pair.first;
+                    currentDirectMessageIndex = pair.second.size() - 1;
+                    LOG_INFO("Auto-selected first node with messages: 0x%08x", currentDirectMessageNode);
+                    foundNodeWithMessages = true;
+                    break;
+                }
+            }
+            
+            // 如果没有任何节点有私信，默认选中第一个节点（用于显示空聊天信息）
+            if (!foundNodeWithMessages && nodeDB->getNumMeshNodes() > 0)
+            {
+                meshtastic_NodeInfoLite *firstNode = nodeDB->getMeshNodeByIndex(0);
+                if (firstNode)
+                {
+                    currentDirectMessageNode = firstNode->num;
+                    currentDirectMessageIndex = 0;
+                    LOG_INFO("No nodes with messages, auto-selected first node: 0x%08x", currentDirectMessageNode);
+                }
+            }
+        }
     }
 
     meshtastic_MeshPacket RedBankController::getRecentMeshPacket(uint8_t channel, uint8_t recent_index)

@@ -29,7 +29,7 @@ namespace graphics
     menuHandler::screenMenus menuHandler::menuQueue = menu_none;
     bool test_enabled = false;
     uint8_t test_count = 0;
-    
+
     // RED_BANK_S3: 用于延迟显示确认对话框的静态变量
 #ifdef RED_BANK_S3
     static char pendingConfirmMessage[256];
@@ -180,7 +180,7 @@ namespace graphics
     void menuHandler::showConfirmationBanner(const char *message, std::function<void()> onConfirm)
     {
         LOG_INFO("showConfirmationBanner called with message: %s", message);
-        
+
 #ifdef RED_BANK_S3
         // RED_BANK_S3: 如果在菜单回调中调用（有 overlay banner 显示），使用 menuQueue 机制延迟显示
         if (NotificationRenderer::isOverlayBannerShowing())
@@ -194,13 +194,14 @@ namespace graphics
             return;
         }
 #endif
-        
+
         // 直接显示确认对话框（没有 overlay banner 显示时，如 CannedMessageModule）
         static const char *confirmOptions[] = {"No", "Yes"};
         BannerOverlayOptions confirmBanner;
         confirmBanner.message = message;
         confirmBanner.optionsArrayPtr = confirmOptions;
         confirmBanner.optionsCount = 2;
+        confirmBanner.InitialSelected = 0;
         confirmBanner.bannerCallback = [onConfirm](int confirmSelected) -> void
         {
             LOG_INFO("Confirmation banner callback: selected=%d (0=No, 1=Yes)", confirmSelected);
@@ -214,37 +215,8 @@ namespace graphics
                 LOG_INFO("User cancelled (selected No)");
             }
         };
-        LOG_INFO("showConfirmationBanner: About to call showOverlayBanner");
-        screen->showOverlayBanner(confirmBanner);
-        LOG_INFO("showConfirmationBanner: showOverlayBanner called");
-    }
-    
-#ifdef RED_BANK_S3
-    // RED_BANK_S3: 显示延迟的确认对话框（通过 menuQueue 调用）
-    static void showPendingConfirmationDialog()
-    {
-        LOG_INFO("showPendingConfirmationDialog: message=%s", pendingConfirmMessage);
-        static const char *confirmOptions[] = {"No", "Yes"};
-        BannerOverlayOptions confirmBanner;
-        confirmBanner.message = pendingConfirmMessage;
-        confirmBanner.optionsArrayPtr = confirmOptions;
-        confirmBanner.optionsCount = 2;
-        confirmBanner.bannerCallback = [](int confirmSelected) -> void
-        {
-            LOG_INFO("Pending confirmation banner callback: selected=%d (0=No, 1=Yes)", confirmSelected);
-            if (confirmSelected == 1)
-            {
-                LOG_INFO("User confirmed, executing pending callback");
-                pendingConfirmCallback();
-            }
-            else
-            {
-                LOG_INFO("User cancelled (selected No)");
-            }
-        };
         screen->showOverlayBanner(confirmBanner);
     }
-#endif
 
     void menuHandler::ClockFacePicker()
     {
@@ -1476,57 +1448,48 @@ namespace graphics
             }
             else if (selected == DelThis)
             {
-                NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
-                if (currentNode != 0)
+                if (redBankController)
                 {
-                    int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
-                    if (msgCount > 0)
+
+                    LOG_INFO("DM DelThis: selected, checking redBankController");
+                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    if (currentNode != 0)
                     {
+                        LOG_INFO("DM DelThis: currentNode=%08x, Calling showConfirmationBanner", currentNode);
                         menuHandler::showConfirmationBanner("Delete this message?", [currentNode]() -> void
                                                             {
-                                if (redBankController)
+                                int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                                if (msgCount > 0)
                                 {
                                     redBankController->deleteCurrentDirectMessage();
                                     screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
                                 } });
                     }
-                    else
-                    {
-                        screen->showSimpleBanner("No message to delete", 2000);
-                    }
                 }
-                else
-                {
-                    screen->showSimpleBanner("No node selected", 2000);
-                }
+                // 如果没有节点，直接返回，菜单会自动关闭
             }
             else if (selected == DelAll)
             {
+                LOG_INFO("DM DelAll: selected, checking redBankController");
                 NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
                 if (currentNode != 0)
                 {
-                    int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
-                    if (msgCount > 0)
-                    {
-                        char confirmMsg[64];
-                        snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this node?");
-                        menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
-                                                            {
-                                if (redBankController)
+                    char confirmMsg[64];
+                    snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this node?");
+                    LOG_INFO("DM DelAll: currentNode=%08x, Calling showConfirmationBanner", currentNode);
+                    menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
+                                                        {
+                            if (redBankController)
+                            {
+                                int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                                if (msgCount > 0)
                                 {
                                     redBankController->deleteAllDirectMessagesForNode(currentNode);
                                     screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
-                                } });
-                    }
-                    else
-                    {
-                        screen->showSimpleBanner("No messages to delete", 2000);
-                    }
+                                }
+                            } });
                 }
-                else
-                {
-                    screen->showSimpleBanner("No node selected", 2000);
-                }
+                // 如果没有节点，直接返回，菜单会自动关闭
             }
         };
         screen->showOverlayBanner(bannerOptions);
@@ -1572,13 +1535,10 @@ namespace graphics
                     int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
                     LOG_INFO("Channel DelThis: currentChannel=%d, currentPacketIndex=%d, msgCount=%d",
                              currentChannel, currentPacketIndex, msgCount);
-                    if (msgCount > 0 && currentPacketIndex < msgCount)
-                    {
-                        LOG_INFO("Channel DelThis: Calling showConfirmationBanner");
-                        menuHandler::showConfirmationBanner("Delete this message?", [currentChannel, currentPacketIndex]() -> void
-                                                            {
-                            if (redBankController)
-                            {
+
+                    LOG_INFO("Channel DelThis: Calling showConfirmationBanner");
+                    menuHandler::showConfirmationBanner("Delete this message?", [currentChannel, currentPacketIndex]() -> void
+                                                        {
                                 // 保存删除前的索引
                                 uint16_t oldBrowseIndex = channelPacketBrowseIndex;
                                 LOG_INFO("Channel DelThis CONFIRM: before delete, channel=%d, packetIndex=%d, oldBrowseIndex=%d",
@@ -1613,38 +1573,29 @@ namespace graphics
                                 LOG_INFO("Deleted message at index %d, oldBrowseIndex=%d, newBrowseIndex=%d, newMsgCount=%d", 
                                          currentPacketIndex, oldBrowseIndex, channelPacketBrowseIndex, newMsgCount);
                                 
-                                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
-                            } });
-                    }
-                    else
-                    {
-                        screen->showSimpleBanner("No message to delete", 2000);
-                    }
+                                screen->setFrames(graphics::Screen::FOCUS_PRESERVE); });
                 }
             }
             else if (selected == DelAll)
             {
+                LOG_INFO("Channel DelAll: selected, checking redBankController");
                 if (redBankController)
                 {
                     uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
                     int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    LOG_INFO("Channel DelAll: currentChannel=%d, msgCount=%d", currentChannel, msgCount);
+
+                    char confirmMsg[64];
+                    snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this channel?");
+                    LOG_INFO("Channel DelAll: Calling showConfirmationBanner");
+                    menuHandler::showConfirmationBanner(confirmMsg, [currentChannel]() -> void
+                                                        {
+                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
                     if (msgCount > 0)
                     {
-                        char confirmMsg[64];
-                        snprintf(confirmMsg, sizeof(confirmMsg), "Delete all messages\nfor this channel?");
-                        menuHandler::showConfirmationBanner(confirmMsg, [currentChannel]() -> void
-                                                            {
-                            if (redBankController)
-                            {
-                                redBankController->deleteAllChannelMessagesForChannel(currentChannel);
-                                channelPacketBrowseIndex = 0;
-                                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
-                            } });
-                    }
-                    else
-                    {
-                        screen->showSimpleBanner("No messages to delete", 2000);
-                    }
+                        redBankController->deleteAllChannelMessagesForChannel(currentChannel);
+                        channelPacketBrowseIndex = 0;
+                        screen->setFrames(graphics::Screen::FOCUS_PRESERVE); } });
                 }
             }
         };
@@ -2040,7 +1991,9 @@ namespace graphics
             channelMessageActionMenu();
             break;
         case confirmation_dialog_menu:
-            showPendingConfirmationDialog();
+            LOG_INFO("handleMenuSwitch: Processing confirmation_dialog_menu");
+            showConfirmationBanner(pendingConfirmMessage, pendingConfirmCallback);
+            LOG_INFO("handleMenuSwitch: showConfirmationBanner called");
             break;
 #endif
         }
