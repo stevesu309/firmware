@@ -1334,7 +1334,7 @@ SPI.setFrequency(4000000);
     {
         // 默认使用编译期配置的 CS 引脚
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
-#if 0
+#if 1 // 双模块版本
 #if defined(RED_BANK_S3)
         // RED_BANK_S3: 仅在非 433MHz 频段下使用 900MHz 上的 SX1262（CS 在 LORA_CS_900）
         bool is433Region = (config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
@@ -1391,7 +1391,7 @@ SPI.setFrequency(4000000);
     {
         // try using the specified TCXO voltage
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
-#if 0
+#if 1 // 双模块版本
 
 #if defined(RED_BANK_S3)
         switch (config.lora.region)
@@ -1431,7 +1431,7 @@ SPI.setFrequency(4000000);
         // If specified TCXO voltage fails, attempt to use DIO3 as a reference instead
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
 
-#if 0
+#if 1 // 双模块版本
 
 #if defined(RED_BANK_S3)
         switch (config.lora.region)
@@ -1471,7 +1471,7 @@ SPI.setFrequency(4000000);
     {
         // try using the specified TCXO voltage
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
-#if 0
+#if 1 // 双模块版本
 
 #if defined(RED_BANK_S3)
         // RED_BANK_S3: 在 433MHz 频段下使用 433MHz 上的 SX1268（CS 在 LORA_CS_433）
@@ -1513,7 +1513,7 @@ SPI.setFrequency(4000000);
     if ((!rIf) && (config.lora.region != meshtastic_Config_LoRaConfig_RegionCode_LORA_24))
     {
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
-#if 0
+#if 1 // 双模块版本
 
 #if defined(RED_BANK_S3)
         bool is433Region = (config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_CN ||

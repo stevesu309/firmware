@@ -242,6 +242,11 @@ void INTERRUPT_ATTR SX126xInterface<T>::disableInterrupt()
 template <typename T>
 void SX126xInterface<T>::setStandby()
 {
+#ifdef RED_BANK_S3 // 双模块版本
+#ifdef LORA_ANT
+    digitalWrite(LORA_ANT, LOW); // 切换到接收天线
+#endif
+#endif
     checkNotification(); // handle any pending interrupts before we force standby
 
     int err = lora.standby();
@@ -273,6 +278,12 @@ void SX126xInterface<T>::addReceiveMetadata(meshtastic_MeshPacket *mp)
 template <typename T>
 void SX126xInterface<T>::configHardwareForSend()
 {
+#ifdef RED_BANK_S3 // 双模块版本
+#ifdef LORA_ANT
+    digitalWrite(LORA_ANT, HIGH); // 切换到发送天线
+    delayMicroseconds(100);       // 等待天线切换稳定
+#endif
+#endif
     RadioLibInterface::configHardwareForSend();
 }
 
@@ -285,6 +296,12 @@ void SX126xInterface<T>::startReceive()
 #ifdef SLEEP_ONLY
     sleep();
 #else
+#ifdef RED_BANK_S3 // 双模块版本
+#ifdef LORA_ANT
+    digitalWrite(LORA_ANT, LOW); // 切换到接收天线
+    delayMicroseconds(100);      // 等待天线切换稳定
+#endif
+#endif
     // 先清除之前的接收状态（如果有）
     if (isReceiving)
     {

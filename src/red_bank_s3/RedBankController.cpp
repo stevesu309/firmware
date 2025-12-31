@@ -234,15 +234,15 @@ namespace RedBankS3
         m_currentMeshPacketIndex = -1;
     }
 
-    // LORA_DIO2 中断处理函数，设置 RF_CTRL 为相反状态
-    void IRAM_ATTR handleLORADIO2Change()
-    {
-        // 读取 LORA_DIO2 的当前状态
-        bool dio2State = digitalRead(LORA_DIO2);
-        // 设置 RF_CTRL 为相反状态
-        digitalWrite(RF_CTRL, !dio2State);
-        LOG_INFO("RF_CTRL lv:%d", digitalRead(RF_CTRL));
-    }
+    // LORA_DIO2 中断处理函数，设置 RF_CTRL 为相反状态      //双芯片版本
+    // void IRAM_ATTR handleLORADIO2Change()
+    // {
+    //     // 读取 LORA_DIO2 的当前状态
+    //     bool dio2State = digitalRead(LORA_DIO2);
+    //     // 设置 RF_CTRL 为相反状态
+    //     digitalWrite(RF_CTRL, !dio2State);
+    //     LOG_INFO("RF_CTRL lv:%d", digitalRead(RF_CTRL));
+    // }
 
     void RedBankController::setup()
     {
@@ -253,6 +253,7 @@ namespace RedBankS3
         pinMode(PIN_LORA_EN, OUTPUT);
         digitalWrite(PIN_LORA_EN, HIGH);
 
+#if 0 // 双芯片版本
         // 初始化 LORA_DIO2 和 RF_CTRL 引脚
         pinMode(LORA_DIO2, INPUT);
         pinMode(RF_CTRL, OUTPUT);
@@ -266,7 +267,7 @@ namespace RedBankS3
         // 配置 LORA_DIO2 中断，检测信号变化
         attachInterrupt(LORA_DIO2, handleLORADIO2Change, CHANGE);
         LOG_INFO("LORA_DIO2 interrupt configured: GPIO%d -> RF_CTRL GPIO%d (inverse)", LORA_DIO2, RF_CTRL);
-
+#endif
         // 初始化天线管理器
         AntennaManager::init(config.lora.region);
 #if HAS_SCREEN
