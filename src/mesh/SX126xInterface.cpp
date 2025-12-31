@@ -242,9 +242,6 @@ void INTERRUPT_ATTR SX126xInterface<T>::disableInterrupt()
 template <typename T>
 void SX126xInterface<T>::setStandby()
 {
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, LOW); // 默认待机时也当作接收态
-#endif
     checkNotification(); // handle any pending interrupts before we force standby
 
     int err = lora.standby();
@@ -276,11 +273,6 @@ void SX126xInterface<T>::addReceiveMetadata(meshtastic_MeshPacket *mp)
 template <typename T>
 void SX126xInterface<T>::configHardwareForSend()
 {
-#ifdef LORA_ANT
-    // 发送前：拉高 LORA_ANT
-    digitalWrite(LORA_ANT, HIGH);
-    delayMicroseconds(100);
-#endif
     RadioLibInterface::configHardwareForSend();
 }
 
@@ -293,12 +285,6 @@ void SX126xInterface<T>::startReceive()
 #ifdef SLEEP_ONLY
     sleep();
 #else
-#ifdef LORA_ANT
-    // 接收前：拉低 LORA_ANT
-    digitalWrite(LORA_ANT, LOW);
-    // 接收前：给天线切换稳定时间（根据硬件调整，通常50-200us）
-    delayMicroseconds(100);
-#endif
     // 先清除之前的接收状态（如果有）
     if (isReceiving)
     {

@@ -196,7 +196,7 @@ namespace RedBankS3
             {
                 uint32_t pressDuration = millis() - enterButtonPressTime;
                 bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-                
+
                 // 在正常状态下，如果长按时间达到阈值，立即触发菜单
                 if (!isOverlayActive && !menuActive && pressDuration >= LONG_PRESS_THRESHOLD)
                 {
@@ -234,13 +234,38 @@ namespace RedBankS3
         m_currentMeshPacketIndex = -1;
     }
 
+    // LORA_DIO2 中断处理函数，设置 RF_CTRL 为相反状态
+    void IRAM_ATTR handleLORADIO2Change()
+    {
+        // 读取 LORA_DIO2 的当前状态
+        bool dio2State = digitalRead(LORA_DIO2);
+        // 设置 RF_CTRL 为相反状态
+        digitalWrite(RF_CTRL, !dio2State);
+        LOG_INFO("RF_CTRL lv:%d", digitalRead(RF_CTRL));
+    }
+
     void RedBankController::setup()
     {
+        LOG_INFO("this is redbank setup");
 #ifdef RED_BANK_S3
         pinMode(KEY1_ADC_PIN, INPUT);
         pinMode(KEY2_ADC_PIN, INPUT);
         pinMode(PIN_LORA_EN, OUTPUT);
         digitalWrite(PIN_LORA_EN, HIGH);
+
+        // 初始化 LORA_DIO2 和 RF_CTRL 引脚
+        pinMode(LORA_DIO2, INPUT);
+        pinMode(RF_CTRL, OUTPUT);
+
+        LOG_INFO("RF_CTRL read 1:%d", digitalRead(RF_CTRL));
+        // 初始化 RF_CTRL 为 LORA_DIO2 的相反状态
+        digitalWrite(RF_CTRL, !digitalRead(LORA_DIO2));
+        LOG_INFO("RF_CTRL read 2:%d", !digitalRead(LORA_DIO2));
+        LOG_INFO("RF_CTRL read 3:%d", digitalRead(RF_CTRL));
+
+        // 配置 LORA_DIO2 中断，检测信号变化
+        attachInterrupt(LORA_DIO2, handleLORADIO2Change, CHANGE);
+        LOG_INFO("LORA_DIO2 interrupt configured: GPIO%d -> RF_CTRL GPIO%d (inverse)", LORA_DIO2, RF_CTRL);
 
         // 初始化天线管理器
         AntennaManager::init(config.lora.region);
@@ -301,11 +326,8 @@ namespace RedBankS3
 #ifdef USE_EINK
             EInkDisplay *einkDisplay = static_cast<EInkDisplay *>(screen->getDisplayDevice());
             OLEDDisplay *oledDisplay = static_cast<OLEDDisplay *>(einkDisplay);
-            // einkDisplay->fillScreen(1);
-            einkDisplay->setRotation(currentRotation);
-            LOG_INFO("Applied rotation %d to EInk display", currentRotation);
-            LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
 
+            // 先设置几何尺寸，再设置旋转
             // 根据旋转角度动态调整屏幕几何
             if (currentRotation == 1 || currentRotation == 3)
             {
@@ -320,8 +342,12 @@ namespace RedBankS3
                 LOG_INFO("Set portrait geometry: 176x264");
             }
 
-            // einkDisplay->clearPixel(einkDisplay->width(), einkDisplay->height()); // 清屏
-            // screen->forceDisplay(true);
+            // 设置旋转角度
+            einkDisplay->setRotation(currentRotation);
+            LOG_INFO("Applied rotation %d to EInk display", currentRotation);
+            LOG_INFO("EInk display width = %d, height = %d", einkDisplay->width(), einkDisplay->height());
+
+            // 触发一次刷新以确保屏幕正确显示
             EINK_ADD_FRAMEFLAG(einkDisplay, COSMETIC);
 
 #endif
@@ -478,7 +504,7 @@ namespace RedBankS3
                 LOG_INFO("restored %zu direct messages for node 0x%08x", nodeMessages.size(), nodeNum);
             }
         }
-        
+
         // 如果当前没有选中的节点，自动选中第一个有消息的节点
         if (currentDirectMessageNode == 0)
         {
@@ -494,7 +520,7 @@ namespace RedBankS3
                     break;
                 }
             }
-            
+
             // 如果没有任何节点有私信，默认选中第一个节点（用于显示空聊天信息）
             if (!foundNodeWithMessages && nodeDB->getNumMeshNodes() > 0)
             {
@@ -796,7 +822,7 @@ namespace RedBankS3
             }
         }
 
-        LOG_INFO("Deleted channel message at index %d for channel %d, remaining %zu messages", 
+        LOG_INFO("Deleted channel message at index %d for channel %d, remaining %zu messages",
                  packet_index, channel_index, channelMessages.size());
     }
 
@@ -841,7 +867,7 @@ namespace RedBankS3
         bool wasActive = menuActive;
         menuActive = active;
         // LOG_DEBUG("Menu active state set to: %s", active ? "true" : "false");
-        
+
         // 菜单关闭时进行全面刷新（类似底部导航栏隐藏后的刷新）
         if (wasActive && !active && screen && screen->getDisplayDevice())
         {

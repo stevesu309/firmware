@@ -540,6 +540,14 @@ namespace graphics
         // #endif
         ui->init();
 
+#if defined(RED_BANK_S3) && defined(USE_EINK)
+        // 在读取屏幕尺寸之前先应用屏幕旋转，以确保使用正确的屏幕尺寸
+        if (redBankController)
+        {
+            redBankController->applyRotation();
+        }
+#endif
+
         displayWidth = dispdev->width();
         displayHeight = dispdev->height();
 

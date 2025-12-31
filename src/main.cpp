@@ -1334,7 +1334,7 @@ SPI.setFrequency(4000000);
     {
         // 默认使用编译期配置的 CS 引脚
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
-
+#if 0
 #if defined(RED_BANK_S3)
         // RED_BANK_S3: 仅在非 433MHz 频段下使用 900MHz 上的 SX1262（CS 在 LORA_CS_900）
         bool is433Region = (config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
@@ -1363,6 +1363,8 @@ SPI.setFrequency(4000000);
         }
         else
 #endif
+
+#endif
         {
             auto *sxIf = new SX1262Interface(RadioLibHAL, csPin, SX126X_DIO1, SX126X_RESET, SX126X_BUSY);
 #ifdef SX126X_DIO3_TCXO_VOLTAGE
@@ -1389,6 +1391,8 @@ SPI.setFrequency(4000000);
     {
         // try using the specified TCXO voltage
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
+#if 0
+
 #if defined(RED_BANK_S3)
         switch (config.lora.region)
         {
@@ -1405,7 +1409,7 @@ SPI.setFrequency(4000000);
         }
         LOG_INFO("Init SX1262 (TCXO) with csPin=%d for region=%d", csPin, config.lora.region);
 #endif
-
+#endif
         auto *sxIf = new SX1262Interface(RadioLibHAL, csPin, SX126X_DIO1, SX126X_RESET, SX126X_BUSY);
         sxIf->setTCXOVoltage(SX126X_DIO3_TCXO_VOLTAGE);
         if (!sxIf->init())
@@ -1426,6 +1430,9 @@ SPI.setFrequency(4000000);
     {
         // If specified TCXO voltage fails, attempt to use DIO3 as a reference instead
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
+
+#if 0
+
 #if defined(RED_BANK_S3)
         switch (config.lora.region)
         {
@@ -1442,7 +1449,7 @@ SPI.setFrequency(4000000);
         }
         LOG_INFO("Init SX1262 (XTAL) with csPin=%d for region=%d", csPin, config.lora.region);
 #endif
-
+#endif
         rIf = new SX1262Interface(RadioLibHAL, csPin, SX126X_DIO1, SX126X_RESET, SX126X_BUSY);
         if (!rIf->init())
         {
@@ -1464,6 +1471,8 @@ SPI.setFrequency(4000000);
     {
         // try using the specified TCXO voltage
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
+#if 0
+
 #if defined(RED_BANK_S3)
         // RED_BANK_S3: 在 433MHz 频段下使用 433MHz 上的 SX1268（CS 在 LORA_CS_433）
         bool is433Region = (config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
@@ -1484,6 +1493,7 @@ SPI.setFrequency(4000000);
             LOG_INFO("Init SX1268 (TCXO) with default csPin=%d for region=%d", csPin, config.lora.region);
         }
 #endif
+#endif
         auto *sxIf = new SX1268Interface(RadioLibHAL, csPin, SX126X_DIO1, SX126X_RESET, SX126X_BUSY);
         sxIf->setTCXOVoltage(SX126X_DIO3_TCXO_VOLTAGE);
         if (!sxIf->init())
@@ -1503,6 +1513,8 @@ SPI.setFrequency(4000000);
     if ((!rIf) && (config.lora.region != meshtastic_Config_LoRaConfig_RegionCode_LORA_24))
     {
         RADIOLIB_PIN_TYPE csPin = SX126X_CS;
+#if 0
+
 #if defined(RED_BANK_S3)
         bool is433Region = (config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
                             config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_EU_433 ||
@@ -1522,7 +1534,7 @@ SPI.setFrequency(4000000);
             LOG_INFO("Init SX1268 with default csPin=%d for region=%d", csPin, config.lora.region);
         }
 #endif
-
+#endif
         rIf = new SX1268Interface(RadioLibHAL, csPin, SX126X_DIO1, SX126X_RESET, SX126X_BUSY);
         if (!rIf->init())
         {

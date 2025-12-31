@@ -1,4 +1,5 @@
 #include "AntennaManager.h"
+#include <Arduino.h>
 #include "main.h"
 #include "mesh/MeshService.h"
 #include "NodeDB.h"
@@ -10,6 +11,12 @@ meshtastic_Config_LoRaConfig_RegionCode AntennaManager::currentRegion = meshtast
 
 void AntennaManager::init(meshtastic_Config_LoRaConfig_RegionCode newRegion)
 {
+#ifdef LORA_ANT
+    // 初始化 LORA_ANT 引脚为输出模式
+    pinMode(LORA_ANT, OUTPUT);
+    digitalWrite(LORA_ANT, HIGH);
+    LOG_INFO("LORA_ANT pin (GPIO%d) initialized as OUTPUT", LORA_ANT);
+#endif
 
     // 由 main.cpp 中的 SX1262 初始化逻辑根据 config.lora.region 决定。
 
@@ -95,7 +102,7 @@ bool AntennaManager::needsAntennaSwitch(meshtastic_Config_LoRaConfig_RegionCode 
     }
 
     // 检查是否需要切换天线类型
-    bool oldIs432MHz = (oldRegion == meshtastic_Config_LoRaConfig_RegionCode_CN ||
+    bool oldIs433MHz = (oldRegion == meshtastic_Config_LoRaConfig_RegionCode_CN ||
                         oldRegion == meshtastic_Config_LoRaConfig_RegionCode_EU_433 ||
                         oldRegion == meshtastic_Config_LoRaConfig_RegionCode_UA_433 ||
                         oldRegion == meshtastic_Config_LoRaConfig_RegionCode_MY_433 ||
@@ -107,34 +114,28 @@ bool AntennaManager::needsAntennaSwitch(meshtastic_Config_LoRaConfig_RegionCode 
                         newRegion == meshtastic_Config_LoRaConfig_RegionCode_MY_433 ||
                         newRegion == meshtastic_Config_LoRaConfig_RegionCode_PH_433);
 
-    return oldIs432MHz != newIs433MHz;
+    return oldIs433MHz != newIs433MHz;
 }
 
 void AntennaManager::switchTo433MHzAntenna()
 {
     // 对于双模块版本，实际使用哪一个 LoRa 模块由 main.cpp 中的 csPin 选择决定
-    LOG_INFO("Switching logical antenna to 432MHz band (handled via CS pin selection)");
-    // #ifdef LORA_ANT
-    //     digitalWrite(LORA_ANT, LOW); // 开启432MHz天线 关闭900MHz天线
-    // #endif
+    LOG_INFO("Switching logical antenna to 433MHz band (handled via CS pin selection)");
+#ifdef LORA_ANT
+    digitalWrite(LORA_ANT, LOW); // 开启433MHz天线 关闭900MHz天线
+#endif
+    LOG_INFO("LORA_ANT 433:%d", digitalRead(LORA_ANT));
 
-    // #ifdef LORA_ANT_413
-    //     digitalWrite(LORA_ANT_413, HIGH); // 开启432MHz天线
-    // #endif
-
-    // sendAntennaSwitchNotification("Antenna switched to 432MHz");
+    // sendAntennaSwitchNotification("Antenna switched to 433MHz");
 }
 
 void AntennaManager::switchTo900MHzAntenna()
 {
     LOG_INFO("Switching logical antenna to 900MHz band (handled via CS pin selection)");
-    // #ifdef LORA_ANT_413
-    //     digitalWrite(LORA_ANT_413, LOW); // 关闭432MHz天线
-    // #endif
-    // #ifdef LORA_ANT
-    //     digitalWrite(LORA_ANT, HIGH); // 开启900MHz天线
-    // #endif
-
+#ifdef LORA_ANT
+    digitalWrite(LORA_ANT, HIGH); // 开启900MHz天线
+#endif
+    LOG_INFO("LORA_ANT 900:%d", digitalRead(LORA_ANT));
     // sendAntennaSwitchNotification("Antenna switched to 900MHz");
 }
 
@@ -143,7 +144,7 @@ const char *AntennaManager::getCurrentAntennaType()
     // 根据当前区域返回当前天线类型
     switch (currentRegion)
     {
-    // 如果当前区域是CN、EU_433、UA_433、MY_433、PH_433，则返回432MHz
+    // 如果当前区域是CN、EU_433、UA_433、MY_433、PH_433，则返回433MHz
     case meshtastic_Config_LoRaConfig_RegionCode_CN:
     case meshtastic_Config_LoRaConfig_RegionCode_EU_433:
     case meshtastic_Config_LoRaConfig_RegionCode_UA_433:
