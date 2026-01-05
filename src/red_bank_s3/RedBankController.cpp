@@ -841,21 +841,7 @@ namespace RedBankS3
 
         LOG_INFO("Deleted all channel messages for channel %d", channel_index);
     }
-    // void RedBankController::_previousMeshPacket()
-    // {
-    //     screen->showPrevPacket();
-    //     direction = 0;
-    // }
 
-    // void RedBankController::_nextMeshPacket()
-    // {
-    //     screen->showNextPacket();
-    //     direction = 1;
-    // }
-    // uint8_t RedBankController::getDirection(void)
-    // {
-    //     return (direction);
-    // }
 #if HAS_SCREEN
     bool RedBankController::isMenuActive()
     {
@@ -892,6 +878,9 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - leftButtonPressTime;
         leftButtonPressed = false;
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             LOG_INFO("Normal: LEFT short press");
@@ -913,6 +902,10 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - rightButtonPressTime;
         rightButtonPressed = false;
+
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             LOG_INFO("Normal: RIGHT short press");
@@ -998,6 +991,9 @@ namespace RedBankS3
 
         LOG_DEBUG("ESC button released after %d ms", pressDuration);
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         // 检查是否在overlay banner（菜单、选择器等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
 
@@ -1045,6 +1041,9 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - upButtonPressTime;
         upButtonPressed = false;
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             InputEvent event;
@@ -1073,6 +1072,9 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - downButtonPressTime;
         downButtonPressed = false;
+
+        if (screen && !screen->getScreenOn())
+            return;
 
         LOG_DEBUG("DOWN button released after %d ms", pressDuration);
 
