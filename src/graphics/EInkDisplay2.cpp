@@ -261,6 +261,7 @@ bool EInkDisplay::connect()
         auto lowLevel = new EINK_DISPLAY_MODEL(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY);
         lowLevel->selectSPI(*hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
         adafruitDisplay = new GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT>(*lowLevel);
+        this->setGeometry(GEOMETRY_RAWMODE, 176, 264);
         adafruitDisplay->init(115200, true, 10, false);
         adafruitDisplay->setRotation(0);
 

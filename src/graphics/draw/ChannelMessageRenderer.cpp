@@ -130,9 +130,9 @@ namespace graphics
 
       char title[23];
       if (currentRotation == 0)
-        snprintf(title, sizeof(title), "CH Msg : %d/%d", localActualChannelIndex + 1, validChannelCount);
+        snprintf(title, sizeof(title), "CH Msg");
       else
-        snprintf(title, sizeof(title), "Channel Message : %d/%d", localActualChannelIndex + 1, validChannelCount);
+        snprintf(title, sizeof(title), "Channel Message");
 
       // 使用 drawCommonHeader 绘制标题栏
       drawCommonHeader(display, x, y, title, false);
