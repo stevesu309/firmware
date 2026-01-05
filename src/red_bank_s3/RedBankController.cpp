@@ -234,16 +234,6 @@ namespace RedBankS3
         m_currentMeshPacketIndex = -1;
     }
 
-    // LORA_DIO2 中断处理函数，设置 RF_CTRL 为相反状态      //双芯片版本
-    // void IRAM_ATTR handleLORADIO2Change()
-    // {
-    //     // 读取 LORA_DIO2 的当前状态
-    //     bool dio2State = digitalRead(LORA_DIO2);
-    //     // 设置 RF_CTRL 为相反状态
-    //     digitalWrite(RF_CTRL, !dio2State);
-    //     LOG_INFO("RF_CTRL lv:%d", digitalRead(RF_CTRL));
-    // }
-
     void RedBankController::setup()
     {
         LOG_INFO("this is redbank setup");
@@ -253,21 +243,6 @@ namespace RedBankS3
         pinMode(PIN_LORA_EN, OUTPUT);
         digitalWrite(PIN_LORA_EN, HIGH);
 
-#if 0 // 双芯片版本
-        // 初始化 LORA_DIO2 和 RF_CTRL 引脚
-        pinMode(LORA_DIO2, INPUT);
-        pinMode(RF_CTRL, OUTPUT);
-
-        LOG_INFO("RF_CTRL read 1:%d", digitalRead(RF_CTRL));
-        // 初始化 RF_CTRL 为 LORA_DIO2 的相反状态
-        digitalWrite(RF_CTRL, !digitalRead(LORA_DIO2));
-        LOG_INFO("RF_CTRL read 2:%d", !digitalRead(LORA_DIO2));
-        LOG_INFO("RF_CTRL read 3:%d", digitalRead(RF_CTRL));
-
-        // 配置 LORA_DIO2 中断，检测信号变化
-        attachInterrupt(LORA_DIO2, handleLORADIO2Change, CHANGE);
-        LOG_INFO("LORA_DIO2 interrupt configured: GPIO%d -> RF_CTRL GPIO%d (inverse)", LORA_DIO2, RF_CTRL);
-#endif
         // 初始化天线管理器
         AntennaManager::init(config.lora.region);
 #if HAS_SCREEN
@@ -842,21 +817,7 @@ namespace RedBankS3
 
         LOG_INFO("Deleted all channel messages for channel %d", channel_index);
     }
-    // void RedBankController::_previousMeshPacket()
-    // {
-    //     screen->showPrevPacket();
-    //     direction = 0;
-    // }
 
-    // void RedBankController::_nextMeshPacket()
-    // {
-    //     screen->showNextPacket();
-    //     direction = 1;
-    // }
-    // uint8_t RedBankController::getDirection(void)
-    // {
-    //     return (direction);
-    // }
 #if HAS_SCREEN
     bool RedBankController::isMenuActive()
     {
@@ -893,6 +854,9 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - leftButtonPressTime;
         leftButtonPressed = false;
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             LOG_INFO("Normal: LEFT short press");
@@ -914,6 +878,10 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - rightButtonPressTime;
         rightButtonPressed = false;
+
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             LOG_INFO("Normal: RIGHT short press");
@@ -997,6 +965,9 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - escButtonPressTime;
         escButtonPressed = false;
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         LOG_DEBUG("ESC button released after %d ms", pressDuration);
 
         // 检查是否在overlay banner（菜单、选择器等）状态
@@ -1046,6 +1017,9 @@ namespace RedBankS3
         uint32_t pressDuration = millis() - upButtonPressTime;
         upButtonPressed = false;
 
+        if (screen && !screen->getScreenOn())
+            return;
+
         if (pressDuration < LONG_PRESS_THRESHOLD)
         {
             InputEvent event;
@@ -1074,6 +1048,9 @@ namespace RedBankS3
 
         uint32_t pressDuration = millis() - downButtonPressTime;
         downButtonPressed = false;
+
+        if (screen && !screen->getScreenOn())
+            return;
 
         LOG_DEBUG("DOWN button released after %d ms", pressDuration);
 
