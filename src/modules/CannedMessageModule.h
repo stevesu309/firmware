@@ -187,6 +187,16 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
     std::vector<uint8_t> activeChannelIndices;
     std::vector<NodeEntry> filteredNodes;
 
+#ifdef RED_BANK_S3
+    enum DestinationFilter
+    {
+        DEST_FILTER_BOTH = 0,
+        DEST_FILTER_NODES_ONLY = 1,
+        DEST_FILTER_CHANNELS_ONLY = 2,
+    };
+    DestinationFilter destinationFilter = DEST_FILTER_BOTH;
+#endif
+
 #if defined(USE_VIRTUAL_KEYBOARD)
     bool shift = false;
     int charSet = 0; // 0=ABC, 1=123

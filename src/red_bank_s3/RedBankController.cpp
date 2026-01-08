@@ -910,6 +910,13 @@ namespace RedBankS3
         // 检查是否在overlay banner（地区选择菜单等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
 
+        // RED_BANK_S3: If we think a menu is active but no overlay is actually showing,
+        // clear the stale flag to prevent "ghost" menu selection.
+        if (menuActive && !isOverlayActive)
+        {
+            setMenuActive(false);
+        }
+
         if (isOverlayActive || menuActive)
         {
             // 在overlay banner或菜单状态下，短按ENTER确定选择
