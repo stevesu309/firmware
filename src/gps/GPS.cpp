@@ -574,7 +574,7 @@ bool GPS::setup()
 #endif
             if (probeTries < GPS_PROBETRIES)
             {
-                LOG_DEBUG("Probe for GPS at1 %d", serialSpeeds[speedSelect]);
+                LOG_DEBUG("Probe for GPS at %d", serialSpeeds[speedSelect]);
                 gnssModel = probe(serialSpeeds[speedSelect]);
                 LOG_INFO("GPS model %d", gnssModel);
                 if (gnssModel == GNSS_MODEL_UNKNOWN)
@@ -591,7 +591,7 @@ bool GPS::setup()
             // Rare Serial Speeds
             if (probeTries == GPS_PROBETRIES)
             {
-                LOG_DEBUG("Probe for GPS at2 %d", rareSerialSpeeds[speedSelect]);
+                LOG_DEBUG("Probe for GPS at %d", rareSerialSpeeds[speedSelect]);
                 gnssModel = probe(rareSerialSpeeds[speedSelect]);
                 if (gnssModel == GNSS_MODEL_UNKNOWN)
                 {

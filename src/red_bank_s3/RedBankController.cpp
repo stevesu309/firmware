@@ -1,5 +1,6 @@
 #include "RedBankController.h"
 #include <Arduino.h>
+#include "driver/gpio.h"
 #include "DebugConfiguration.h"
 #include "main.h"
 #include "FSCommon.h"
@@ -237,11 +238,8 @@ namespace RedBankS3
     // LORA_DIO2 中断处理函数，设置 RF_CTRL 为相反状态
     void IRAM_ATTR handleLORADIO2Change()
     {
-        // 读取 LORA_DIO2 的当前状态
-        bool dio2State = digitalRead(LORA_DIO2);
-        // 设置 RF_CTRL 为相反状态
-        digitalWrite(RF_CTRL, !dio2State);
-        LOG_INFO("RF_CTRL lv:%d", digitalRead(RF_CTRL));
+        int dio2 = gpio_get_level((gpio_num_t)LORA_DIO2);
+        gpio_set_level((gpio_num_t)RF_CTRL, !dio2);
     }
 
     void RedBankController::setup()
