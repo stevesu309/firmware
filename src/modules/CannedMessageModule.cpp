@@ -1732,14 +1732,15 @@ void CannedMessageModule::drawEnterIcon(OLEDDisplay *display, int x, int y, floa
 bool CannedMessageModule::interceptingKeyboardInput()
 {
 #if defined(RED_BANK_S3)
-    // RED_BANK_S3: 只在自由文本输入模式下拦截LEFT/RIGHT（用于移动光标）
-    // 其他状态下允许LEFT/RIGHT用于切换帧，UP/DOWN用于列表导航
+    // RED_BANK_S3: When this module UI is active, intercept keyboard input so Screen doesn't
+    // interpret CANCEL as "sleep" and doesn't navigate away mid-flow.
     switch (runState)
     {
-    case CANNED_MESSAGE_RUN_STATE_FREETEXT:
-        return true; // 拦截，用于光标移动
+    case CANNED_MESSAGE_RUN_STATE_DISABLED:
+    case CANNED_MESSAGE_RUN_STATE_INACTIVE:
+        return false;
     default:
-        return false; // 不拦截，允许Screen处理LEFT/RIGHT切换帧
+        return true;
     }
 #else
     // 其他设备：保持原有行为

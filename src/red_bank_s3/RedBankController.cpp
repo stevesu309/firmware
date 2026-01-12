@@ -999,6 +999,12 @@ namespace RedBankS3
         // 检查是否在overlay banner（菜单、选择器等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
 
+        // If menuActive is stale (no overlay), clear it to prevent ghost menu selection.
+        if (menuActive && !isOverlayActive)
+        {
+            setMenuActive(false);
+        }
+
         if (isOverlayActive || menuActive)
         {
             // 在菜单状态下，短按ESC关闭菜单
@@ -1017,6 +1023,20 @@ namespace RedBankS3
         }
         else
         {
+            // 在正常状态下，短按ESC作为"返回/取消"（例如：退出预设消息目的地选择等无overlay界面）
+            if (pressDuration < LONG_PRESS_THRESHOLD)
+            {
+                InputEvent event;
+                event.inputEvent = INPUT_BROKER_CANCEL;
+                event.source = "RedBankController";
+                event.kbchar = 0;
+                event.touchX = 0;
+                event.touchY = 0;
+                inputBroker->injectInputEvent(&event);
+                LOG_INFO("Normal: ESC short press - Cancel/Back");
+                return;
+            }
+
             // 在正常状态下，长按ESC 6秒触发关机
             if (pressDuration >= 6000)
             {

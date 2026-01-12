@@ -1462,7 +1462,15 @@ namespace graphics
                     }
                     else
                     {
-                        screen->showSimpleBanner("No DM node selected", 2000);
+                        // If no DM thread is currently selected, fall back to picking a node now.
+                        // This matches the channel flow where we always have a channel context.
+                        redBankController->setMenuActive(false);
+                        screen->showNodePicker("Select Node", 0, [](uint32_t nodenum) -> void
+                                               {
+                            if (nodenum != 0 && cannedMessageModule)
+                            {
+                                cannedMessageModule->LaunchWithDestination(nodenum);
+                            } });
                     }
                 }
             }
