@@ -1425,13 +1425,15 @@ namespace graphics
         {
             Back = 0,
             SelectNode = 1,
-            DelThis = 2,
-            DelAll = 3,
-            enumEnd = 4
+            Preset = 2,
+            DelThis = 3,
+            DelAll = 4,
+            enumEnd = 5
+
         };
 
-        static const char *optionsArray[enumEnd] = {"Back", "Select Node", "Del This", "Del All"};
-        static int optionsEnumArray[enumEnd] = {Back, SelectNode, DelThis, DelAll};
+        static const char *optionsArray[enumEnd] = {"Back", "Select Node", "Send Preset", "Del This", "Del All"};
+        static int optionsEnumArray[enumEnd] = {Back, SelectNode, Preset, DelThis, DelAll};
 
         BannerOverlayOptions bannerOptions;
         bannerOptions.message = "Direct Message";
@@ -1445,6 +1447,24 @@ namespace graphics
             {
                 menuHandler::menuQueue = menuHandler::direct_message_node_picker;
                 screen->runNow();
+            }
+            else if (selected == Preset)
+            {
+                if (cannedMessageModule && redBankController)
+                {
+                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    if (currentNode != 0)
+                    {
+                        // RED_BANK_S3: We are leaving the overlay/menu context; prevent further ENTER presses
+                        // from being treated as menu selections.
+                        redBankController->setMenuActive(false);
+                        cannedMessageModule->LaunchWithDestination(currentNode);
+                    }
+                    else
+                    {
+                        screen->showSimpleBanner("No DM node selected", 2000);
+                    }
+                }
             }
             else if (selected == DelThis)
             {
@@ -1503,13 +1523,15 @@ namespace graphics
         {
             Back = 0,
             SelectChannel = 1,
-            DelThis = 2,
-            DelAll = 3,
-            enumEnd = 4
+            Preset = 2,
+            DelThis = 3,
+            DelAll = 4,
+            enumEnd = 5
+
         };
 
-        static const char *optionsArray[enumEnd] = {"Back", "Select Channel", "Del This", "Del All"};
-        static int optionsEnumArray[enumEnd] = {Back, SelectChannel, DelThis, DelAll};
+        static const char *optionsArray[enumEnd] = {"Back", "Select Channel", "Send Preset", "Del This", "Del All"};
+        static int optionsEnumArray[enumEnd] = {Back, SelectChannel, Preset, DelThis, DelAll};
 
         BannerOverlayOptions bannerOptions;
         bannerOptions.message = "Channel Message";
@@ -1524,6 +1546,20 @@ namespace graphics
                 LOG_INFO("Channel message menu: Selected Select Channel, switching to channel picker menu");
                 menuHandler::menuQueue = menuHandler::channel_message_channel_picker;
                 screen->runNow();
+            }
+            else if (selected == Preset)
+            {
+                if (cannedMessageModule)
+                {
+                    uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
+                    if (redBankController)
+                    {
+                        // RED_BANK_S3: We are leaving the overlay/menu context; prevent further ENTER presses
+                        // from being treated as menu selections.
+                        redBankController->setMenuActive(false);
+                    }
+                    cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST, currentChannel);
+                }
             }
             else if (selected == DelThis)
             {

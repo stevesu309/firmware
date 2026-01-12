@@ -931,6 +931,10 @@ namespace RedBankS3
 
         // 检查是否在overlay banner（地区选择菜单等）状态
         bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+        if (menuActive && !isOverlayActive)
+        {
+            setMenuActive(false);
+        }
 
         if (isOverlayActive || menuActive)
         {

@@ -69,17 +69,38 @@ CannedMessageModule::CannedMessageModule()
 
 void CannedMessageModule::LaunchWithDestination(NodeNum newDest, uint8_t newChannel)
 {
+
+#ifdef RED_BANK_S3
+    // RED_BANK_S3: For channel-message use-cases we often pass (BROADCAST, channel).
+    // Only treat BROADCAST as "repeat last" when caller didn't specify a channel.
+    if (newDest == NODENUM_BROADCAST && newChannel == 0 && lastDestSet)
+    {
+        newDest = lastDest;
+        newChannel = lastChannel;
+    }
+
+    // RED_BANK_S3: Destination picker should match call-site context
+    if (newDest == NODENUM_BROADCAST && newChannel != 0)
+        destinationFilter = DEST_FILTER_CHANNELS_ONLY;
+    else if (newDest != NODENUM_BROADCAST)
+        destinationFilter = DEST_FILTER_NODES_ONLY;
+    else
+        destinationFilter = DEST_FILTER_BOTH;
+#else
     // Use the requested destination, unless it's "broadcast" and we have a previous node/channel
     if (newDest == NODENUM_BROADCAST && lastDestSet)
     {
         newDest = lastDest;
         newChannel = lastChannel;
     }
+#endif
+
     dest = newDest;
     channel = newChannel;
     lastDest = dest;
     lastChannel = channel;
     lastDestSet = true;
+    lastTouchMillis = millis(); // prevent immediate INACTIVATE in runOnce()
 
     // Rest of function unchanged...
     // Upon activation, highlight "[Select Destination]"
@@ -116,17 +137,35 @@ void CannedMessageModule::LaunchRepeatDestination()
 
 void CannedMessageModule::LaunchFreetextWithDestination(NodeNum newDest, uint8_t newChannel)
 {
+#ifdef RED_BANK_S3
+    if (newDest == NODENUM_BROADCAST && newChannel == 0 && lastDestSet)
+    {
+        newDest = lastDest;
+        newChannel = lastChannel;
+    }
+
+    // RED_BANK_S3: Destination picker should match call-site context
+    if (newDest == NODENUM_BROADCAST && newChannel != 0)
+        destinationFilter = DEST_FILTER_CHANNELS_ONLY;
+    else if (newDest != NODENUM_BROADCAST)
+        destinationFilter = DEST_FILTER_NODES_ONLY;
+    else
+        destinationFilter = DEST_FILTER_BOTH;
+#else
+
     // Use the requested destination, unless it's "broadcast" and we have a previous node/channel
     if (newDest == NODENUM_BROADCAST && lastDestSet)
     {
         newDest = lastDest;
         newChannel = lastChannel;
     }
+#endif
     dest = newDest;
     channel = newChannel;
     lastDest = dest;
     lastChannel = channel;
     lastDestSet = true;
+    lastTouchMillis = millis(); // prevent immediate INACTIVATE in runOnce()
 
     runState = CANNED_MESSAGE_RUN_STATE_FREETEXT;
     requestFocus();
@@ -247,12 +286,26 @@ void CannedMessageModule::updateDestinationSelectionList()
     static size_t lastNumMeshNodes = 0;
     static String lastSearchQuery = "";
 
+#ifdef RED_BANK_S3
+    static int lastDestinationFilter = -1;
+#endif
+
     size_t numMeshNodes = nodeDB->getNumMeshNodes();
     bool nodesChanged = (numMeshNodes != lastNumMeshNodes);
     lastNumMeshNodes = numMeshNodes;
 
+#ifdef RED_BANK_S3
+    int currentDestinationFilter = static_cast<int>(destinationFilter);
+    bool destinationFilterChanged = (currentDestinationFilter != lastDestinationFilter);
+    lastDestinationFilter = currentDestinationFilter;
+#endif
+
     // Early exit if nothing changed
+#ifdef RED_BANK_S3
+    if (searchQuery == lastSearchQuery && !nodesChanged && !destinationFilterChanged)
+#else
     if (searchQuery == lastSearchQuery && !nodesChanged)
+#endif
         return;
     lastSearchQuery = searchQuery;
     needsUpdate = false;
@@ -264,44 +317,61 @@ void CannedMessageModule::updateDestinationSelectionList()
     String lowerSearchQuery = searchQuery;
     lowerSearchQuery.toLowerCase();
 
-    // Preallocate space to reduce reallocation
-    this->filteredNodes.reserve(numMeshNodes);
-
-    for (size_t i = 0; i < numMeshNodes; ++i)
+#ifdef RED_BANK_S3
+    bool allowNodes = (destinationFilter == DEST_FILTER_BOTH || destinationFilter == DEST_FILTER_NODES_ONLY);
+#else
+    bool allowNodes = true;
+#endif
+    if (allowNodes)
     {
-        meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(i);
-        if (!node || node->num == myNodeNum)
-            continue;
+        // Preallocate space to reduce reallocation
+        this->filteredNodes.reserve(numMeshNodes);
 
-        const String &nodeName = node->user.long_name;
+        for (size_t i = 0; i < numMeshNodes; ++i)
 
-        if (searchQuery.length() == 0)
         {
-            this->filteredNodes.push_back({node, sinceLastSeen(node)});
-        }
-        else
-        {
-            // Avoid unnecessary lowercase conversion if already matched
-            String lowerNodeName = nodeName;
-            lowerNodeName.toLowerCase();
+            meshtastic_NodeInfoLite *node = nodeDB->getMeshNodeByIndex(i);
+            if (!node || node->num == myNodeNum)
+                continue;
 
-            if (lowerNodeName.indexOf(lowerSearchQuery) != -1)
+            const String &nodeName = node->user.long_name;
+
+            if (searchQuery.length() == 0)
             {
                 this->filteredNodes.push_back({node, sinceLastSeen(node)});
+            }
+            else
+            {
+                // Avoid unnecessary lowercase conversion if already matched
+                String lowerNodeName = nodeName;
+                lowerNodeName.toLowerCase();
+
+                if (lowerNodeName.indexOf(lowerSearchQuery) != -1)
+                {
+                    this->filteredNodes.push_back({node, sinceLastSeen(node)});
+                }
             }
         }
     }
 
     // Populate active channels
-    std::vector<String> seenChannels;
-    seenChannels.reserve(channels.getNumChannels());
-    for (uint8_t i = 0; i < channels.getNumChannels(); ++i)
+#ifdef RED_BANK_S3
+    bool allowChannels = (destinationFilter == DEST_FILTER_BOTH || destinationFilter == DEST_FILTER_CHANNELS_ONLY);
+#else
+    bool allowChannels = true;
+#endif
+    if (allowChannels)
     {
-        String name = channels.getName(i);
-        if (name.length() > 0 && std::find(seenChannels.begin(), seenChannels.end(), name) == seenChannels.end())
+        std::vector<String> seenChannels;
+        seenChannels.reserve(channels.getNumChannels());
+        for (uint8_t i = 0; i < channels.getNumChannels(); ++i)
         {
-            this->activeChannelIndices.push_back(i);
-            seenChannels.push_back(name);
+            String name = channels.getName(i);
+            if (name.length() > 0 && std::find(seenChannels.begin(), seenChannels.end(), name) == seenChannels.end())
+            {
+                this->activeChannelIndices.push_back(i);
+                seenChannels.push_back(name);
+            }
         }
     }
 
@@ -336,24 +406,23 @@ bool CannedMessageModule::isCharInputAllowed() const
 int CannedMessageModule::handleInputEvent(const InputEvent *event)
 {
     LOG_DEBUG("CannedMessageModule::handleInputEvent: event=%d, runState=%d", event->inputEvent, runState);
-    
     // Block ALL input if an alert banner is active
     if (screen && screen->isOverlayBannerShowing())
     {
         LOG_DEBUG("CannedMessage: Overlay banner showing, not handling");
         return 0;
     }
-    
+
     // 防止状态切换后立即触发的抖动输入
     static uint32_t lastStateChange = 0;
     static cannedMessageModuleRunState lastRunState = CANNED_MESSAGE_RUN_STATE_INACTIVE;
-    
+
     if (runState != lastRunState)
     {
         lastStateChange = millis();
         lastRunState = runState;
     }
-    
+
     // 状态切换后200ms内忽略UP/DOWN输入，防止抖动
     if ((event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN) &&
         (millis() - lastStateChange < 200))
@@ -381,7 +450,7 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
     bool isUp = isUpEvent(event);
     bool isDown = isDownEvent(event);
     bool isSelect = isSelectEvent(event);
-    
+
     LOG_DEBUG("CannedMessage: isUp=%d, isDown=%d, isSelect=%d", isUp, isDown, isSelect);
 
     // Route event to handler for current UI state (no double-handling)
@@ -636,17 +705,18 @@ int CannedMessageModule::handleDestinationSelectionInput(const InputEvent *event
 
         runState = returnToCannedList ? CANNED_MESSAGE_RUN_STATE_ACTIVE : CANNED_MESSAGE_RUN_STATE_FREETEXT;
         returnToCannedList = false;
-        
+
         // 立即触发UI更新和重绘
+        lastTouchMillis = millis(); // keep module alive after selecting a destination
         requestFocus();
-        setIntervalFromNow(0);  // 立即运行runOnce()
-        runOnce();              // 立即执行一次，确保UI状态更新
-        
+        setIntervalFromNow(0); // 立即运行runOnce()
+        runOnce();             // 立即执行一次，确保UI状态更新
+
         UIFrameEvent e;
-        e.action = UIFrameEvent::Action::REDRAW_ONLY;  // 只重绘，不重新生成帧集
+        e.action = UIFrameEvent::Action::REDRAW_ONLY; // 只重绘，不重新生成帧集
         notifyObservers(&e);
         screen->forceDisplay(true);
-        LOG_INFO("Destination selected, switching to %s mode", 
+        LOG_INFO("Destination selected, switching to %s mode",
                  runState == CANNED_MESSAGE_RUN_STATE_ACTIVE ? "ACTIVE" : "FREETEXT");
         return 1;
     }

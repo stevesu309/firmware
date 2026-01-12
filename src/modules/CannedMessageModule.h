@@ -7,7 +7,8 @@
 //        Enums & Defines
 // ============================
 
-enum cannedMessageModuleRunState {
+enum cannedMessageModuleRunState
+{
     CANNED_MESSAGE_RUN_STATE_DISABLED,
     CANNED_MESSAGE_RUN_STATE_INACTIVE,
     CANNED_MESSAGE_RUN_STATE_ACTIVE,
@@ -22,7 +23,13 @@ enum cannedMessageModuleRunState {
     CANNED_MESSAGE_RUN_STATE_EMOTE_PICKER
 };
 
-enum CannedMessageModuleIconType { shift, backspace, space, enter };
+enum CannedMessageModuleIconType
+{
+    shift,
+    backspace,
+    space,
+    enter
+};
 
 #define CANNED_MESSAGE_MODULE_MESSAGE_MAX_COUNT 50
 #define CANNED_MESSAGE_MODULE_MESSAGES_SIZE 800
@@ -35,7 +42,8 @@ enum CannedMessageModuleIconType { shift, backspace, space, enter };
 //        Data Structures
 // ============================
 
-struct Letter {
+struct Letter
+{
     String character;
     float width;
     int rectX;
@@ -44,7 +52,8 @@ struct Letter {
     int rectHeight;
 };
 
-struct NodeEntry {
+struct NodeEntry
+{
     meshtastic_NodeInfoLite *node;
     uint32_t lastHeard;
 };
@@ -55,7 +64,7 @@ struct NodeEntry {
 
 class CannedMessageModule : public SinglePortModule, public Observable<const UIFrameEvent *>, private concurrency::OSThread
 {
-  public:
+public:
     CannedMessageModule();
 
     void LaunchWithDestination(NodeNum, uint8_t newChannel = 0);
@@ -104,7 +113,7 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
         return (p->decoded.portnum == meshtastic_PortNum_ROUTING_APP) ? waitingForAck : false;
     }
 
-  protected:
+protected:
     // === Thread Entry Point ===
     virtual int32_t runOnce() override;
 
@@ -139,7 +148,7 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
     bool saveProtoForModule();
     void installDefaultCannedMessageModuleConfig();
 
-  private:
+private:
     // === Input Observers ===
     CallbackObserver<CannedMessageModule, const InputEvent *> inputObserver =
         CallbackObserver<CannedMessageModule, const InputEvent *>(this, &CannedMessageModule::handleInputEvent);
@@ -186,6 +195,15 @@ class CannedMessageModule : public SinglePortModule, public Observable<const UIF
     static constexpr uint32_t filterDebounceMs = 30;
     std::vector<uint8_t> activeChannelIndices;
     std::vector<NodeEntry> filteredNodes;
+#ifdef RED_BANK_S3
+    enum DestinationFilter
+    {
+        DEST_FILTER_BOTH = 0,
+        DEST_FILTER_NODES_ONLY = 1,
+        DEST_FILTER_CHANNELS_ONLY = 2,
+    };
+    DestinationFilter destinationFilter = DEST_FILTER_BOTH;
+#endif
 
 #if defined(USE_VIRTUAL_KEYBOARD)
     bool shift = false;
