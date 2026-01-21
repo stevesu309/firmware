@@ -242,9 +242,8 @@ namespace RedBankS3
         pinMode(KEY2_ADC_PIN, INPUT);
         pinMode(PIN_LORA_EN, OUTPUT);
         digitalWrite(PIN_LORA_EN, HIGH);
-
         // 初始化天线管理器
-        AntennaManager::init(config.lora.region);
+        // AntennaManager::init(config.lora.region);
 #if HAS_SCREEN
         applyRotation(); // 应用屏幕旋转
 #endif
@@ -334,7 +333,7 @@ namespace RedBankS3
     {
 #ifdef RED_BANK_S3
         // 使用天线管理器处理天线切换
-        AntennaManager::switchAntennaForRegion(config.lora.region);
+        // AntennaManager::switchAntennaForRegion(config.lora.region);
 #if HAS_SCREEN
         scanAdcKeypad();
 

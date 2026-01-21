@@ -37,7 +37,8 @@ void LockingArduinoHal::spiTransfer(uint8_t *out, size_t len, uint8_t *in)
 
 RadioLibInterface::RadioLibInterface(LockingArduinoHal *hal, RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst,
                                      RADIOLIB_PIN_TYPE busy, PhysicalLayer *_iface)
-    : NotifiedWorkerThread("RadioIf"), module(hal, cs, irq, rst, busy), iface(_iface)
+    : NotifiedWorkerThread("RadioIf"), csPin(cs), irqPin(irq), rstPin(rst), busyPin(busy), module(hal, cs, irq, rst, busy),
+      iface(_iface)
 {
     instance = this;
 #if defined(ARCH_STM32WL) && defined(USE_SX1262)

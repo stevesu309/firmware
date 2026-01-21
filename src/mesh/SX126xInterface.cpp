@@ -9,6 +9,19 @@
 
 #include "Throttle.h"
 
+static int safeDigitalRead(RADIOLIB_PIN_TYPE pin)
+{
+    if (pin == RADIOLIB_NC || pin == static_cast<RADIOLIB_PIN_TYPE>(-1))
+        return -1;
+    return digitalRead(pin);
+}
+
+static void logRadioPins(const char *tag, RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst, RADIOLIB_PIN_TYPE busy)
+{
+    LOG_INFO("%s pins: CS=%d IRQ(DIO1)=%d RST=%d BUSY=%d | levels: CS=%d IRQ=%d RST=%d BUSY=%d", tag, (int)cs, (int)irq, (int)rst,
+             (int)busy, safeDigitalRead(cs), safeDigitalRead(irq), safeDigitalRead(rst), safeDigitalRead(busy));
+}
+
 // Particular boards might define a different max power based on what their hardware can do, default to max power output if not
 // specified (may be dangerous if using external PA and SX126x power config forgotten)
 #if ARCH_PORTDUINO
@@ -32,7 +45,6 @@ SX126xInterface<T>::SX126xInterface(LockingArduinoHal *hal, RADIOLIB_PIN_TYPE cs
 template <typename T>
 bool SX126xInterface<T>::init()
 {
-
 // Typically, the RF switch on SX126x boards is controlled by two signals, which are negations of each other (switched RFIO
 // paths). The negation is usually performed in hardware, or (suboptimal design) TXEN and RXEN are the two inputs to this style of
 // RF switch. On some boards, there is no hardware negation between CTRL and ¬CTRL, but CTRL is internally connected to DIO2, and
@@ -77,7 +89,10 @@ bool SX126xInterface<T>::init()
     // \todo Display actual typename of the adapter, not just `SX126x`
     LOG_INFO("SX126x init result %d", res);
     if (res == RADIOLIB_ERR_CHIP_NOT_FOUND || res == RADIOLIB_ERR_SPI_CMD_FAILED)
+    {
+        logRadioPins("SX126x init FAILED", csPin, irqPin, rstPin, busyPin);
         return false;
+    }
 
     LOG_INFO("Frequency set to %f", getFreq());
     LOG_INFO("Bandwidth set to %f", bw);
@@ -92,6 +107,7 @@ bool SX126xInterface<T>::init()
     // FIXME: Not ideal to increase SX1261 current limit above 60mA as it can only transmit max 15dBm, should probably only do it
     // if using SX1262 or SX1268
     res = lora.setCurrentLimit(currentLimit);
+    LOG_INFO("SX126x setCurrentLimit(%0.1f mA) -> %d", currentLimit, res);
     LOG_DEBUG("Current limit set to %f", currentLimit);
     LOG_DEBUG("Current limit set result %d", res);
 
@@ -109,6 +125,7 @@ bool SX126xInterface<T>::init()
         bool dio2AsRfSwitch = false;
 #endif
         res = lora.setDio2AsRfSwitch(dio2AsRfSwitch);
+        LOG_INFO("SX126x setDio2AsRfSwitch(%s) -> %d", dio2AsRfSwitch ? "true" : "false", res);
         LOG_DEBUG("Set DIO2 as %sRF switch, result: %d", dio2AsRfSwitch ? "" : "not ", res);
     }
 
@@ -242,11 +259,7 @@ void INTERRUPT_ATTR SX126xInterface<T>::disableInterrupt()
 template <typename T>
 void SX126xInterface<T>::setStandby()
 {
-#ifdef RED_BANK_S3 // 双模块版本
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, LOW); // 切换到接收天线
-#endif
-#endif
+
     checkNotification(); // handle any pending interrupts before we force standby
 
     int err = lora.standby();
@@ -278,12 +291,7 @@ void SX126xInterface<T>::addReceiveMetadata(meshtastic_MeshPacket *mp)
 template <typename T>
 void SX126xInterface<T>::configHardwareForSend()
 {
-#ifdef RED_BANK_S3 // 双模块版本
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, HIGH); // 切换到发送天线
-    delayMicroseconds(100);       // 等待天线切换稳定
-#endif
-#endif
+
     RadioLibInterface::configHardwareForSend();
 }
 
@@ -296,12 +304,7 @@ void SX126xInterface<T>::startReceive()
 #ifdef SLEEP_ONLY
     sleep();
 #else
-#ifdef RED_BANK_S3 // 双模块版本
-#ifdef LORA_ANT
-    digitalWrite(LORA_ANT, LOW); // 切换到接收天线
-    delayMicroseconds(100);      // 等待天线切换稳定
-#endif
-#endif
+
     // 先清除之前的接收状态（如果有）
     if (isReceiving)
     {
