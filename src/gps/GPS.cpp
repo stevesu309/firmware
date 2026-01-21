@@ -533,8 +533,8 @@ static const int serialSpeeds[1] = {GPS_BAUDRATE};
 static const int rareSerialSpeeds[1] = {GPS_BAUDRATE};
 #else
 static const int serialSpeeds[3] = {
-    115200,
     9600,
+    115200,
     38400,
 };
 static const int rareSerialSpeeds[3] = {4800, 57600, GPS_BAUDRATE};
