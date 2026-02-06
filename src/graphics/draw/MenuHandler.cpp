@@ -1410,12 +1410,16 @@ namespace graphics
         screen->showNodePicker("Select Node for DM", 30000, [](uint32_t nodenum) -> void
 #endif
                                {
-            LOG_INFO("Menu: Direct message node picker selected node 0x%08x", nodenum);
-            if (redBankController)
-            {
-                redBankController->setCurrentDirectMessageNode(nodenum);
-                screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
-            } });
+                                   LOG_INFO("Menu: Direct message node picker selected node 0x%08x", nodenum);
+
+#if defined(RED_BANK_S3)
+                                   if (redBankController)
+                                   {
+                                       redBankController->setCurrentDirectMessageNode(nodenum);
+                                       screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
+                                   }
+#endif
+                               });
     }
 
     void menuHandler::directMessageActionMenu()

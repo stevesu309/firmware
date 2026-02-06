@@ -818,6 +818,7 @@ namespace RedBankS3
     }
 
 #if HAS_SCREEN
+#ifdef RED_BANK_S3
     bool RedBankController::isMenuActive()
     {
         return menuActive;
@@ -1072,5 +1073,6 @@ namespace RedBankS3
             LOG_INFO("DOWN button: Inject INPUT_BROKER_DOWN event");
         }
     }
+#endif
 #endif
 }

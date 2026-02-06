@@ -162,6 +162,11 @@ void setupNicheGraphics();
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
 
+// Power log helper (works on ESP32 and NRF52)
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
+#include "red_bank_s3/Flash.h"
+#endif
+
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
 #endif
@@ -412,7 +417,7 @@ void setup()
     LOG_INFO("Serial since %d msec", serialSinceMsec);
 
     LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
-
+    LOG_DEBUG("This is a debug log"); // 测试打印
     initDeepSleep();
 #if defined(MODEM_POWER_EN)
     pinMode(MODEM_POWER_EN, OUTPUT);
@@ -573,6 +578,12 @@ ledPeriodic = new Periodic("Blink", ledBlinker);
     power->setStatusHandler(powerStatus);
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
+
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
+    // 定时保存电量日志（默认每小时一次）
+    // Esp32PowerLog::PwrLogClear(); // 如需清除一次数据，取消注释、刷机启动一次后再注释回去
+    Esp32PowerLog::PwrLogStart(60U * 60U * 1000U);
+#endif
 
 #if !MESHTASTIC_EXCLUDE_I2C
 
@@ -921,7 +932,6 @@ SPI.setFrequency(4000000);
 #if defined(RED_BANK_S3)
     redBankController = new RedBankS3::RedBankController();
 #endif
-
     // setup TZ prior to time actions.
 #if !MESHTASTIC_EXCLUDE_TZ
     LOG_DEBUG("Use compiled/slipstreamed %s", slipstreamTZString); // important, removing this clobbers our magic string
@@ -1364,21 +1374,21 @@ SPI.setFrequency(4000000);
                             config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_MY_433 ||
                             config.lora.region == meshtastic_Config_LoRaConfig_RegionCode_PH_433);
 
-        //         if (is433Region)
-        //         {
-        //             // 对于 433MHz 频段，我们在后面的 SX1268 分支中使用 433MHz 模块，不在这里初始化 SX1262
-        //             LOG_INFO("Skip SX1262 init on RED_BANK_S3 for 433MHz region=%d", config.lora.region);
-        //             pinMode(LORA_CS_900, OUTPUT);
-        //             digitalWrite(LORA_CS_900, HIGH);
-        //             csPin = LORA_CS_433; // 使用 433MHz 模块（IO4）
-        // #ifdef LORA_DIO1_433
-        //             irqPin = LORA_DIO1_433;
-        // #endif
-        // #ifdef LORA_BUSY_433
-        //             busyPin = LORA_BUSY_433;
-        // #endif
-        //         }
-        //         else
+        if (is433Region)
+        {
+            // 对于 433MHz 频段，我们在后面的 SX1268 分支中使用 433MHz 模块，不在这里初始化 SX1262
+            LOG_INFO("Skip SX1262 init on RED_BANK_S3 for 433MHz region=%d", config.lora.region);
+            pinMode(LORA_CS_900, OUTPUT);
+            digitalWrite(LORA_CS_900, HIGH);
+            csPin = LORA_CS_433; // 使用 433MHz 模块（IO4）
+#ifdef LORA_DIO1_433
+            irqPin = LORA_DIO1_433;
+#endif
+#ifdef LORA_BUSY_433
+            busyPin = LORA_BUSY_433;
+#endif
+        }
+        else
         {
             // 确保 433MHz 芯片 CS 保持拉高，避免干扰总线
             pinMode(LORA_CS_433, OUTPUT);
