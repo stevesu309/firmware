@@ -8,7 +8,7 @@
 
 // 天线状态跟踪
 meshtastic_Config_LoRaConfig_RegionCode AntennaManager::currentRegion = meshtastic_Config_LoRaConfig_RegionCode_UNSET;
-
+#ifdef RED_BANK_S3
 void AntennaManager::init(meshtastic_Config_LoRaConfig_RegionCode newRegion)
 {
     // 由 main.cpp 中的 SX1262 初始化逻辑根据 config.lora.region 决定。
@@ -185,3 +185,4 @@ void AntennaManager::sendAntennaSwitchNotification(const char *message)
     //     service->sendClientNotification(cn);
     // }
 }
+#endif
