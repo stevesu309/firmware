@@ -28,7 +28,7 @@ namespace Esp32PowerLog
   static constexpr const char *PWRLOG_NS = "pwrlog";
   static constexpr const char *PWRLOG_KEY = "blob";
   static constexpr const char *PWRLOG_FILE = "/prefs/pwrlog.bin";
-  static constexpr uint16_t PWRLOG_CAPACITY = 168; // 7天*24小时，按需改小/改大
+  static constexpr uint16_t PWRLOG_CAPACITY = 72;
 
 #pragma pack(push, 1)
   struct PowerLogEntry
@@ -59,7 +59,9 @@ namespace Esp32PowerLog
       return false;
     size_t need = sizeof(PowerLogBlob);
     size_t gotLen = p.getBytesLength(PWRLOG_KEY);
+    LOG_INFO("[PWRLOG] load: gotLen=%u need=%u", (unsigned)gotLen, (unsigned)need);
     bool ok = (gotLen == need) && (p.getBytes(PWRLOG_KEY, &b, need) == need);
+    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count, (unsigned)b.head);
     p.end();
     if (!ok)
       return false;
@@ -67,14 +69,25 @@ namespace Esp32PowerLog
 #ifdef FSCom
     concurrency::LockGuard g(spiLock);
     if (!FSCom.exists(PWRLOG_FILE))
+    {
+      LOG_WARN("[PWRLOG] load: file not exist");
       return false;
+    }
     auto f = FSCom.open(PWRLOG_FILE, FILE_O_READ);
     if (!f)
+    {
+      LOG_WARN("[PWRLOG] load: open failed");
       return false;
+    }
     size_t got = f.readBytes((char *)&b, sizeof(b));
     f.close();
+    LOG_INFO("[PWRLOG] load: readBytes=%u need=%u", (unsigned)got, (unsigned)sizeof(b));
     if (got != sizeof(b))
+    {
+      LOG_WARN("[PWRLOG] load: size mismatch");
       return false;
+    }
+    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count, (unsigned)b.head);
 #else
     return false;
 #endif

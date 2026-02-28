@@ -34,8 +34,11 @@
 #define OCV_ARRAY 4200, 3876, 3826, 3763, 3713, 3660, 3573, 3485, 3422, 3359, 3300
 #elif defined(SEEED_SOLAR_NODE)
 #define OCV_ARRAY 4200, 3986, 3922, 3812, 3734, 3645, 3527, 3420, 3281, 3087, 2786
+#elif defined(RED_BANK_S3)
+#define OCV_ARRAY 4030, 3947, 3864, 3781, 3698, 3615, 3532, 3449, 3366, 3283, 3200
 #else // LiIon
 #define OCV_ARRAY 4190, 4050, 3990, 3890, 3800, 3720, 3630, 3530, 3420, 3300, 3100
+
 #endif
 #endif
 
@@ -105,37 +108,37 @@ extern XPowersLibInterface *PMU;
 class Power : private concurrency::OSThread
 {
 
-  public:
-    Observable<const meshtastic::PowerStatus *> newStatus;
+public:
+  Observable<const meshtastic::PowerStatus *> newStatus;
 
-    Power();
+  Power();
 
-    void powerCommandsCheck();
-    void readPowerStatus();
-    virtual bool setup();
-    virtual int32_t runOnce() override;
-    void setStatusHandler(meshtastic::PowerStatus *handler) { statusHandler = handler; }
-    const uint16_t OCV[11] = {OCV_ARRAY};
+  void powerCommandsCheck();
+  void readPowerStatus();
+  virtual bool setup();
+  virtual int32_t runOnce() override;
+  void setStatusHandler(meshtastic::PowerStatus *handler) { statusHandler = handler; }
+  const uint16_t OCV[11] = {OCV_ARRAY};
 
-  protected:
-    meshtastic::PowerStatus *statusHandler;
+protected:
+  meshtastic::PowerStatus *statusHandler;
 
-    /// Setup a xpowers chip axp192/axp2101, return true if found
-    bool axpChipInit();
-    /// Setup a simple ADC input based battery sensor
-    bool analogInit();
-    /// Setup a Lipo battery level sensor
-    bool lipoInit();
-    /// Setup a Lipo charger
-    bool lipoChargerInit();
+  /// Setup a xpowers chip axp192/axp2101, return true if found
+  bool axpChipInit();
+  /// Setup a simple ADC input based battery sensor
+  bool analogInit();
+  /// Setup a Lipo battery level sensor
+  bool lipoInit();
+  /// Setup a Lipo charger
+  bool lipoChargerInit();
 
-  private:
-    void shutdown();
-    void reboot();
-    // open circuit voltage lookup table
-    uint8_t low_voltage_counter;
+private:
+  void shutdown();
+  void reboot();
+  // open circuit voltage lookup table
+  uint8_t low_voltage_counter;
 #ifdef DEBUG_HEAP
-    uint32_t lastheap;
+  uint32_t lastheap;
 #endif
 };
 

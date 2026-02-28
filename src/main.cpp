@@ -582,9 +582,11 @@ ledPeriodic = new Periodic("Blink", ledBlinker);
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
     // 定时保存电量日志（默认每小时一次）
     // Esp32PowerLog::PwrLogClear(); // 如需清除一次数据，取消注释、刷机启动一次后再注释回去
-    Esp32PowerLog::PwrLogStart(60U * 60U * 1000U);
-#endif
+    // Esp32PowerLog::PwrLogStart(60U * 60U * 1000U);
+    Esp32PowerLog::PwrLogStart(10U * 60U * 1000U);
 
+#endif
+    Esp32PowerLog::PwrLogDump(72);
 #if !MESHTASTIC_EXCLUDE_I2C
 
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
@@ -1803,8 +1805,16 @@ SPI.setFrequency(4000000);
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-    LOG_DEBUG("Free heap  : %7d bytes", ESP.getFreeHeap());
-    LOG_DEBUG("Free PSRAM : %7d bytes", ESP.getFreePsram());
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxBlock = ESP.getMaxAllocHeap();
+    const uint32_t minFree = ESP.getMinFreeHeap();
+    const uint32_t fragPct = (freeHeap > 0) ? (100U - (maxBlock * 100U / freeHeap)) : 0U;
+
+    LOG_DEBUG("Heap free      : %7u bytes", freeHeap);
+    LOG_DEBUG("Heap max block : %7u bytes", maxBlock);
+    LOG_DEBUG("Heap min free  : %7u bytes", minFree);
+    LOG_DEBUG("Heap frag      : %7u %%", fragPct);
+    LOG_DEBUG("Free PSRAM     : %7u bytes", ESP.getFreePsram());
 #endif
 
 #if defined(RED_BANK_S3)

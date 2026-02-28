@@ -19,6 +19,9 @@
 #include "main.h"
 #include "meshUtils.h"
 #include "sleep.h"
+#if defined(RED_BANK_S3) && (defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52))
+#include "red_bank_s3/Flash.h"
+#endif
 
 #if defined(ARCH_PORTDUINO)
 #include "api/WiFiServerAPI.h"
@@ -841,6 +844,7 @@ void Power::readPowerStatus()
     OptionalBool usbPowered = OptUnknown;
     OptionalBool hasBattery = OptUnknown; // These must be static because NRF_APM code doesn't run every time
     OptionalBool isChargingNow = OptUnknown;
+    static bool lowBatteryOnePercentLogged = false;
 
     if (batteryLevel)
     {
@@ -891,6 +895,28 @@ void Power::readPowerStatus()
     LOG_DEBUG("Battery: usbPower=%d, isCharging=%d, batMv=%d, batPct=%d", powerStatus2.getHasUSB(), powerStatus2.getIsCharging(),
               powerStatus2.getBatteryVoltageMv(), powerStatus2.getBatteryChargePercent());
     newStatus.notifyObservers(&powerStatus2);
+
+#if defined(RED_BANK_S3) && (defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52))
+    // Save an immediate power log snapshot once when battery reaches 1%.
+    if (powerStatus2.getHasBattery())
+    {
+        const uint8_t pctNow = powerStatus2.getBatteryChargePercent();
+        if (pctNow == 1 && !lowBatteryOnePercentLogged)
+        {
+            Esp32PowerLog::PwrLogSampleAndStoreOnce();
+            lowBatteryOnePercentLogged = true;
+        }
+        else if (pctNow != 1)
+        {
+            lowBatteryOnePercentLogged = false;
+        }
+    }
+    else
+    {
+        lowBatteryOnePercentLogged = false;
+    }
+#endif
+
 #ifdef DEBUG_HEAP
     if (lastheap != memGet.getFreeHeap())
     {

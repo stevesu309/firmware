@@ -19,7 +19,7 @@ namespace Esp32PowerLog
   void PwrLogSampleAndStoreOnce();
 
   /// 从 Flash 读取并打印最近 N 条（0=全部）。
-  void PwrLogDump(uint16_t maxLines = 24);
+  void PwrLogDump(uint16_t maxLines = 72);
 
   /// 清除已保存的数据（删除 Preferences 的 key）。
   void PwrLogClear();

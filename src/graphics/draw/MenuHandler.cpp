@@ -103,7 +103,9 @@ namespace graphics
         {
             if (selected != 0 && config.lora.region != _meshtastic_Config_LoRaConfig_RegionCode(selected))
             {
-                config.lora.region = _meshtastic_Config_LoRaConfig_RegionCode(selected);
+                const auto oldRegion = config.lora.region;
+                const auto newRegion = _meshtastic_Config_LoRaConfig_RegionCode(selected);
+                config.lora.region = newRegion;
                 // This is needed as we wait til picking the LoRa region to generate keys for the first time.
                 if (!owner.is_licensed)
                 {
@@ -136,6 +138,23 @@ namespace graphics
                 {
                     config.lora.ignore_mqtt = true; // Ignore MQTT by default if region has a duty cycle limit
                 }
+#if defined(RED_BANK_S3)
+                const auto is433Region = [](meshtastic_Config_LoRaConfig_RegionCode region) {
+                    return (region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
+                            region == meshtastic_Config_LoRaConfig_RegionCode_EU_433 ||
+                            region == meshtastic_Config_LoRaConfig_RegionCode_UA_433 ||
+                            region == meshtastic_Config_LoRaConfig_RegionCode_MY_433 ||
+                            region == meshtastic_Config_LoRaConfig_RegionCode_PH_433);
+                };
+                const bool crossBandSwitch = is433Region(oldRegion) != is433Region(newRegion);
+                if (crossBandSwitch)
+                {
+                    LOG_INFO("RED_BANK_S3 cross-band region switch (%d -> %d), save config then reboot", oldRegion, newRegion);
+                    nodeDB->saveToDisk(SEGMENT_CONFIG);
+                    rebootAtMsec = millis() + 1000;
+                    return;
+                }
+#endif
                 service->reloadConfig(SEGMENT_CONFIG);
                 rebootAtMsec = (millis() + DEFAULT_REBOOT_SECONDS * 1000);
             }
