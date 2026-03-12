@@ -24,4 +24,13 @@ namespace Esp32PowerLog
   /// 清除已保存的数据（删除 Preferences 的 key）。
   void PwrLogClear();
 
+  /// nRF52 外置 QSPI Flash 探测与自检（非 nRF52 平台为 no-op）
+  void ExtFlashSelfTest();
+
+  /// 外置 Flash 原始读写接口（非支持平台返回 false）
+  bool ExtFlashRawReady();
+  bool ExtFlashRawRead(uint32_t addr, void *buf, uint32_t len);
+  bool ExtFlashRawWrite(uint32_t addr, const void *buf, uint32_t len);
+  bool ExtFlashRawErase(uint32_t addr, uint32_t len);
+
 } // namespace Esp32PowerLog

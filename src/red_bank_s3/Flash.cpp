@@ -16,6 +16,15 @@
 #elif defined(ARCH_NRF52)
 #include "FSCommon.h"
 #include "SPILock.h"
+#if defined(EXTERNAL_FLASH_USE_QSPI) && __has_include(<Adafruit_SPIFlash.h>)
+// Some nRF52 variants (e.g. t-echo) don't define generic SS, but Adafruit_SPIFlash headers reference it.
+#ifndef SS
+#define SS PIN_QSPI_CS
+#endif
+#include <Adafruit_SPIFlash.h>
+#include <flash_devices.h>
+#define PWRLOG_USE_EXTERNAL_QSPI 1
+#endif
 #endif
 
 // powerStatus 是在 main.cpp 全局命名空间里定义的单例指针
@@ -50,8 +59,150 @@ namespace Esp32PowerLog
 #pragma pack(pop)
 
   static constexpr uint32_t PWRLOG_MAGIC = 0x504C4731; // "PLG1"
+  // Reserve one 4KB sector right before Chinese font raw region (0x00300000).
+  static constexpr uint32_t PWRLOG_EXT_ADDR = 0x002FF000U;
 
-  static bool pwrlogLoad(PowerLogBlob &b)
+#if defined(ARCH_NRF52) && defined(PWRLOG_USE_EXTERNAL_QSPI)
+  static Adafruit_FlashTransport_QSPI pwrlogExtFlashTransport;
+  static Adafruit_SPIFlash pwrlogExtFlash(&pwrlogExtFlashTransport);
+  static bool extFlashInitDone = false;
+  static bool extFlashReady = false;
+  static constexpr uint32_t kExtFlashSectorSize = 4096;
+
+  static uint32_t jedecCapacityCodeToBytes(uint8_t capacityCode)
+  {
+    return (capacityCode < 32U) ? (1UL << capacityCode) : 0UL;
+  }
+
+  static void probeRawExternalFlash()
+  {
+    uint8_t jedec[4] = {0};
+    uint8_t sr1 = 0;
+    uint8_t sr2 = 0;
+
+    pwrlogExtFlashTransport.begin();
+    const bool jedecOk = pwrlogExtFlashTransport.readCommand(SFLASH_CMD_READ_JEDEC_ID, jedec, sizeof(jedec));
+    const bool sr1Ok = pwrlogExtFlashTransport.readCommand(SFLASH_CMD_READ_STATUS, &sr1, 1);
+    const bool sr2Ok = pwrlogExtFlashTransport.readCommand(SFLASH_CMD_READ_STATUS2, &sr2, 1);
+    pwrlogExtFlashTransport.end();
+
+    LOG_INFO("[EXTTEST] probe JEDEC cmd=%s raw=%02x %02x %02x %02x", jedecOk ? "OK" : "FAIL", jedec[0], jedec[1], jedec[2],
+             jedec[3]);
+    LOG_INFO("[EXTTEST] probe SR1=%s 0x%02x SR2=%s 0x%02x", sr1Ok ? "OK" : "FAIL", sr1, sr2Ok ? "OK" : "FAIL", sr2);
+
+    if (jedecOk)
+    {
+      uint8_t normType = jedec[1];
+      uint8_t normCap = jedec[2];
+      if (normType == 0x7F)
+      {
+        normType = jedec[2];
+        normCap = jedec[3];
+      }
+
+      const uint32_t sizeBytes = jedecCapacityCodeToBytes(normCap);
+      LOG_INFO("[EXTTEST] probe normalized mfg=0x%02x type=0x%02x cap=0x%02x size_guess=%luKB", jedec[0], normType, normCap,
+               (unsigned long)(sizeBytes / 1024U));
+    }
+  }
+
+  static bool beginExternalFlashWithConfiguredDevice()
+  {
+    // Keep device descriptor alive for the whole runtime.
+    // Some SPIFlash implementations may retain this pointer after begin().
+    static SPIFlash_Device_t gd25q32cType60 = []() {
+      SPIFlash_Device_t d = (SPIFlash_Device_t)GD25Q32C;
+      d.memory_type = 0x60;
+      return d;
+    }();
+
+    if (pwrlogExtFlash.begin(&gd25q32cType60, 1))
+    {
+      LOG_INFO("[EXTTEST] begin(GD25Q32C type=0x60) => OK");
+      return true;
+    }
+
+    LOG_INFO("[EXTTEST] begin(GD25Q32C type=0x60) => FAIL");
+    return false;
+  }
+
+  static bool ensureExtFlashReady()
+  {
+    if (extFlashInitDone)
+      return extFlashReady;
+    extFlashInitDone = true;
+
+    if (!beginExternalFlashWithConfiguredDevice())
+    {
+      LOG_WARN("[EXTTEST] raw flash begin failed");
+      return false;
+    }
+
+    extFlashReady = true;
+    LOG_INFO("[EXTTEST] raw flash ready: JEDEC=0x%08lx size=%luKB",
+             (unsigned long)pwrlogExtFlash.getJEDECID(),
+             (unsigned long)(pwrlogExtFlash.size() / 1024U));
+    return true;
+  }
+
+  bool ExtFlashRawReady()
+  {
+    return ensureExtFlashReady();
+  }
+
+  bool ExtFlashRawRead(uint32_t addr, void *buf, uint32_t len)
+  {
+    if (!buf || len == 0 || !ensureExtFlashReady())
+      return false;
+    return pwrlogExtFlash.readBuffer(addr, static_cast<uint8_t *>(buf), len) == len;
+  }
+
+  bool ExtFlashRawWrite(uint32_t addr, const void *buf, uint32_t len)
+  {
+    if (!buf || len == 0 || !ensureExtFlashReady())
+      return false;
+    return pwrlogExtFlash.writeBuffer(addr, static_cast<const uint8_t *>(buf), len) == len;
+  }
+
+  bool ExtFlashRawErase(uint32_t addr, uint32_t len)
+  {
+    if (len == 0 || !ensureExtFlashReady())
+      return false;
+
+    const uint32_t startSector = addr / kExtFlashSectorSize;
+    const uint32_t endAddr = addr + len - 1U;
+    const uint32_t endSector = endAddr / kExtFlashSectorSize;
+    for (uint32_t s = startSector; s <= endSector; ++s)
+    {
+      if (!pwrlogExtFlash.eraseSector(s))
+      {
+        return false;
+      }
+    }
+    pwrlogExtFlash.waitUntilReady();
+    return true;
+  }
+
+  void ExtFlashSelfTest()
+  {
+    LOG_INFO("[EXTTEST] start");
+    probeRawExternalFlash();
+
+    if (!ensureExtFlashReady())
+    {
+      LOG_WARN("[EXTTEST] flash begin failed");
+      return;
+    }
+  }
+#else
+  void ExtFlashSelfTest() {}
+  bool ExtFlashRawReady() { return false; }
+  bool ExtFlashRawRead(uint32_t, void *, uint32_t) { return false; }
+  bool ExtFlashRawWrite(uint32_t, const void *, uint32_t) { return false; }
+  bool ExtFlashRawErase(uint32_t, uint32_t) { return false; }
+#endif
+
+  static bool pwrlogLoadBackend(PowerLogBlob &b)
   {
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences p;
@@ -61,11 +212,34 @@ namespace Esp32PowerLog
     size_t gotLen = p.getBytesLength(PWRLOG_KEY);
     LOG_INFO("[PWRLOG] load: gotLen=%u need=%u", (unsigned)gotLen, (unsigned)need);
     bool ok = (gotLen == need) && (p.getBytes(PWRLOG_KEY, &b, need) == need);
-    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count, (unsigned)b.head);
+    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count,
+             (unsigned)b.head);
     p.end();
-    if (!ok)
-      return false;
+    return ok;
 #elif defined(ARCH_NRF52)
+#if defined(PWRLOG_USE_EXTERNAL_QSPI)
+    if (!ExtFlashRawReady())
+    {
+      LOG_WARN("[PWRLOG][EXT] raw flash not ready, fallback internal");
+    }
+    else
+    {
+      if (sizeof(PowerLogBlob) > kExtFlashSectorSize)
+      {
+        LOG_WARN("[PWRLOG][EXT] blob too large (%u), fallback internal", (unsigned)sizeof(PowerLogBlob));
+      }
+      else if (ExtFlashRawRead(PWRLOG_EXT_ADDR, &b, sizeof(b)))
+      {
+        LOG_INFO("[PWRLOG][EXT] load: readBytes=%u need=%u", (unsigned)sizeof(b), (unsigned)sizeof(b));
+        LOG_INFO("[PWRLOG] load source: external");
+        return true;
+      }
+      else
+      {
+        LOG_WARN("[PWRLOG][EXT] load failed, fallback internal");
+      }
+    }
+#endif
 #ifdef FSCom
     concurrency::LockGuard g(spiLock);
     if (!FSCom.exists(PWRLOG_FILE))
@@ -87,30 +261,19 @@ namespace Esp32PowerLog
       LOG_WARN("[PWRLOG] load: size mismatch");
       return false;
     }
-    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count, (unsigned)b.head);
-#else
-    return false;
-#endif
-#else
-    return false;
-#endif
-    if (b.magic != PWRLOG_MAGIC || b.capacity != PWRLOG_CAPACITY)
-      return false;
-    if (b.count > PWRLOG_CAPACITY || b.head >= PWRLOG_CAPACITY)
-      return false;
+    LOG_INFO("[PWRLOG] load source: internal");
+    LOG_INFO("[PWRLOG] load: magic=%08x capacity=%u count=%u head=%u", (unsigned)b.magic, (unsigned)b.capacity, (unsigned)b.count,
+             (unsigned)b.head);
     return true;
+#else
+    return false;
+#endif
+#else
+    return false;
+#endif
   }
 
-  static void pwrlogInit(PowerLogBlob &b)
-  {
-    memset(&b, 0, sizeof(b));
-    b.magic = PWRLOG_MAGIC;
-    b.capacity = PWRLOG_CAPACITY;
-    b.count = 0;
-    b.head = 0;
-  }
-
-  static bool pwrlogSave(const PowerLogBlob &b)
+  static bool pwrlogSaveBackend(const PowerLogBlob &b)
   {
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences p;
@@ -120,6 +283,29 @@ namespace Esp32PowerLog
     p.end();
     return wrote == sizeof(b);
 #elif defined(ARCH_NRF52)
+#if defined(PWRLOG_USE_EXTERNAL_QSPI)
+    if (ExtFlashRawReady())
+    {
+      if (sizeof(PowerLogBlob) > kExtFlashSectorSize)
+      {
+        LOG_WARN("[PWRLOG][EXT] blob too large (%u), fallback internal", (unsigned)sizeof(PowerLogBlob));
+      }
+      else if (ExtFlashRawErase(PWRLOG_EXT_ADDR, kExtFlashSectorSize) &&
+               ExtFlashRawWrite(PWRLOG_EXT_ADDR, &b, sizeof(b)))
+      {
+        LOG_INFO("[PWRLOG][EXT] save: wrote=%u addr=0x%08x", (unsigned)sizeof(b), (unsigned)PWRLOG_EXT_ADDR);
+        return true;
+      }
+      else
+      {
+        LOG_WARN("[PWRLOG][EXT] save failed, fallback internal");
+      }
+    }
+    else
+    {
+      LOG_WARN("[PWRLOG][EXT] raw flash not ready, fallback internal");
+    }
+#endif
 #ifdef FSCom
     // Ensure /prefs exists
     {
@@ -143,7 +329,77 @@ namespace Esp32PowerLog
 #endif
   }
 
-  static void pwrlogSampleAndStoreOnceImpl()
+  static void pwrlogClearBackend()
+  {
+#if defined(ARDUINO_ARCH_ESP32)
+    Preferences p;
+    if (!p.begin(PWRLOG_NS, false))
+    {
+      LOG_WARN("[PWRLOG] clear: begin failed");
+      return;
+    }
+    bool ok = p.remove(PWRLOG_KEY); // 删除 blob key
+    p.end();
+    LOG_INFO("[PWRLOG] clear: %s", ok ? "OK" : "NOT_FOUND/FAIL");
+#elif defined(ARCH_NRF52)
+#if defined(PWRLOG_USE_EXTERNAL_QSPI)
+    if (ExtFlashRawReady())
+    {
+      const bool extOk = ExtFlashRawErase(PWRLOG_EXT_ADDR, kExtFlashSectorSize);
+      LOG_INFO("[PWRLOG][EXT] clear: %s addr=0x%08x", extOk ? "OK" : "FAIL", (unsigned)PWRLOG_EXT_ADDR);
+      if (extOk)
+      {
+        return;
+      }
+    }
+    else
+    {
+      LOG_WARN("[PWRLOG][EXT] raw flash not ready, fallback internal");
+    }
+#endif
+#ifdef FSCom
+    concurrency::LockGuard g(spiLock);
+    bool ok = FSCom.remove(PWRLOG_FILE);
+    LOG_INFO("[PWRLOG] clear file: %s", ok ? "OK" : "NOT_FOUND/FAIL");
+#else
+    LOG_WARN("[PWRLOG] clear: no filesystem");
+#endif
+#else
+    LOG_WARN("[PWRLOG] clear: unsupported platform");
+#endif
+  }
+
+  static bool isValidPwrlogBlob(const PowerLogBlob &b)
+  {
+    if (b.magic != PWRLOG_MAGIC || b.capacity != PWRLOG_CAPACITY)
+      return false;
+    if (b.count > PWRLOG_CAPACITY || b.head >= PWRLOG_CAPACITY)
+      return false;
+    return true;
+  }
+
+  static bool pwrlogLoad(PowerLogBlob &b)
+  {
+    if (!pwrlogLoadBackend(b))
+      return false;
+    return isValidPwrlogBlob(b);
+  }
+
+  static void pwrlogInit(PowerLogBlob &b)
+  {
+    memset(&b, 0, sizeof(b));
+    b.magic = PWRLOG_MAGIC;
+    b.capacity = PWRLOG_CAPACITY;
+    b.count = 0;
+    b.head = 0;
+  }
+
+  static bool pwrlogSave(const PowerLogBlob &b)
+  {
+    return pwrlogSaveBackend(b);
+  }
+
+  void PwrLogSampleAndStoreOnce()
   {
     PowerLogBlob b;
     if (!pwrlogLoad(b))
@@ -181,7 +437,7 @@ namespace Esp32PowerLog
                (e.flags & 0x02) ? 1 : 0, (e.flags & 0x04) ? 1 : 0, (unsigned)b.count);
     }
   }
-  static void pwrlogDumpImpl(uint16_t maxLines /* 0=全部 */)
+  void PwrLogDump(uint16_t maxLines)
   {
     PowerLogBlob b;
     if (!pwrlogLoad(b))
@@ -223,36 +479,12 @@ namespace Esp32PowerLog
                hasBat, hasUsb, chg);
     }
   }
-  static void pwrlogClearImpl()
-  {
-#if defined(ARDUINO_ARCH_ESP32)
-    Preferences p;
-    if (!p.begin(PWRLOG_NS, false))
-    {
-      LOG_WARN("[PWRLOG] clear: begin failed");
-      return;
-    }
-    bool ok = p.remove(PWRLOG_KEY); // 删除 blob key
-    p.end();
-    LOG_INFO("[PWRLOG] clear: %s", ok ? "OK" : "NOT_FOUND/FAIL");
-#elif defined(ARCH_NRF52)
-#ifdef FSCom
-    concurrency::LockGuard g(spiLock);
-    bool ok = FSCom.remove(PWRLOG_FILE);
-    LOG_INFO("[PWRLOG] clear file: %s", ok ? "OK" : "NOT_FOUND/FAIL");
-#else
-    LOG_WARN("[PWRLOG] clear: no filesystem");
-#endif
-#else
-    LOG_WARN("[PWRLOG] clear: unsupported platform");
-#endif
-  }
   static concurrency::Periodic *pwrlogPeriodic = nullptr;
   static uint32_t pwrlogIntervalMs = 60U * 60U * 1000U;
 
   static int32_t pwrlogTick()
   {
-    pwrlogSampleAndStoreOnceImpl();
+    PwrLogSampleAndStoreOnce();
     return (int32_t)pwrlogIntervalMs;
   }
 
@@ -270,19 +502,9 @@ namespace Esp32PowerLog
     }
   }
 
-  void PwrLogSampleAndStoreOnce()
-  {
-    pwrlogSampleAndStoreOnceImpl();
-  }
-
-  void PwrLogDump(uint16_t maxLines)
-  {
-    pwrlogDumpImpl(maxLines);
-  }
-
   void PwrLogClear()
   {
-    pwrlogClearImpl();
+    pwrlogClearBackend();
   }
 
 } // namespace Esp32PowerLog

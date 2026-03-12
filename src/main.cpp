@@ -578,11 +578,11 @@ ledPeriodic = new Periodic("Blink", ledBlinker);
     power->setStatusHandler(powerStatus);
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
-
+    LOG_INFO("Power setup complete");
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
+    Esp32PowerLog::ExtFlashSelfTest();
     // 定时保存电量日志（默认每小时一次）
     // Esp32PowerLog::PwrLogClear(); // 如需清除一次数据，取消注释、刷机启动一次后再注释回去
-    // Esp32PowerLog::PwrLogStart(60U * 60U * 1000U);
     Esp32PowerLog::PwrLogStart(10U * 60U * 1000U);
 
 #endif
