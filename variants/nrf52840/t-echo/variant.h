@@ -124,8 +124,14 @@ External serial flash WP25R1635FZUIL0
 #define PIN_QSPI_IO2 (0 + 7)   // WP if using two bit interface (i.e. not used)
 #define PIN_QSPI_IO3 (0 + 5)   // HOLD if using two bit interface (i.e. not used)
 
+// Some libraries (e.g. SdFat) expect a board-level SS macro.
+// T-Echo uses QSPI flash and has no dedicated SPI SS pin for SD.
+#ifndef SS
+#define SS PIN_QSPI_CS
+#endif
+
 // On-board QSPI Flash
-#define EXTERNAL_FLASH_DEVICES MX25R1635F
+#define EXTERNAL_FLASH_DEVICES GD25Q32C
 #define EXTERNAL_FLASH_USE_QSPI
 
     /*
