@@ -59,8 +59,9 @@ namespace Esp32PowerLog
 #pragma pack(pop)
 
   static constexpr uint32_t PWRLOG_MAGIC = 0x504C4731; // "PLG1"
-  // Reserve one 4KB sector right before Chinese font raw region (0x00300000).
-  static constexpr uint32_t PWRLOG_EXT_ADDR = 0x002FF000U;
+  // Reserve one 4KB sector in mid flash area for pwrlog raw storage.
+  // Avoid top-end sectors to reduce risk of vendor-reserved/protected regions.
+  static constexpr uint32_t PWRLOG_EXT_ADDR = 0x00100000U;
 
 #if defined(ARCH_NRF52) && defined(PWRLOG_USE_EXTERNAL_QSPI)
   static Adafruit_FlashTransport_QSPI pwrlogExtFlashTransport;
@@ -68,6 +69,8 @@ namespace Esp32PowerLog
   static bool extFlashInitDone = false;
   static bool extFlashReady = false;
   static constexpr uint32_t kExtFlashSectorSize = 4096;
+  static constexpr uint32_t kExtFlashPageSize = 256;
+  static constexpr uint32_t kExtFlashWaitTimeoutMs = 2000;
 
   static uint32_t jedecCapacityCodeToBytes(uint8_t capacityCode)
   {
@@ -86,24 +89,9 @@ namespace Esp32PowerLog
     const bool sr2Ok = pwrlogExtFlashTransport.readCommand(SFLASH_CMD_READ_STATUS2, &sr2, 1);
     pwrlogExtFlashTransport.end();
 
-    LOG_INFO("[EXTTEST] probe JEDEC cmd=%s raw=%02x %02x %02x %02x", jedecOk ? "OK" : "FAIL", jedec[0], jedec[1], jedec[2],
-             jedec[3]);
-    LOG_INFO("[EXTTEST] probe SR1=%s 0x%02x SR2=%s 0x%02x", sr1Ok ? "OK" : "FAIL", sr1, sr2Ok ? "OK" : "FAIL", sr2);
-
-    if (jedecOk)
-    {
-      uint8_t normType = jedec[1];
-      uint8_t normCap = jedec[2];
-      if (normType == 0x7F)
-      {
-        normType = jedec[2];
-        normCap = jedec[3];
-      }
-
-      const uint32_t sizeBytes = jedecCapacityCodeToBytes(normCap);
-      LOG_INFO("[EXTTEST] probe normalized mfg=0x%02x type=0x%02x cap=0x%02x size_guess=%luKB", jedec[0], normType, normCap,
-               (unsigned long)(sizeBytes / 1024U));
-    }
+    (void)jedecOk;
+    (void)sr1Ok;
+    (void)sr2Ok;
   }
 
   static bool beginExternalFlashWithConfiguredDevice()
@@ -113,17 +101,62 @@ namespace Esp32PowerLog
     static SPIFlash_Device_t gd25q32cType60 = []() {
       SPIFlash_Device_t d = (SPIFlash_Device_t)GD25Q32C;
       d.memory_type = 0x60;
+      // nRF52 QSPI transport uses hardware quad read/write path.
+      // Keep QSPI mode enabled so QE bit is configured by begin().
+      d.supports_qspi = true;
+      d.supports_qspi_writes = true;
+      // Type=0x60 variants appear to require combined SR1+SR2 writes.
+      d.write_status_register_split = false;
       return d;
     }();
 
-    if (pwrlogExtFlash.begin(&gd25q32cType60, 1))
+    return pwrlogExtFlash.begin(&gd25q32cType60, 1);
+  }
+
+  static void clearExternalFlashProtectionBits()
+  {
+    uint8_t sr1Before = pwrlogExtFlash.readStatus();
+    uint8_t sr2Before = pwrlogExtFlash.readStatus2();
+    // SR1 BP bits are [2..5] on most NOR chips; force clear for test area writes.
+    // Also force QE bit in SR2 for nRF52 QSPI data path.
+    // Use combined SR1+SR2 write first, then a SR2 write as fallback.
+    uint8_t sr1Unlocked = (uint8_t)(sr1Before & 0xC3U); // clear BP[2..5], keep other bits
+    uint8_t sr2Wanted = (uint8_t)(sr2Before | 0x02U);   // keep existing flags + set QE
+
+    uint8_t srPair[2] = {sr1Unlocked, sr2Wanted};
+    pwrlogExtFlash.writeEnable();
+    const bool wr1 = pwrlogExtFlashTransport.writeCommand(SFLASH_CMD_WRITE_STATUS, srPair, 2);
+
+    const uint32_t t1 = millis();
+    while ((pwrlogExtFlash.readStatus() & 0x01U) != 0U && (uint32_t)(millis() - t1) < kExtFlashWaitTimeoutMs)
     {
-      LOG_INFO("[EXTTEST] begin(GD25Q32C type=0x60) => OK");
-      return true;
+      delay(1);
     }
 
-    LOG_INFO("[EXTTEST] begin(GD25Q32C type=0x60) => FAIL");
-    return false;
+    // Fallback/compat write to SR2 command.
+    pwrlogExtFlash.writeEnable();
+    const bool wr2 = pwrlogExtFlashTransport.writeCommand(SFLASH_CMD_WRITE_STATUS2, &sr2Wanted, 1);
+
+    const uint32_t t2 = millis();
+    while ((pwrlogExtFlash.readStatus() & 0x01U) != 0U && (uint32_t)(millis() - t2) < kExtFlashWaitTimeoutMs)
+    {
+      delay(1);
+    }
+
+    uint8_t sr1After = pwrlogExtFlash.readStatus();
+    uint8_t sr2After = pwrlogExtFlash.readStatus2();
+    (void)wr1;
+    (void)wr2;
+    (void)sr1After;
+    (void)sr2After;
+
+    // Clear WEL bit explicitly; Adafruit read/write paths wait for (SR1 & 0x03)==0.
+    pwrlogExtFlash.writeDisable();
+    const uint32_t twel = millis();
+    while ((pwrlogExtFlash.readStatus() & 0x02U) != 0U && (uint32_t)(millis() - twel) < kExtFlashWaitTimeoutMs)
+    {
+      delay(1);
+    }
   }
 
   static bool ensureExtFlashReady()
@@ -138,10 +171,25 @@ namespace Esp32PowerLog
       return false;
     }
 
+    clearExternalFlashProtectionBits();
+
     extFlashReady = true;
-    LOG_INFO("[EXTTEST] raw flash ready: JEDEC=0x%08lx size=%luKB",
-             (unsigned long)pwrlogExtFlash.getJEDECID(),
-             (unsigned long)(pwrlogExtFlash.size() / 1024U));
+    return true;
+  }
+
+  static bool waitExtFlashWipClearWithTimeout(const char *reason, uint32_t timeoutMs)
+  {
+    const uint32_t start = millis();
+    while ((pwrlogExtFlash.readStatus() & 0x01U) != 0U)
+    {
+      if ((uint32_t)(millis() - start) >= timeoutMs)
+      {
+        LOG_WARN("[EXTTEST] wait ready timeout (%s), SR1=0x%02x SR2=0x%02x", reason ? reason : "unknown",
+                 pwrlogExtFlash.readStatus(), pwrlogExtFlash.readStatus2());
+        return false;
+      }
+      delay(1);
+    }
     return true;
   }
 
@@ -154,6 +202,9 @@ namespace Esp32PowerLog
   {
     if (!buf || len == 0 || !ensureExtFlashReady())
       return false;
+#ifdef ARCH_NRF52
+    concurrency::LockGuard g(spiLock);
+#endif
     return pwrlogExtFlash.readBuffer(addr, static_cast<uint8_t *>(buf), len) == len;
   }
 
@@ -161,13 +212,55 @@ namespace Esp32PowerLog
   {
     if (!buf || len == 0 || !ensureExtFlashReady())
       return false;
-    return pwrlogExtFlash.writeBuffer(addr, static_cast<const uint8_t *>(buf), len) == len;
+#ifdef ARCH_NRF52
+    concurrency::LockGuard g(spiLock);
+#endif
+
+    const uint8_t *src = static_cast<const uint8_t *>(buf);
+    uint32_t remain = len;
+    while (remain > 0)
+    {
+      // Adafruit waitUntilReady() requires both WIP and WEL clear.
+      // Force-disable WEL before each page write to avoid potential hang.
+      pwrlogExtFlash.writeDisable();
+      if (!waitExtFlashWipClearWithTimeout("pre-write-page", kExtFlashWaitTimeoutMs))
+      {
+        LOG_WARN("[EXTTEST] write pre-wait timeout addr=0x%08lx", (unsigned long)addr);
+        return false;
+      }
+
+      const uint32_t leftOnPage = kExtFlashPageSize - (addr & (kExtFlashPageSize - 1U));
+      const uint32_t toWrite = (remain < leftOnPage) ? remain : leftOnPage;
+      const uint32_t wrote = pwrlogExtFlash.writeBuffer(addr, src, toWrite);
+      if (wrote != toWrite)
+      {
+        LOG_WARN("[EXTTEST] write page failed addr=0x%08lx req=%lu got=%lu", (unsigned long)addr, (unsigned long)toWrite,
+                 (unsigned long)wrote);
+        return false;
+      }
+
+      if (!waitExtFlashWipClearWithTimeout("post-write-page", kExtFlashWaitTimeoutMs))
+      {
+        LOG_WARN("[EXTTEST] write post-wait timeout addr=0x%08lx", (unsigned long)addr);
+        return false;
+      }
+      pwrlogExtFlash.writeDisable();
+
+      addr += toWrite;
+      src += toWrite;
+      remain -= toWrite;
+    }
+
+    return true;
   }
 
   bool ExtFlashRawErase(uint32_t addr, uint32_t len)
   {
     if (len == 0 || !ensureExtFlashReady())
       return false;
+#ifdef ARCH_NRF52
+    concurrency::LockGuard g(spiLock);
+#endif
 
     const uint32_t startSector = addr / kExtFlashSectorSize;
     const uint32_t endAddr = addr + len - 1U;
@@ -178,14 +271,16 @@ namespace Esp32PowerLog
       {
         return false;
       }
+      if (!waitExtFlashWipClearWithTimeout("erase-sector", kExtFlashWaitTimeoutMs))
+      {
+        return false;
+      }
     }
-    pwrlogExtFlash.waitUntilReady();
     return true;
   }
 
   void ExtFlashSelfTest()
   {
-    LOG_INFO("[EXTTEST] start");
     probeRawExternalFlash();
 
     if (!ensureExtFlashReady())
@@ -230,8 +325,6 @@ namespace Esp32PowerLog
       }
       else if (ExtFlashRawRead(PWRLOG_EXT_ADDR, &b, sizeof(b)))
       {
-        LOG_INFO("[PWRLOG][EXT] load: readBytes=%u need=%u", (unsigned)sizeof(b), (unsigned)sizeof(b));
-        LOG_INFO("[PWRLOG] load source: external");
         return true;
       }
       else
@@ -290,15 +383,29 @@ namespace Esp32PowerLog
       {
         LOG_WARN("[PWRLOG][EXT] blob too large (%u), fallback internal", (unsigned)sizeof(PowerLogBlob));
       }
-      else if (ExtFlashRawErase(PWRLOG_EXT_ADDR, kExtFlashSectorSize) &&
-               ExtFlashRawWrite(PWRLOG_EXT_ADDR, &b, sizeof(b)))
-      {
-        LOG_INFO("[PWRLOG][EXT] save: wrote=%u addr=0x%08x", (unsigned)sizeof(b), (unsigned)PWRLOG_EXT_ADDR);
-        return true;
-      }
       else
       {
-        LOG_WARN("[PWRLOG][EXT] save failed, fallback internal");
+        const bool eraseOk = ExtFlashRawErase(PWRLOG_EXT_ADDR, kExtFlashSectorSize);
+        if (!eraseOk)
+        {
+          LOG_WARN("[PWRLOG][EXT] erase failed, fallback internal");
+        }
+        else
+        {
+          const bool writeOk = ExtFlashRawWrite(PWRLOG_EXT_ADDR, &b, sizeof(b));
+          if (!writeOk)
+          {
+            LOG_WARN("[PWRLOG][EXT] write failed, fallback internal");
+          }
+          else if (!waitExtFlashWipClearWithTimeout("pwrlog-write", kExtFlashWaitTimeoutMs))
+          {
+            LOG_WARN("[PWRLOG][EXT] write wait timeout, fallback internal");
+          }
+          else
+          {
+            return true;
+          }
+        }
       }
     }
     else
