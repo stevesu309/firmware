@@ -18,7 +18,7 @@
 #define default_sds_secs IF_ROUTER(ONE_DAY, UINT32_MAX)                           // Default to forever super deep sleep  // 超级深度睡眠间隔：路由器=永久，普通节点=永久
 #define default_ls_secs IF_ROUTER(ONE_DAY, 5 * 60)                                // 本地存储间隔：路由器=1天，普通节点=5分钟
 #define default_min_wake_secs 10                                                  // 最小唤醒时间：10秒
-#define default_screen_on_secs IF_ROUTER(1, 60 * 10)                              // 屏幕点亮时间：路由器=1秒，普通节点=600秒
+#define default_screen_on_secs IF_ROUTER(1, 60 * 5)                               // 屏幕点亮时间：路由器=1秒，普通节点=300秒
 #define default_node_info_broadcast_secs 3 * 60 * 60                              // 节点信息广播间隔：3小时
 #define default_neighbor_info_broadcast_secs 6 * 60 * 60                          // 邻居信息广播间隔：6小时
 #define min_node_info_broadcast_secs 60 * 60                                      // No regular broadcasts of more than once an hour
