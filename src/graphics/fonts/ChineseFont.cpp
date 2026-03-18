@@ -4,6 +4,11 @@
 #include "DebugConfiguration.h"
 #include <new>
 
+#ifndef CNFONT_EMBED_INTERNAL_TABLE
+#define CNFONT_EMBED_INTERNAL_TABLE 0
+#endif
+
+#if CNFONT_EMBED_INTERNAL_TABLE
 const ChineseFont chineseFont[] = {
     {"一", {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
     {"丁", {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80}},
@@ -2125,6 +2130,9 @@ const ChineseFont chineseFont[] = {
 // total chars: 2116
 
 const unsigned int chineseFontCount = sizeof(chineseFont) / sizeof(chineseFont[0]);
+#else
+const unsigned int chineseFontCount = 0;
+#endif
 
 namespace
 {
@@ -2164,6 +2172,10 @@ namespace
 
     static bool exportChineseFontToExternal()
     {
+#if !CNFONT_EMBED_INTERNAL_TABLE
+        LOG_WARN("[CNFONT][EXT] embedded table disabled, skip export");
+        return false;
+#else
         ChineseFontFileHeader header = {kChineseFontMagic, kChineseFontVersion, chineseFontCount, 0};
         const uint32_t keyBytes = chineseFontCount * kUtf8KeySize;
         const uint32_t bitmapBytes = chineseFontCount * kBitmapSize;
@@ -2222,6 +2234,7 @@ namespace
         LOG_INFO("[CNFONT][EXT] exported count=%lu bytes=%lu base=0x%08lx",
                  (unsigned long)chineseFontCount, (unsigned long)totalBytes, (unsigned long)kChineseFontBaseAddr);
         return true;
+#endif
     }
 
     static bool ensureExternalChineseFont()
@@ -2244,8 +2257,16 @@ namespace
             LOG_WARN("[CNFONT][EXT] read header failed");
             return false;
         }
-        if (header.magic != kChineseFontMagic || header.version != kChineseFontVersion || header.count != chineseFontCount)
+        const bool headerBasicInvalid = (header.magic != kChineseFontMagic || header.version != kChineseFontVersion || header.count == 0);
+#if CNFONT_EMBED_INTERNAL_TABLE
+        const bool headerCountMismatch = (header.count != chineseFontCount);
+#else
+        const bool headerCountMismatch = false;
+#endif
+
+        if (headerBasicInvalid || headerCountMismatch)
         {
+#if CNFONT_EMBED_INTERNAL_TABLE
             LOG_INFO("[CNFONT][EXT] header mismatch, try rebuild (magic=0x%08lx ver=%lu count=%lu)",
                      (unsigned long)header.magic, (unsigned long)header.version, (unsigned long)header.count);
             if (!exportChineseFontToExternal())
@@ -2258,6 +2279,10 @@ namespace
                 LOG_WARN("[CNFONT][EXT] read header after rebuild failed");
                 return false;
             }
+#else
+            LOG_WARN("[CNFONT][EXT] invalid external header and embedded table disabled");
+            return false;
+#endif
         }
 
         if (header.magic != kChineseFontMagic || header.version != kChineseFontVersion || header.count == 0)
@@ -2361,6 +2386,7 @@ bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf
         gExternalFontLoggedFallback = true;
     }
 
+#if CNFONT_EMBED_INTERNAL_TABLE
     for (unsigned int i = 0; i < chineseFontCount; i++)
     {
         if (strcmp(chineseFont[i].utf8, utf8) == 0)
@@ -2381,6 +2407,7 @@ bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf
             return true;
         }
     }
+#endif
 
     return false;
 }

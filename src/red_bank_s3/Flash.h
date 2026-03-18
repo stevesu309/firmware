@@ -33,4 +33,10 @@ namespace Esp32PowerLog
   bool ExtFlashRawWrite(uint32_t addr, const void *buf, uint32_t len);
   bool ExtFlashRawErase(uint32_t addr, uint32_t len);
 
+  /// 中文字库镜像导入接口：用于主机分块上传并直接写入外置 flash。
+  bool ExtFlashBeginChineseFontUpload();
+  bool ExtFlashWriteChineseFontUploadChunk(uint32_t offset, const void *buf, uint32_t len);
+  bool ExtFlashFinishChineseFontUpload(uint32_t totalBytes);
+  void ExtFlashAbortChineseFontUpload();
+
 } // namespace Esp32PowerLog

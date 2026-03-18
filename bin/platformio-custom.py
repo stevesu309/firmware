@@ -2,6 +2,7 @@
 # trunk-ignore-all(ruff/F821)
 # trunk-ignore-all(flake8/F821): For SConstruct imports
 import sys
+import os
 from os.path import join
 import subprocess
 import json
@@ -86,6 +87,112 @@ if platform.name == "nordicnrf52":
     env.AddPostAction("$BUILD_DIR/${PROGNAME}.hex",
                       env.VerboseAction(f"\"{sys.executable}\" ./bin/uf2conv.py $BUILD_DIR/firmware.hex -c -f 0xADA52840 -o $BUILD_DIR/firmware.uf2",
                                         "Generating UF2 file"))
+
+
+def has_cpp_define(env_obj, define_name, expected_value=None):
+    for define in env_obj.get("CPPDEFINES", []):
+        if isinstance(define, tuple):
+            name, value = define
+            if name == define_name:
+                if expected_value is None:
+                    return True
+                return str(value) == str(expected_value)
+        elif define == define_name and expected_value is None:
+            return True
+    return False
+
+
+def get_project_option_safe(option_name, default=None):
+    try:
+        return env.GetProjectOption(option_name)
+    except Exception:
+        return default
+
+
+def resolve_serial_port():
+    candidates = [
+        get_project_option_safe("monitor_port"),
+        get_project_option_safe("upload_port"),
+        env.get("MONITOR_PORT"),
+        env.get("UPLOAD_PORT"),
+    ]
+
+    for candidate in candidates:
+        if candidate and "$" not in str(candidate):
+            return str(candidate)
+
+    upload_port = env.subst("$UPLOAD_PORT")
+    if upload_port and "$" not in upload_port:
+        return upload_port
+
+    return None
+
+
+def normalize_serial_port(port):
+    if not port:
+        return port
+    if port.startswith("/dev/cu."):
+        tty_port = "/dev/tty." + port[len("/dev/cu.") :]
+        if os.path.exists(tty_port):
+            return tty_port
+    return port
+
+
+def should_auto_upload_chinese_font():
+    if platform.name != "nordicnrf52":
+        return False
+
+    if env.get("PIOENV") != "t-echo":
+        return False
+
+    if not has_cpp_define(env, "CNFONT_EMBED_INTERNAL_TABLE", 0):
+        return False
+
+    return get_project_option_safe("custom_upload_external_chinese_font", "true").lower() == "true"
+
+
+def auto_upload_chinese_font(source, target, env):
+    if not should_auto_upload_chinese_font():
+        return
+
+    port = resolve_serial_port()
+    if not port:
+        print("Skipping external Chinese font upload: no serial port configured")
+        return
+    port = normalize_serial_port(port)
+
+    project_dir = env["PROJECT_DIR"]
+    python_exe = sys.executable
+    font_bin = join(project_dir, "bin", "chinese_font.bin")
+    generate_script = join(project_dir, "bin", "generate_chinese_font_bin.py")
+    upload_script = join(project_dir, "bin", "upload_chinese_font_to_device.py")
+    baud = str(get_project_option_safe("monitor_speed", env.get("MONITOR_SPEED", 115200)))
+
+    print("Generating external Chinese font image")
+    subprocess.check_call([python_exe, generate_script, "--output", font_bin], cwd=project_dir)
+
+    print(f"Uploading external Chinese font image via {port}")
+    subprocess.check_call(
+        [
+            python_exe,
+            upload_script,
+            "--port",
+            port,
+            "--baud",
+            baud,
+            "--input",
+            font_bin,
+            "--wait-seconds",
+            "20",
+            "--boot-wait",
+            "6",
+        ],
+        cwd=project_dir,
+    )
+
+
+if should_auto_upload_chinese_font():
+    env.AddPostAction("upload", auto_upload_chinese_font)
 
 Import("projenv")
 

@@ -62,6 +62,22 @@ namespace Esp32PowerLog
   // Reserve one 4KB sector in mid flash area for pwrlog raw storage.
   // Avoid top-end sectors to reduce risk of vendor-reserved/protected regions.
   static constexpr uint32_t PWRLOG_EXT_ADDR = 0x00100000U;
+  static constexpr uint32_t CNFONT_EXT_ADDR = 0x00300000U;
+  static constexpr uint32_t CNFONT_EXT_MAX_BYTES = 0x00080000U; // 512KB reserved region
+  static constexpr uint32_t CNFONT_MAGIC = 0x43484631U;         // "CHF1"
+  static constexpr uint32_t CNFONT_VERSION = 1U;
+  static constexpr uint32_t CNFONT_KEY_SIZE = 4U;
+  static constexpr uint32_t CNFONT_BITMAP_SIZE = 32U;
+
+#pragma pack(push, 1)
+  struct ChineseFontImageHeader
+  {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t count;
+    uint32_t reserved;
+  };
+#pragma pack(pop)
 
 #if defined(ARCH_NRF52) && defined(PWRLOG_USE_EXTERNAL_QSPI)
   static Adafruit_FlashTransport_QSPI pwrlogExtFlashTransport;
@@ -279,6 +295,47 @@ namespace Esp32PowerLog
     return true;
   }
 
+  bool ExtFlashBeginChineseFontUpload()
+  {
+    return ExtFlashRawErase(CNFONT_EXT_ADDR, CNFONT_EXT_MAX_BYTES);
+  }
+
+  bool ExtFlashWriteChineseFontUploadChunk(uint32_t offset, const void *buf, uint32_t len)
+  {
+    if (!buf || len == 0)
+      return false;
+    if (offset > CNFONT_EXT_MAX_BYTES || len > (CNFONT_EXT_MAX_BYTES - offset))
+      return false;
+
+    return ExtFlashRawWrite(CNFONT_EXT_ADDR + offset, buf, len);
+  }
+
+  bool ExtFlashFinishChineseFontUpload(uint32_t totalBytes)
+  {
+    if (totalBytes < sizeof(ChineseFontImageHeader) || totalBytes > CNFONT_EXT_MAX_BYTES)
+      return false;
+
+    ChineseFontImageHeader header = {};
+    if (!ExtFlashRawRead(CNFONT_EXT_ADDR, &header, sizeof(header)))
+      return false;
+
+    if (header.magic != CNFONT_MAGIC || header.version != CNFONT_VERSION || header.count == 0)
+      return false;
+
+    const uint32_t keyBytes = header.count * CNFONT_KEY_SIZE;
+    const uint32_t bitmapBytes = header.count * CNFONT_BITMAP_SIZE;
+    const uint32_t expectedBytes = sizeof(header) + keyBytes + bitmapBytes;
+    if (expectedBytes != totalBytes || expectedBytes > CNFONT_EXT_MAX_BYTES)
+      return false;
+
+    return true;
+  }
+
+  void ExtFlashAbortChineseFontUpload()
+  {
+    (void)ExtFlashRawErase(CNFONT_EXT_ADDR, kExtFlashSectorSize);
+  }
+
   void ExtFlashSelfTest()
   {
     probeRawExternalFlash();
@@ -295,6 +352,10 @@ namespace Esp32PowerLog
   bool ExtFlashRawRead(uint32_t, void *, uint32_t) { return false; }
   bool ExtFlashRawWrite(uint32_t, const void *, uint32_t) { return false; }
   bool ExtFlashRawErase(uint32_t, uint32_t) { return false; }
+  bool ExtFlashBeginChineseFontUpload() { return false; }
+  bool ExtFlashWriteChineseFontUploadChunk(uint32_t, const void *, uint32_t) { return false; }
+  bool ExtFlashFinishChineseFontUpload(uint32_t) { return false; }
+  void ExtFlashAbortChineseFontUpload() {}
 #endif
 
   static bool pwrlogLoadBackend(PowerLogBlob &b)
