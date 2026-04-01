@@ -27,7 +27,7 @@
 /*----------------------------------------------------------------------------
  *        Headers
  *----------------------------------------------------------------------------*/
-
+#include "WVariant.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -72,7 +72,7 @@ extern "C"
 
 #define BATTERY_PIN PIN_A0
 
-  static const uint8_t A0 = PIN_A0;
+  // static const uint8_t A0 = PIN_A0;
 
 #define ADC_RESOLUTION 14
 
@@ -201,10 +201,4 @@ External serial flash WP25R1635FZUIL0
 
 #ifdef __cplusplus
 }
-#endif
-
-/*----------------------------------------------------------------------------
- *        Arduino objects - C++ only
- *----------------------------------------------------------------------------*/
-
 #endif

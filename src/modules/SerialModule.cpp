@@ -61,7 +61,7 @@ SerialModule *serialModule;
 SerialModuleRadio *serialModuleRadio;
 
 #if defined(TTGO_T_ECHO) || defined(T_ECHO_LITE) || defined(CANARYONE) || defined(MESHLINK) || defined(ELECROW_ThinkNode_M1) || \
-    defined(ELECROW_ThinkNode_M5)
+    defined(ELECROW_ThinkNode_M5) || defined(REDCOAST_SOLO_915)
 SerialModule::SerialModule() : StreamAPI(&Serial), concurrency::OSThread("Serial") {}
 static Print *serialPrint = &Serial;
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
@@ -191,7 +191,7 @@ int32_t SerialModule::runOnce()
                 Serial.setTimeout(moduleConfig.serial.timeout > 0 ? moduleConfig.serial.timeout : TIMEOUT);
             }
 #elif !defined(TTGO_T_ECHO) && !defined(T_ECHO_LITE) && !defined(CANARYONE) && !defined(MESHLINK) && \
-    !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5)
+    !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5) && !defined(REDCOAST_SOLO_915)
             if (moduleConfig.serial.rxd && moduleConfig.serial.txd)
             {
 #ifdef ARCH_RP2040
@@ -263,7 +263,7 @@ int32_t SerialModule::runOnce()
             }
 
 #if !defined(TTGO_T_ECHO) && !defined(T_ECHO_LITE) && !defined(CANARYONE) && !defined(MESHLINK) && \
-    !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5)
+    !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5) && !defined(REDCOAST_SOLO_915)
             else if ((moduleConfig.serial.mode == meshtastic_ModuleConfig_SerialConfig_Serial_Mode_WS85))
             {
                 processWXSerial();
@@ -579,7 +579,7 @@ ParsedLine parseLine(const char *line)
 void SerialModule::processWXSerial()
 {
 #if !defined(TTGO_T_ECHO) && !defined(T_ECHO_LITE) && !defined(CANARYONE) && !defined(CONFIG_IDF_TARGET_ESP32C6) && \
-    !defined(MESHLINK) && !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5)
+    !defined(MESHLINK) && !defined(ELECROW_ThinkNode_M1) && !defined(ELECROW_ThinkNode_M5) && !defined(REDCOAST_SOLO_915)
     static unsigned int lastAveraged = 0;
     static unsigned int averageIntervalMillis = 300000; // 5 minutes hard coded.
     static double dir_sum_sin = 0;
