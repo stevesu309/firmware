@@ -580,13 +580,13 @@ ledPeriodic = new Periodic("Blink", ledBlinker);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
     LOG_INFO("Power setup complete");
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
-    Esp32PowerLog::ExtFlashSelfTest();
+    // Esp32PowerLog::ExtFlashSelfTest();
     // 定时保存电量日志（默认每小时一次）
     // Esp32PowerLog::PwrLogClear(); // 如需清除一次数据，取消注释、刷机启动一次后再注释回去
-    Esp32PowerLog::PwrLogStart(10U * 60U * 1000U);
+    // Esp32PowerLog::PwrLogStart(2U * 60U * 1000U);
 
 #endif
-    Esp32PowerLog::PwrLogDump(72);
+    // Esp32PowerLog::PwrLogDump(72);
 #if !MESHTASTIC_EXCLUDE_I2C
 
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
@@ -1805,6 +1805,8 @@ SPI.setFrequency(4000000);
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
+    LOG_INFO("CPU frequency  : %7u MHz", ESP.getCpuFreqMHz());
+
     const uint32_t freeHeap = ESP.getFreeHeap();
     const uint32_t maxBlock = ESP.getMaxAllocHeap();
     const uint32_t minFree = ESP.getMinFreeHeap();

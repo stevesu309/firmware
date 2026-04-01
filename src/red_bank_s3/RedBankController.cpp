@@ -6,10 +6,9 @@
 #include "variant.h"
 #include "graphics/Screen.h"
 #include "graphics/EInkDisplay2.h"
-#include "GxEPD2_BW.h"
+// #include "GxEPD2_BW.h"
 #include "AntennaManager.h"
 #include "input/InputBroker.h"
-#include "GxEPD2_BW.h"
 #include <algorithm>
 #include "meshUtils.h"
 namespace RedBankS3

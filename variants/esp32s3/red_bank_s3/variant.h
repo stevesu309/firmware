@@ -56,7 +56,7 @@
 #define PIN_GPS_RESET (39) // GNSS模块复位引脚
 
 #define PIN_LORA_EN 42 // LoRa 模块电源控制引脚
-
+#define SX126X_POWER_EN 42
 // #define HAS_GPS
 #define PIN_GPS_EN (21)       // GNSS模块电源控制引脚
 #define GPS_EN_ACTIVE (HIGH)  // 输出使能为高电平

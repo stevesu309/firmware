@@ -395,26 +395,26 @@ void PowerFSM_setup()
                              config.device.role == meshtastic_Config_DeviceConfig_Role_TAK_TRACKER ||
                              config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR;
 
-    if ((isRouter || config.power.is_power_saving) && !isWifiAvailable() && !isTrackerOrSensor)
-    {
-        powerFSM.add_timed_transition(&stateNB, &stateLS,
-                                      Default::getConfiguredOrDefaultMs(config.power.min_wake_secs, default_min_wake_secs), NULL,
-                                      "Min wake timeout");
+    // if ((isRouter || config.power.is_power_saving) && !isWifiAvailable() && !isTrackerOrSensor)
+    // {
+    //     powerFSM.add_timed_transition(&stateNB, &stateLS,
+    //                                   Default::getConfiguredOrDefaultMs(config.power.min_wake_secs, default_min_wake_secs), NULL,
+    //                                   "Min wake timeout");
 
-        // If ESP32 and using power-saving, timer mover from DARK to light-sleep
-        // Also serves purpose of the old DARK to DARK transition(?) See https://github.com/meshtastic/firmware/issues/3517
-        powerFSM.add_timed_transition(
-            &stateDARK, &stateLS,
-            Default::getConfiguredOrDefaultMs(config.power.wait_bluetooth_secs, default_wait_bluetooth_secs), NULL,
-            "Bluetooth timeout");
-    }
-    else
-    {
-        // If ESP32, but not using power-saving, check periodically if config has drifted out of stateDark
-        powerFSM.add_timed_transition(&stateDARK, &stateDARK,
-                                      Default::getConfiguredOrDefaultMs(config.display.screen_on_secs, default_screen_on_secs),
-                                      NULL, "Screen-on timeout");
-    }
+    //     // If ESP32 and using power-saving, timer mover from DARK to light-sleep
+    //     // Also serves purpose of the old DARK to DARK transition(?) See https://github.com/meshtastic/firmware/issues/3517
+    //     powerFSM.add_timed_transition(
+    //         &stateDARK, &stateLS,
+    //         Default::getConfiguredOrDefaultMs(config.power.wait_bluetooth_secs, default_wait_bluetooth_secs), NULL,
+    //         "Bluetooth timeout");
+    // }
+    // else
+    // {
+    // If ESP32, but not using power-saving, check periodically if config has drifted out of stateDark
+    powerFSM.add_timed_transition(&stateDARK, &stateDARK,
+                                  Default::getConfiguredOrDefaultMs(config.display.screen_on_secs, default_screen_on_secs),
+                                  NULL, "Screen-on timeout");
+    // }
 #endif // HAS_WIFI || !defined(MESHTASTIC_EXCLUDE_WIFI)
 
 #else // (not) ARCH_ESP32
