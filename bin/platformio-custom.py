@@ -142,13 +142,19 @@ def should_auto_upload_chinese_font():
     if platform.name != "nordicnrf52":
         return False
 
-    if env.get("PIOENV") != "t-echo":
-        return False
-
     if not has_cpp_define(env, "CNFONT_EMBED_INTERNAL_TABLE", 0):
         return False
 
     return get_project_option_safe("custom_upload_external_chinese_font", "true").lower() == "true"
+
+
+def append_optional_arg(cmd, option_name, option_value):
+    if option_value is None:
+        return
+    option_value = str(option_value).strip()
+    if option_value == "":
+        return
+    cmd.extend([option_name, option_value])
 
 
 def auto_upload_chinese_font(source, target, env):
@@ -163,32 +169,75 @@ def auto_upload_chinese_font(source, target, env):
 
     project_dir = env["PROJECT_DIR"]
     python_exe = sys.executable
-    font_bin = join(project_dir, "bin", "chinese_font.bin")
+    font_source = str(get_project_option_safe("custom_external_font_source", "src/graphics/fonts/ChineseFont.cpp"))
+    font_output = str(get_project_option_safe("custom_external_font_output", "bin/chinese_font.bin"))
+    font_target = str(get_project_option_safe("custom_external_font_target", "qspi://chinese_font.bin"))
+    font_type_name = str(get_project_option_safe("custom_external_font_type_name", "ChineseFont"))
+    font_array_name = str(get_project_option_safe("custom_external_font_array_name", "chineseFont"))
+    key_size = get_project_option_safe("custom_external_font_key_size", "4")
+    glyph_width = get_project_option_safe("custom_external_font_glyph_width")
+    glyph_height = get_project_option_safe("custom_external_font_glyph_height")
+    bitmap_size = get_project_option_safe("custom_external_font_bitmap_size")
+    font_magic = get_project_option_safe("custom_external_font_magic", "0x43484631")
+    font_version = get_project_option_safe("custom_external_font_version", "1")
+    font_max_bytes = get_project_option_safe("custom_external_font_max_bytes", "0x00080000")
+
+    font_bin = join(project_dir, font_output)
     generate_script = join(project_dir, "bin", "generate_chinese_font_bin.py")
     upload_script = join(project_dir, "bin", "upload_chinese_font_to_device.py")
     baud = str(get_project_option_safe("monitor_speed", env.get("MONITOR_SPEED", 115200)))
 
     print("Generating external Chinese font image")
-    subprocess.check_call([python_exe, generate_script, "--output", font_bin], cwd=project_dir)
+    generate_cmd = [
+        python_exe,
+        generate_script,
+        "--input",
+        font_source,
+        "--output",
+        font_bin,
+        "--font-type-name",
+        font_type_name,
+        "--font-array-name",
+        font_array_name,
+        "--key-size",
+        str(key_size),
+        "--magic",
+        str(font_magic),
+        "--version",
+        str(font_version),
+    ]
+    append_optional_arg(generate_cmd, "--glyph-width", glyph_width)
+    append_optional_arg(generate_cmd, "--glyph-height", glyph_height)
+    append_optional_arg(generate_cmd, "--bitmap-size", bitmap_size)
+    subprocess.check_call(generate_cmd, cwd=project_dir)
 
     print(f"Uploading external Chinese font image via {port}")
-    subprocess.check_call(
-        [
-            python_exe,
-            upload_script,
-            "--port",
-            port,
-            "--baud",
-            baud,
-            "--input",
-            font_bin,
-            "--wait-seconds",
-            "20",
-            "--boot-wait",
-            "6",
-        ],
-        cwd=project_dir,
-    )
+    upload_cmd = [
+        python_exe,
+        upload_script,
+        "--port",
+        port,
+        "--baud",
+        baud,
+        "--input",
+        font_bin,
+        "--target-name",
+        font_target,
+        "--key-size",
+        str(key_size),
+        "--magic",
+        str(font_magic),
+        "--version",
+        str(font_version),
+        "--max-bytes",
+        str(font_max_bytes),
+        "--wait-seconds",
+        "20",
+        "--boot-wait",
+        "6",
+    ]
+    append_optional_arg(upload_cmd, "--bitmap-size", bitmap_size)
+    subprocess.check_call(upload_cmd, cwd=project_dir)
 
 
 if should_auto_upload_chinese_font():

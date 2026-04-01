@@ -55,6 +55,8 @@ MAX_FRAME_SIZE = 512
 CHFONT_MAGIC = 0x43484631
 CHFONT_VERSION = 1
 CHFONT_MAX_BYTES = 0x00080000
+CHFONT_KEY_SIZE = 4
+CHFONT_BITMAP_SIZE = 32
 SPECIAL_NONCE_ONLY_CONFIG = 69420
 
 
@@ -137,6 +139,10 @@ def encode_toradio_heartbeat(nonce: int) -> bytes:
 def encode_toradio_want_config(nonce: int) -> bytes:
     body = encode_varint_field(TORADIO_WANT_CONFIG_ID_TAG, nonce)
     return bytes((START1, START2, (len(body) >> 8) & 0xFF, len(body) & 0xFF)) + body
+
+
+def parse_int_auto(value: str) -> int:
+    return int(value, 0)
 
 
 def parse_xmodem_message(buf: bytes) -> dict[str, int | bytes]:
@@ -298,23 +304,24 @@ def ensure_packet_mode(port: serial.Serial, retries: int, timeout_s: float) -> N
             time.sleep(0.5)
 
 
-def validate_font_image(blob: bytes) -> None:
+def validate_font_image(blob: bytes, magic_expected: int, version_expected: int, key_size: int, bitmap_size: int,
+                        max_bytes: int) -> None:
     if len(blob) < 16:
         raise ValueError("字体文件过小，缺少头部")
-    if len(blob) > CHFONT_MAX_BYTES:
-        raise ValueError(f"字体文件过大: {len(blob)} > {CHFONT_MAX_BYTES}")
+    if len(blob) > max_bytes:
+        raise ValueError(f"字体文件过大: {len(blob)} > {max_bytes}")
 
     magic = int.from_bytes(blob[0:4], "little")
     version = int.from_bytes(blob[4:8], "little")
     count = int.from_bytes(blob[8:12], "little")
-    if magic != CHFONT_MAGIC:
+    if magic != magic_expected:
         raise ValueError(f"magic 不匹配: 0x{magic:08x}")
-    if version != CHFONT_VERSION:
+    if version != version_expected:
         raise ValueError(f"version 不匹配: {version}")
     if count == 0:
         raise ValueError("count 为 0")
 
-    expected = 16 + count * 4 + count * 32
+    expected = 16 + count * key_size + count * bitmap_size
     if expected != len(blob):
         raise ValueError(f"文件大小不匹配: 头部推导 {expected}，实际 {len(blob)}")
 
@@ -351,12 +358,13 @@ def send_with_retry(
     raise RuntimeError("发送失败")
 
 
-def upload_font(port: serial.Serial, blob: bytes, retries: int, erase_timeout: float, packet_timeout: float) -> None:
+def upload_font(port: serial.Serial, blob: bytes, retries: int, erase_timeout: float, packet_timeout: float,
+                target_name: bytes) -> None:
     port.reset_input_buffer()
     port.reset_output_buffer()
 
     print("开始握手并请求设备进入中文字库上传模式...")
-    start_frame = encode_toradio_xmodem(CTRL_SOH, 0, TARGET_NAME)
+    start_frame = encode_toradio_xmodem(CTRL_SOH, 0, target_name)
     send_with_retry(port, start_frame, expected_seq=0, retries=retries, timeout_s=erase_timeout)
 
     total_packets = (len(blob) + PACKET_SIZE - 1) // PACKET_SIZE
@@ -475,6 +483,12 @@ def main() -> int:
     parser.add_argument("--port", required=True, help="Serial port, e.g. /dev/tty.usbmodemXXXX")
     parser.add_argument("--baud", type=int, default=115200, help="Serial baud rate")
     parser.add_argument("--input", default="bin/chinese_font.bin", help="Path to chinese_font.bin")
+    parser.add_argument("--target-name", default=TARGET_NAME.decode("utf-8"), help="Device-side XMODEM target name")
+    parser.add_argument("--magic", type=parse_int_auto, default=CHFONT_MAGIC, help="Expected image magic")
+    parser.add_argument("--version", type=int, default=CHFONT_VERSION, help="Expected image version")
+    parser.add_argument("--key-size", type=int, default=CHFONT_KEY_SIZE, help="UTF-8 key size in bytes")
+    parser.add_argument("--bitmap-size", type=int, default=CHFONT_BITMAP_SIZE, help="Bitmap size per glyph in bytes")
+    parser.add_argument("--max-bytes", type=parse_int_auto, default=CHFONT_MAX_BYTES, help="Maximum accepted image size")
     parser.add_argument("--retries", type=int, default=8, help="Retry count for each packet")
     parser.add_argument("--erase-timeout", type=float, default=20.0, help="Timeout for the initial erase/prepare step")
     parser.add_argument("--packet-timeout", type=float, default=5.0, help="Timeout for each data packet")
@@ -485,11 +499,20 @@ def main() -> int:
 
     input_path = Path(args.input)
     blob = input_path.read_bytes()
-    validate_font_image(blob)
+    validate_font_image(
+        blob,
+        magic_expected=args.magic,
+        version_expected=args.version,
+        key_size=args.key_size,
+        bitmap_size=args.bitmap_size,
+        max_bytes=args.max_bytes,
+    )
+    target_name = args.target_name.encode("utf-8")
 
     print(f"输入文件: {input_path}")
     print(f"文件大小: {len(blob)} 字节")
     print(f"串口: {args.port} @ {args.baud}")
+    print(f"目标: {args.target_name}")
 
     wait_for_port(args.port, args.wait_seconds)
 
@@ -502,7 +525,14 @@ def main() -> int:
         api_timeout=5.0,
         config_timeout=args.config_timeout,
     ) as port:
-        upload_font(port, blob, retries=args.retries, erase_timeout=args.erase_timeout, packet_timeout=args.packet_timeout)
+        upload_font(
+            port,
+            blob,
+            retries=args.retries,
+            erase_timeout=args.erase_timeout,
+            packet_timeout=args.packet_timeout,
+            target_name=target_name,
+        )
 
     return 0
 
