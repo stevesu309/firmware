@@ -2136,12 +2136,17 @@ const unsigned int chineseFontCount = 0;
 
 namespace
 {
-    static constexpr uint32_t kChineseFontMagic = 0x43484631; // "CHF1"
-    static constexpr uint32_t kChineseFontVersion = 1;
-    static constexpr uint32_t kChineseFontBaseAddr = 0x00300000U;
-    static constexpr uint32_t kChineseFontMaxBytes = 0x00080000U; // 512KB reserved region
-    static constexpr uint32_t kUtf8KeySize = 4;
-    static constexpr uint32_t kBitmapSize = 32;
+    static constexpr uint32_t kChineseFontMagic = CNFONT_CFG_MAGIC;
+    static constexpr uint32_t kChineseFontVersion = CNFONT_CFG_VERSION;
+    static constexpr uint32_t kChineseFontBaseAddr = CNFONT_CFG_EXT_ADDR;
+    static constexpr uint32_t kChineseFontMaxBytes = CNFONT_CFG_MAX_BYTES;
+    static constexpr uint32_t kUtf8KeySize = CNFONT_CFG_KEY_SIZE;
+    static constexpr uint32_t kBitmapSize = CNFONT_CFG_BITMAP_SIZE;
+    static constexpr uint32_t kGlyphWidth = CNFONT_CFG_GLYPH_WIDTH;
+    static constexpr uint32_t kGlyphHeight = CNFONT_CFG_GLYPH_HEIGHT;
+    static constexpr uint32_t kBytesPerRow = (kGlyphWidth + 7U) / 8U;
+    static constexpr int16_t kLineHeight = CNFONT_CFG_LINE_HEIGHT;
+    static constexpr int16_t kGlyphYOffset = CNFONT_CFG_Y_OFFSET;
 
     struct ChineseFontFileHeader
     {
@@ -2352,6 +2357,22 @@ namespace
         const uint32_t bitmapOffset = sizeof(ChineseFontFileHeader) + keyBytes + (static_cast<uint32_t>(foundIndex) * kBitmapSize);
         return Esp32PowerLog::ExtFlashRawRead(kChineseFontBaseAddr + bitmapOffset, outBitmap, kBitmapSize);
     }
+
+    static void drawGlyphBitmap(OLEDDisplay *display, int16_t x, int16_t y, const uint8_t *bitmap)
+    {
+        for (uint32_t row = 0; row < kGlyphHeight; ++row)
+        {
+            for (uint32_t col = 0; col < kGlyphWidth; ++col)
+            {
+                const uint32_t byteIndex = row * kBytesPerRow + (col / 8U);
+                const uint32_t bitIndex = 7U - (col % 8U);
+                if (bitmap[byteIndex] & (1U << bitIndex))
+                {
+                    display->setPixel(x + static_cast<int16_t>(col), y + static_cast<int16_t>(row) + kGlyphYOffset);
+                }
+            }
+        }
+    }
 }
 
 // 返回值：true = 找到并绘制了对应汉字；false = 未找到（调用方可做降级处理）
@@ -2365,18 +2386,7 @@ bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf
             LOG_INFO("[CNFONT][EXT] first external glyph hit");
             gExternalFontLoggedHit = true;
         }
-        for (int row = 0; row < 16; row++)
-        {
-            for (int col = 0; col < 16; col++)
-            {
-                int byteIndex = row * 2 + (col / 8);
-                int bitIndex = 7 - (col % 8);
-                if (externalBitmap[byteIndex] & (1 << bitIndex))
-                {
-                    display->setPixel(x + col, y + row - 2);
-                }
-            }
-        }
+        drawGlyphBitmap(display, x, y, externalBitmap);
         return true;
     }
 
@@ -2391,19 +2401,7 @@ bool drawChineseChar(OLEDDisplay *display, int16_t x, int16_t y, const char *utf
     {
         if (strcmp(chineseFont[i].utf8, utf8) == 0)
         {
-            const uint8_t *bitmap = chineseFont[i].bitmap;
-            for (int row = 0; row < 16; row++)
-            {
-                for (int col = 0; col < 16; col++)
-                {
-                    int byteIndex = row * 2 + (col / 8);
-                    int bitIndex = 7 - (col % 8);
-                    if (bitmap[byteIndex] & (1 << bitIndex))
-                    {
-                        display->setPixel(x + col, y + row - 2);
-                    }
-                }
-            }
+            drawGlyphBitmap(display, x, y, chineseFont[i].bitmap);
             return true;
         }
     }
@@ -2417,7 +2415,7 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
     int offset = 0;
     int16_t currentX = x;
     int16_t currentY = y;
-    int16_t lineHeight = 20; // 行高，按 20px 字体处理
+    const int16_t lineHeight = kLineHeight;
     int16_t screenWidth = display->getWidth();
 
     while (str[offset])
@@ -2490,7 +2488,7 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
             char buf[4] = {str[offset], str[offset + 1], str[offset + 2], 0};
 
             // 先尝试按内置汉字点阵绘制
-            if (currentX + 16 > screenWidth)
+            if (currentX + static_cast<int16_t>(kGlyphWidth) > screenWidth)
             {
                 currentX = x;
                 currentY += lineHeight;
@@ -2499,7 +2497,7 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
             bool drawn = drawChineseChar(display, currentX, currentY, buf);
             if (drawn)
             {
-                currentX += 16;
+                currentX += static_cast<int16_t>(kGlyphWidth);
             }
             else
             {
@@ -2512,7 +2510,7 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
                 // }
                 // display->drawString(currentX, currentY, buf);
                 // currentX += w;
-                currentX += 16; // 按汉字宽度占位
+                currentX += static_cast<int16_t>(kGlyphWidth); // 按汉字宽度占位
             }
 
             offset += 3;

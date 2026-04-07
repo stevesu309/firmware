@@ -2,6 +2,50 @@
 
 #include <stdint.h>
 
+#ifndef CNFONT_CFG_TARGET_NAME
+#define CNFONT_CFG_TARGET_NAME "qspi://chinese_font.bin"
+#endif
+
+#ifndef CNFONT_CFG_EXT_ADDR
+#define CNFONT_CFG_EXT_ADDR 0x00300000U
+#endif
+
+#ifndef CNFONT_CFG_MAX_BYTES
+#define CNFONT_CFG_MAX_BYTES 0x00080000U
+#endif
+
+#ifndef CNFONT_CFG_MAGIC
+#define CNFONT_CFG_MAGIC 0x43484631U
+#endif
+
+#ifndef CNFONT_CFG_VERSION
+#define CNFONT_CFG_VERSION 1U
+#endif
+
+#ifndef CNFONT_CFG_KEY_SIZE
+#define CNFONT_CFG_KEY_SIZE 4U
+#endif
+
+#ifndef CNFONT_CFG_BITMAP_SIZE
+#define CNFONT_CFG_BITMAP_SIZE 32U
+#endif
+
+#ifndef CNFONT_CFG_GLYPH_WIDTH
+#define CNFONT_CFG_GLYPH_WIDTH 16U
+#endif
+
+#ifndef CNFONT_CFG_GLYPH_HEIGHT
+#define CNFONT_CFG_GLYPH_HEIGHT 16U
+#endif
+
+#ifndef CNFONT_CFG_LINE_HEIGHT
+#define CNFONT_CFG_LINE_HEIGHT (CNFONT_CFG_GLYPH_HEIGHT + 4U)
+#endif
+
+#ifndef CNFONT_CFG_Y_OFFSET
+#define CNFONT_CFG_Y_OFFSET (-2)
+#endif
+
 // 通用 ESP32 电量日志工具（不绑定具体硬件型号）
 namespace Esp32PowerLog
 {

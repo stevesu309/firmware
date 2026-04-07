@@ -62,12 +62,12 @@ namespace Esp32PowerLog
   // Reserve one 4KB sector in mid flash area for pwrlog raw storage.
   // Avoid top-end sectors to reduce risk of vendor-reserved/protected regions.
   static constexpr uint32_t PWRLOG_EXT_ADDR = 0x00100000U;
-  static constexpr uint32_t CNFONT_EXT_ADDR = 0x00300000U;
-  static constexpr uint32_t CNFONT_EXT_MAX_BYTES = 0x00080000U; // 512KB reserved region
-  static constexpr uint32_t CNFONT_MAGIC = 0x43484631U;         // "CHF1"
-  static constexpr uint32_t CNFONT_VERSION = 1U;
-  static constexpr uint32_t CNFONT_KEY_SIZE = 4U;
-  static constexpr uint32_t CNFONT_BITMAP_SIZE = 32U;
+  static constexpr uint32_t CNFONT_EXT_ADDR = CNFONT_CFG_EXT_ADDR;
+  static constexpr uint32_t CNFONT_EXT_MAX_BYTES = CNFONT_CFG_MAX_BYTES;
+  static constexpr uint32_t CNFONT_MAGIC = CNFONT_CFG_MAGIC;
+  static constexpr uint32_t CNFONT_VERSION = CNFONT_CFG_VERSION;
+  static constexpr uint32_t CNFONT_KEY_SIZE = CNFONT_CFG_KEY_SIZE;
+  static constexpr uint32_t CNFONT_BITMAP_SIZE = CNFONT_CFG_BITMAP_SIZE;
 
 #pragma pack(push, 1)
   struct ChineseFontImageHeader

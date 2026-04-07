@@ -59,7 +59,7 @@ XModemAdapter xModem;
 
 namespace
 {
-constexpr const char *kExternalChineseFontTarget = "qspi://chinese_font.bin";
+constexpr const char *kExternalChineseFontTarget = CNFONT_CFG_TARGET_NAME;
 }
 
 XModemAdapter::XModemAdapter() {}
