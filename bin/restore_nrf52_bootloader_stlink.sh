@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OPENOCD_BIN_DEFAULT="$HOME/.platformio/packages/tool-openocd/bin/openocd"
 OPENOCD_SCRIPT_DIR_DEFAULT="$HOME/.platformio/packages/tool-openocd/openocd/scripts"
-BOOTLOADER_DEFAULT="$ROOT_DIR/bin/generic/Meshtastic_7.3.0_bootloader-0.9.2_s140_7.3.0.hex"
+BOOTLOADER_DEFAULT="$ROOT_DIR/bin/generic/Meshtastic_6.1.0_bootloader-0.9.2_s140_6.1.1.hex"
 ENV_DEFAULT="t-echo"
 ADAPTER_SPEED_DEFAULT="100"
 INTERFACE_DEFAULT="stlink"
@@ -44,7 +44,7 @@ usage() {
   $(basename "$0")
 
   # 指定 bootloader 并且后续上传 t-echo 固件
-  $(basename "$0") -b "$ROOT_DIR/bin/generic/Meshtastic_7.3.0_bootloader-0.9.2_s140_7.3.0.hex" -e t-echo -u
+  $(basename "$0") -b "$ROOT_DIR/bin/generic/Meshtastic_6.1.0_bootloader-0.9.2_s140_6.1.1.hex" -e t-echo -u
 
   # 使用 J-Link 执行恢复
   $(basename "$0") -i jlink
