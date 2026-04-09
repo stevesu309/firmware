@@ -167,6 +167,11 @@ RedBankS3::RedBankController *redBankController = nullptr;
 #include "red_bank_s3/Flash.h"
 #endif
 
+#if defined(REDCOAST_SOLO_915)
+#include "redcoast915/FiveWayGpioInput.h"
+redcoast915::FiveWayGpioInput *fiveWayInput = nullptr;
+#endif
+
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
 #endif
@@ -510,6 +515,11 @@ void setup()
     pinMode(LORA_CS_433, OUTPUT);
     digitalWrite(LORA_CS_433, HIGH);
 #endif
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+    fiveWayInput = new redcoast915::FiveWayGpioInput();
+    fiveWayInput->setup();
 #endif
 
     initSPI();
@@ -1923,6 +1933,12 @@ void loop()
 #if defined(RED_BANK_S3)
     redBankController->loop();
 #endif
+
+#if defined(REDCOAST_SOLO_915)
+    if (fiveWayInput)
+        fiveWayInput->loop();
+#endif
+
 #ifdef DEBUG_STACK
     static uint32_t lastPrint = 0;
     if (!Throttle::isWithinTimespanMs(lastPrint, 10 * 1000L))

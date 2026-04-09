@@ -57,11 +57,11 @@ extern "C"
 
 #define LED_STATE_ON 0 // State when LED is lit
 
-#define SW_F1 (0 + 6)
-#define SW_F2 (0 + 8)
-#define SW_F3 (0 + 9)
-#define SW_F4 (0 + 10)
-#define SW_F5 (0 + 11)
+#define SW_F1 (0 + 6)  // 确认键
+#define SW_F2 (0 + 8)  // 左键
+#define SW_F3 (0 + 9)  // 上键
+#define SW_F4 (0 + 10) // 下键
+#define SW_F5 (0 + 11) // 右键
 
 #define SW_BUT (32 + 10) // 取消键
 
