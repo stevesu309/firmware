@@ -30,11 +30,28 @@ namespace graphics
     bool test_enabled = false;
     uint8_t test_count = 0;
 
-    // RED_BANK_S3: 用于延迟显示确认对话框的静态变量
-#ifdef RED_BANK_S3
+    // RED_BANK_S3 / REDCOAST_SOLO_915: 用于延迟显示 overlay 内触发的下一个菜单，
+    // 避免当前 overlay 的 resetBanner() 抹掉新菜单的首次显示。
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    static menuHandler::screenMenus pendingOverlayMenu = menuHandler::menu_none;
     static char pendingConfirmMessage[256];
     static std::function<void()> pendingConfirmCallback;
 #endif
+
+    static void requestMenuSwitch(menuHandler::screenMenus targetMenu)
+    {
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        if (screen && NotificationRenderer::isOverlayBannerShowing())
+        {
+            pendingOverlayMenu = targetMenu;
+            screen->runNow();
+            return;
+        }
+#endif
+        menuHandler::menuQueue = targetMenu;
+        if (screen)
+            screen->runNow();
+    }
 
     void menuHandler::OnboardMessage()
     {
@@ -139,7 +156,8 @@ namespace graphics
                     config.lora.ignore_mqtt = true; // Ignore MQTT by default if region has a duty cycle limit
                 }
 #if defined(RED_BANK_S3)
-                const auto is433Region = [](meshtastic_Config_LoRaConfig_RegionCode region) {
+                const auto is433Region = [](meshtastic_Config_LoRaConfig_RegionCode region)
+                {
                     return (region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
                             region == meshtastic_Config_LoRaConfig_RegionCode_EU_433 ||
                             region == meshtastic_Config_LoRaConfig_RegionCode_UA_433 ||
@@ -200,8 +218,9 @@ namespace graphics
     {
         LOG_INFO("showConfirmationBanner called with message: %s", message);
 
-#ifdef RED_BANK_S3
-        // RED_BANK_S3: 如果在菜单回调中调用（有 overlay banner 显示），使用 menuQueue 机制延迟显示
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        // RED_BANK_S3 / REDCOAST_SOLO_915: 如果在菜单回调中调用（有 overlay banner 显示），
+        // 使用 menuQueue 机制延迟显示，避免当前 overlay 的 resetBanner() 抹掉新菜单。
         if (NotificationRenderer::isOverlayBannerShowing())
         {
             LOG_INFO("showConfirmationBanner: Overlay banner showing, using menuQueue mechanism");
@@ -626,7 +645,7 @@ namespace graphics
         screen->showOverlayBanner(bannerOptions);
     }
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
     // RED_BANK_S3: 频道历史消息页面的频道选择菜单
     void menuHandler::channelHistoryMenu()
     {
@@ -917,13 +936,11 @@ namespace graphics
         {
             if (selected == GPSToggle)
             {
-                menuQueue = gps_toggle_menu;
-                screen->runNow();
+                requestMenuSwitch(gps_toggle_menu);
             }
             else if (selected == CompassMenu)
             {
-                menuQueue = compass_point_north_menu;
-                screen->runNow();
+                requestMenuSwitch(compass_point_north_menu);
             }
             else if (selected == CompassCalibrate)
             {
@@ -1041,8 +1058,7 @@ namespace graphics
             }
             else if (selected == Back)
             {
-                menuQueue = position_base_menu;
-                screen->runNow();
+                requestMenuSwitch(position_base_menu);
             }
         };
         screen->showOverlayBanner(bannerOptions);
@@ -1075,8 +1091,7 @@ namespace graphics
             }
             else
             {
-                menuQueue = position_base_menu;
-                screen->runNow();
+                requestMenuSwitch(position_base_menu);
             }
         };
         bannerOptions.InitialSelected = config.position.gps_mode == meshtastic_Config_PositionConfig_GpsMode_ENABLED ? 1 : 2;
@@ -1936,6 +1951,19 @@ namespace graphics
 
     void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     {
+        bool processedDeferredOverlayMenu = false;
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        if (menuQueue == menu_none && pendingOverlayMenu != menu_none && !NotificationRenderer::isOverlayBannerShowing())
+        {
+            menuQueue = pendingOverlayMenu;
+            pendingOverlayMenu = menu_none;
+            processedDeferredOverlayMenu = true;
+        }
+        else if (menuQueue != menu_none)
+        {
+            pendingOverlayMenu = menu_none;
+        }
+#endif
         if (menuQueue != menu_none)
             test_count = 0;
         switch (menuQueue)
@@ -2034,7 +2062,14 @@ namespace graphics
         case throttle_message:
             screen->showSimpleBanner("Too Many Attempts\nTry again in 60 seconds.", 5000);
             break;
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        case confirmation_dialog_menu:
+            LOG_INFO("handleMenuSwitch: Processing confirmation_dialog_menu");
+            showConfirmationBanner(pendingConfirmMessage, pendingConfirmCallback);
+            LOG_INFO("handleMenuSwitch: showConfirmationBanner called");
+            break;
+#endif
+#if defined(RED_BANK_S3)
         case direct_message_node_picker:
             directMessageNodePickerMenu();
             break;
@@ -2047,11 +2082,7 @@ namespace graphics
         case channel_message_action_menu:
             channelMessageActionMenu();
             break;
-        case confirmation_dialog_menu:
-            LOG_INFO("handleMenuSwitch: Processing confirmation_dialog_menu");
-            showConfirmationBanner(pendingConfirmMessage, pendingConfirmCallback);
-            LOG_INFO("handleMenuSwitch: showConfirmationBanner called");
-            break;
+
 #endif
         }
         menuQueue = menu_none;
@@ -2061,7 +2092,25 @@ namespace graphics
         {
             redBankController->setMenuActive(true);
         }
+#elif defined(REDCOAST_SOLO_915)
+        if (screen && screen->isOverlayBannerShowing() && fiveWayInput)
+        {
+            fiveWayInput->setMenuActive(true);
+        }
 #endif
+
+        if (processedDeferredOverlayMenu && screen)
+        {
+            // Overlay-to-overlay switches can update the menu state without
+            // pushing a visible refresh on E-Ink until the next key event.
+#ifdef USE_EINK
+            if (screen->getDisplayDevice())
+            {
+                EINK_ADD_FRAMEFLAG(screen->getDisplayDevice(), COSMETIC);
+            }
+#endif
+            screen->forceDisplay(true);
+        }
     }
 
     void menuHandler::saveUIConfig()

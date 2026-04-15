@@ -24,10 +24,10 @@ namespace graphics
     struct BannerOverlayOptions
     {
         const char *message;
-#if defined(RED_BANK_S3)
-        uint32_t durationMs = 0;  // RED_BANK_S3: 0 = 永不超时
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        uint32_t durationMs = 0; // RED_BANK_S3 / REDCOAST_SOLO_915: 0 = 永不超时
 #else
-        uint32_t durationMs = 30000;  // 默认30秒超时
+        uint32_t durationMs = 30000; // 默认30秒超时
 #endif
         const char **optionsArrayPtr = nullptr;
         const int *optionsEnumPtr = nullptr;
@@ -638,7 +638,7 @@ namespace graphics
         uint16_t getCurrentWidth() { return displayWidth; }
         uint16_t getCurrentHeight() { return displayHeight; }
 #endif
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         bool getScreenOn() const { return screenOn; }
 #endif
     protected:

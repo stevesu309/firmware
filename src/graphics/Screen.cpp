@@ -1656,6 +1656,13 @@ namespace graphics
             {
                 redBankController->setMenuActive(false); // setMenuActive 内部会处理刷新
             }
+#elif defined(REDCOAST_SOLO_915)
+            // Keep REDCOAST menu state in sync with overlay lifetime so
+            // transitions between nested menus do not leave stale state behind.
+            if (fiveWayInput && fiveWayInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing())
+            {
+                fiveWayInput->setMenuActive(false);
+            }
 #endif
             return 0;
         }

@@ -480,27 +480,18 @@ int CannedMessageModule::handleInputEvent(const InputEvent *event)
         {
             break;
         }
-#if defined(RED_BANK_S3)
-        // RED_BANK_S3: Handle ALT_LONG: always activate canned message list
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        // Handle ALT_LONG: always activate canned message list
         if (event->inputEvent == INPUT_BROKER_ALT_LONG)
         {
             LaunchWithDestination(NODENUM_BROADCAST);
             return 1;
         }
-        // RED_BANK_S3: Handle UP/DOWN: Only activate if we're sure no menu/banner is showing
+        // Handle UP/DOWN: Only activate if we're sure no menu/banner is showing
         // This prevents accidental activation when user is navigating menus
         if (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN)
         {
-            // Double-check that no overlay banner is showing
-            // (菜单、选择器等都使用overlay banner)
-            if (screen && screen->isOverlayBannerShowing())
-            {
-                return 0; // Let menu/banner handle it
-            }
-            // Only activate on UP/DOWN if explicitly allowed
-            // This is a less aggressive approach that prevents conflicts with menus
-            // User can still use ALT_LONG to explicitly trigger canned messages
-            return 0; // Don't auto-activate on UP/DOWN in INACTIVE state
+            return 0;
         }
 #else
         // Handle UP/DOWN: activate canned message list!
