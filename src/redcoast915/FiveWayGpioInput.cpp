@@ -20,6 +20,7 @@ namespace redcoast915
   {
     constexpr const char *kInputSource = "FiveWayGpioInput";
 
+    // Helper to keep all synthesized key events consistent.
     void injectInputEvent(input_broker_event eventType)
     {
       if (!inputBroker)
@@ -45,6 +46,8 @@ namespace redcoast915
 
   void FiveWayGpioInput::setup()
   {
+    // The five-way switch lines idle low on this hardware, while CANCEL
+    // is wired as a conventional pull-up button.
     pinMode(SW_F1, INPUT_PULLDOWN);
     pinMode(SW_F2, INPUT_PULLDOWN);
     pinMode(SW_F3, INPUT_PULLDOWN);
@@ -58,6 +61,8 @@ namespace redcoast915
     bool wasActive = menuActive;
     menuActive = active;
 
+    // Force a cleanup refresh when leaving menu mode to avoid stale overlay
+    // remnants on E-Ink during menu transitions.
     if (wasActive && !active && screen && screen->getDisplayDevice())
     {
 #ifdef USE_EINK
@@ -83,6 +88,8 @@ namespace redcoast915
     bool f5 = digitalRead(SW_F5) == HIGH;
     bool but = digitalRead(SW_BUT) == LOW;
 
+    // Seed edge-detection state from the current electrical level so we
+    // don't generate fake presses immediately after boot.
     if (!initialized)
     {
       lastF1 = f1;
@@ -97,6 +104,14 @@ namespace redcoast915
 
     if (screen && !screen->getScreenOn())
     {
+      // Allow ENTER to wake the display even while all other key handling
+      // is suppressed during screen-off mode.
+      if (f1 && !lastF1)
+      {
+        screen->setOn(true);
+        LOG_INFO("Screen off: ENTER short press - Wake screen");
+      }
+
       enterButtonPressed = false;
       enterLongPressTriggered = false;
       escButtonPressed = false;
@@ -114,11 +129,16 @@ namespace redcoast915
     }
 
     bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+    // Keep a sticky local menu flag so select/cancel still behave correctly
+    // while the overlay renderer transitions between menu screens.
     if (isOverlayActive && !menuActive)
       setMenuActive(true);
     else if (menuActive && !isOverlayActive)
       setMenuActive(false);
 
+    // Open the menu as soon as ENTER has
+    // been held long enough, without waiting for button release.
     if (f1 && enterButtonPressed && !enterLongPressTriggered)
     {
       uint32_t pressDuration = millis() - enterButtonPressTime;
@@ -131,6 +151,8 @@ namespace redcoast915
       }
     }
 
+    // ENTER still uses release handling for short press select/turn-on, and
+    // to provide a fallback if the long-press threshold is crossed near release.
     if (f1 && !lastF1)
     {
       enterButtonPressed = true;
@@ -170,6 +192,8 @@ namespace redcoast915
       }
     }
 
+    // Direction keys send one event on initial press, then repeat at a fixed
+    // cadence while held to support scrolling through menus and lists.
     if (f2 && !lastF2)
     {
       leftButtonPressed = true;

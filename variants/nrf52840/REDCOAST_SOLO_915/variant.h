@@ -87,7 +87,7 @@ extern "C"
 #define PIN_RTC_INT (0 + 16) // Interrupt from the PCF8563 RTC
 
 /*
-External serial flash WP25R1635FZUIL0
+External serial flash GD25Q32C
 */
 
 // QSPI Pins

@@ -43,8 +43,8 @@ void initVariant()
   // ledOff(PIN_LED3);
 
   // // Keep QSPI flash deselected by default to avoid boot-time bus contention.
-  // pinMode(PIN_QSPI_CS, OUTPUT);
-  // digitalWrite(PIN_QSPI_CS, HIGH);
+  pinMode(PIN_QSPI_CS, OUTPUT);
+  digitalWrite(PIN_QSPI_CS, HIGH);
 
 #ifdef PIN_PWR_EN
   // Some board revisions gate external peripherals (including QSPI flash) via PWR_EN.
