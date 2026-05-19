@@ -70,6 +70,11 @@ extern graphics::Screen *screen;
 extern RedBankS3::RedBankController *redBankController;
 #endif
 
+#if defined(REDCOAST_SOLO_915)
+#include "redcoast915/FiveWayGpioInput.h"
+extern redcoast915::FiveWayGpioInput *fiveWayInput;
+#endif
+
 #if !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C
 
 #include "motion/AccelerometerThread.h"

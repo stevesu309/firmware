@@ -8,13 +8,13 @@
 namespace redcoast915
 {
 
-#define SW_F1 (0 + 6)
-#define SW_F2 (0 + 8)
-#define SW_F3 (0 + 9)
-#define SW_F4 (0 + 10)
-#define SW_F5 (0 + 11)
+  // #define SW_F1 (0 + 6)
+  // #define SW_F2 (0 + 8)
+  // #define SW_F3 (0 + 9)
+  // #define SW_F4 (0 + 10)
+  // #define SW_F5 (0 + 11)
 
-#define SW_BUT (32 + 10) // 取消键
+  // #define SW_BUT (32 + 10) // 取消键
 
   namespace
   {
@@ -43,16 +43,15 @@ namespace redcoast915
   FiveWayGpioInput::~FiveWayGpioInput()
   {
   }
-
+#ifdef REDCOAST_SOLO_915
   void FiveWayGpioInput::setup()
   {
-    // The five-way switch lines idle low on this hardware, while CANCEL
-    // is wired as a conventional pull-up button.
-    pinMode(SW_F1, INPUT_PULLDOWN);
-    pinMode(SW_F2, INPUT_PULLDOWN);
-    pinMode(SW_F3, INPUT_PULLDOWN);
-    pinMode(SW_F4, INPUT_PULLDOWN);
-    pinMode(SW_F5, INPUT_PULLDOWN);
+
+    pinMode(SW_F1, INPUT_PULLUP);
+    pinMode(SW_F2, INPUT_PULLUP);
+    pinMode(SW_F3, INPUT_PULLUP);
+    pinMode(SW_F4, INPUT_PULLUP);
+    pinMode(SW_F5, INPUT_PULLUP);
     pinMode(SW_BUT, INPUT_PULLUP);
   }
 
@@ -81,11 +80,11 @@ namespace redcoast915
     static bool lastBut = false;
     static bool initialized = false;
 
-    bool f1 = digitalRead(SW_F1) == HIGH;
-    bool f2 = digitalRead(SW_F2) == HIGH;
-    bool f3 = digitalRead(SW_F3) == HIGH;
-    bool f4 = digitalRead(SW_F4) == HIGH;
-    bool f5 = digitalRead(SW_F5) == HIGH;
+    bool f1 = digitalRead(SW_F1) == LOW;
+    bool f2 = digitalRead(SW_F2) == LOW;
+    bool f3 = digitalRead(SW_F3) == LOW;
+    bool f4 = digitalRead(SW_F4) == LOW;
+    bool f5 = digitalRead(SW_F5) == LOW;
     bool but = digitalRead(SW_BUT) == LOW;
 
     // Seed edge-detection state from the current electrical level so we
@@ -106,7 +105,7 @@ namespace redcoast915
     {
       // Allow ENTER to wake the display even while all other key handling
       // is suppressed during screen-off mode.
-      if (f1 && !lastF1)
+      if (but && !lastBut)
       {
         screen->setOn(true);
         LOG_INFO("Screen off: ENTER short press - Wake screen");
@@ -139,7 +138,7 @@ namespace redcoast915
 
     // Open the menu as soon as ENTER has
     // been held long enough, without waiting for button release.
-    if (f1 && enterButtonPressed && !enterLongPressTriggered)
+    if (f5 && enterButtonPressed && !enterLongPressTriggered)
     {
       uint32_t pressDuration = millis() - enterButtonPressTime;
       if (!isOverlayActive && !menuActive && pressDuration >= LONG_PRESS_THRESHOLD)
@@ -153,13 +152,13 @@ namespace redcoast915
 
     // ENTER still uses release handling for short press select/turn-on, and
     // to provide a fallback if the long-press threshold is crossed near release.
-    if (f1 && !lastF1)
+    if (but && !lastBut)
     {
       enterButtonPressed = true;
       enterButtonPressTime = millis();
       enterLongPressTriggered = false;
     }
-    else if (!f1 && lastF1)
+    else if (!but && lastBut)
     {
       uint32_t pressDuration = millis() - enterButtonPressTime;
       bool wasLongPressTriggered = enterLongPressTriggered;
@@ -216,7 +215,7 @@ namespace redcoast915
       }
     }
 
-    if (f3 && !lastF3)
+    if (f1 && !lastF1)
     {
       upButtonPressed = true;
       upButtonPressTime = millis();
@@ -224,11 +223,11 @@ namespace redcoast915
       injectInputEvent(INPUT_BROKER_UP);
       LOG_INFO("UP button: Inject INPUT_BROKER_UP event");
     }
-    else if (!f3 && lastF3)
+    else if (!f1 && lastF1)
     {
       upButtonPressed = false;
     }
-    else if (f3 && upButtonPressed)
+    else if (f1 && upButtonPressed)
     {
       uint32_t now = millis();
       if (now >= upButtonNextRepeatAt)
@@ -262,18 +261,18 @@ namespace redcoast915
       }
     }
 
-    if (f5 && !lastF5)
+    if (f3 && !lastF3)
     {
       rightButtonPressed = true;
       rightButtonNextRepeatAt = millis() + DIRECTION_REPEAT_DELAY;
       injectInputEvent(INPUT_BROKER_RIGHT);
       LOG_INFO("RIGHT button: Inject INPUT_BROKER_RIGHT event");
     }
-    else if (!f5 && lastF5)
+    else if (!f3 && lastF3)
     {
       rightButtonPressed = false;
     }
-    else if (f5 && rightButtonPressed)
+    else if (f3 && rightButtonPressed)
     {
       uint32_t now = millis();
       if (now >= rightButtonNextRepeatAt)
@@ -284,12 +283,12 @@ namespace redcoast915
       }
     }
 
-    if (but && !lastBut)
+    if (f5 && !lastF5)
     {
       escButtonPressed = true;
       escButtonPressTime = millis();
     }
-    else if (!but && lastBut)
+    else if (!f5 && lastF5)
     {
       uint32_t pressDuration = millis() - escButtonPressTime;
       escButtonPressed = false;
@@ -324,4 +323,5 @@ namespace redcoast915
     lastF5 = f5;
     lastBut = but;
   }
+#endif
 }
