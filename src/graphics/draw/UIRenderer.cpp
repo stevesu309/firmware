@@ -1260,7 +1260,7 @@ namespace graphics
     // Navigation bar overlay implementation
     static int8_t lastFrameIndex = -1;
     static uint32_t lastFrameChangeTime = 0;
-    constexpr uint32_t ICON_DISPLAY_DURATION_MS = 7000;
+    constexpr uint32_t ICON_DISPLAY_DURATION_MS = 4000;
 
     void UIRenderer::drawNavigationBar(OLEDDisplay *display, OLEDDisplayUiState *state)
     {
@@ -1314,8 +1314,8 @@ namespace graphics
 
         if (!navBarVisible && navBarLastShown != 0 && !cosmeticRefreshDone)
         {
-            if (millis() - navBarLastShown > 1000)
-            {                                          // 5s after hidden
+            if (millis() - navBarLastShown > 4000)
+            {                                          // 4s after hidden
                 EINK_ADD_FRAMEFLAG(display, COSMETIC); // One-time ghost cleanup
                 cosmeticRefreshDone = true;
             }

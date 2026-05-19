@@ -282,8 +282,9 @@ bool EInkDisplay::connect()
 
         adafruitDisplay = new GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT>(*lowLevel);
         adafruitDisplay->init(115200, true, 10, false);
-        adafruitDisplay->setRotation(0);
-        adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
+        adafruitDisplay->setRotation(3);
+        // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
+        // adafruitDisplay->setFullWindow();
     }
 #elif defined(PCA10059) || defined(ME25LS01)
     {
