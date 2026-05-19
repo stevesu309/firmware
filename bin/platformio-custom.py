@@ -169,7 +169,7 @@ def auto_upload_chinese_font(source, target, env):
 
     project_dir = env["PROJECT_DIR"]
     python_exe = sys.executable
-    font_source = str(get_project_option_safe("custom_external_font_source", "src/graphics/fonts/ChineseFont.cpp"))
+    font_source = str(get_project_option_safe("custom_external_font_source", "src/graphics/fonts/ChineseFontData.cpp"))
     font_output = str(get_project_option_safe("custom_external_font_output", "bin/chinese_font.bin"))
     font_target = str(get_project_option_safe("custom_external_font_target", "qspi://chinese_font.bin"))
     font_type_name = str(get_project_option_safe("custom_external_font_type_name", "ChineseFont"))

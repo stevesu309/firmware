@@ -8,7 +8,7 @@
 #include "graphics/ScreenFonts.h"
 #include "graphics/fonts/OLEDDisplayFontsAR.h"
 #include "OLEDDisplay.h"
-#include "graphics/fonts/ChineseFont.h"
+#include "graphics/draw/DrawChineseFont.h"
 #include "PowerStatus.h"
 #include "graphics/SharedUIDisplay.h"
 #define MAX_VALID_CHANNELS 8

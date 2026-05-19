@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "graphics/emotes.h"
 #include "main.h"
 #include "meshUtils.h"
-#include "../fonts/ChineseFont.h"
+#include "graphics/draw/DrawChineseFont.h"
 // Additional includes for UI rendering
 #include "UIRenderer.h"
 #include "graphics/TimeFormatters.h"

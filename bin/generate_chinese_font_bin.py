@@ -13,7 +13,7 @@ Output layout:
 Examples:
   python3 bin/generate_chinese_font_bin.py
   python3 bin/generate_chinese_font_bin.py --output /tmp/chinese_font.bin
-  python3 bin/generate_chinese_font_bin.py --input src/graphics/fonts/ChineseFont.cpp --output bin/chinese_font.bin
+  python3 bin/generate_chinese_font_bin.py --input src/graphics/fonts/ChineseFontData.cpp --output bin/chinese_font.bin
   python3 bin/generate_chinese_font_bin.py --input src/graphics/fonts/CN_Font_10.cpp --font-type-name CN_Font_10 --font-array-name cnFont10 --glyph-width 10 --glyph-height 10 --bitmap-size 20 --output bin/cn_font_10.bin
 """
 
@@ -112,7 +112,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate an external font binary image from a C++ font table")
     parser.add_argument(
         "--input",
-        default="src/graphics/fonts/ChineseFont.cpp",
+        default="src/graphics/fonts/ChineseFontData.cpp",
         help="Path to the source .cpp font table",
     )
     parser.add_argument(
