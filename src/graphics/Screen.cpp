@@ -71,8 +71,10 @@ using graphics::numEmotes;
 
 extern uint16_t TFT_MESH;
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
 #ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
+#endif
 #include "graphics/draw/ChannelMessageRenderer.h"
 #include "graphics/draw/DirectMsgRenderer.h"
 #endif
@@ -792,7 +794,7 @@ namespace graphics
             case Cmd::SHOW_NEXT_FRAME:
                 handleShowNextFrame();
                 break;
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
             case Cmd::SHOW_PREV_PACKET:
                 handleShowPrevPacket();
                 break;
@@ -992,8 +994,8 @@ namespace graphics
         normalFrames[numframes++] = graphics::UIRenderer::drawDeviceFocused;
         indicatorIcons.push_back(icon_home);
 
-#if defined(RED_BANK_S3)
-        // RED_BANK_S3: 为频道历史消息构建“单一页面 + 频道列表”
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        // RED_BANK_S3 / REDCOAST_SOLO_915: 为频道历史消息构建“单一页面 + 频道列表”
         validChannelCount = 0;
 
         int numChannels = channelFile.channels_count;
@@ -1032,10 +1034,10 @@ namespace graphics
         }
 
         // 初始化当前频道的浏览消息索引（默认最新一条）
-        if (redBankController)
+        if (chatHistoryStore)
         {
             uint16_t packetListSize =
-                redBankController->_getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+                chatHistoryStore->getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
             channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
         }
         else
@@ -1209,14 +1211,20 @@ namespace graphics
             break;
         case FOCUS_TEXTMESSAGE:
             hasUnreadMessage = false; // ✅ Clear when message is *viewed*
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
             LOG_INFO("textMessageChannel = %d,shouldDrawMessage(&devicestate.rx_text_message) = %d", textMessageChannel, shouldDrawMessage(&devicestate.rx_text_message));
             if (!shouldDrawMessage(&devicestate.rx_text_message))
             {
                 if (graphics::ChannelMessageRenderer::getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
                 {
                     LOG_INFO("frameIndex = %d", frameIndex);
-                    ui->switchToFrame(fsi.positions.channelMessage + frameIndex);
+                    channelIndex = textMessageChannel;
+                    if (chatHistoryStore)
+                    {
+                        uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+                        channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
+                    }
+                    ui->switchToFrame(fsi.positions.channelMessage);
                 }
                 else
                 {
@@ -1436,7 +1444,7 @@ namespace graphics
             setFastFramerate();
         }
     }
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
     void Screen::handleShowPrevPacket(void)
     {
         if (ui->getUiState()->frameState != FIXED)
@@ -1451,7 +1459,12 @@ namespace graphics
 
         channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
 
-        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (!chatHistoryStore)
+        {
+            return;
+        }
+
+        uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(channelIndex);
         if (packetListSize == 0)
         {
             return;
@@ -1483,7 +1496,12 @@ namespace graphics
 
         channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
 
-        uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+        if (!chatHistoryStore)
+        {
+            return;
+        }
+
+        uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(channelIndex);
         if (packetListSize == 0)
         {
             return;
@@ -1681,8 +1699,8 @@ namespace graphics
             }
             LOG_INFO("Screen::handleInputEvent: inputIntercepted=%d", inputIntercepted);
 
-#if defined(RED_BANK_S3)
-            // RED_BANK_S3: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+            // RED_BANK_S3 / REDCOAST_SOLO_915: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
             // 检查当前帧是否在频道消息帧范围内
             if (!inputIntercepted &&
                 (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN))
@@ -1706,27 +1724,27 @@ namespace graphics
                     // 已处理，直接返回
                     return 0;
                 }
-                else if (isDirectMessageFrame && redBankController)
+                else if (isDirectMessageFrame && chatHistoryStore)
                 {
                     // 在私信页面浏览当前节点的历史消息
-                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
                     if (currentNode != 0)
                     {
-                        int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                        int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
                         if (msgCount > 0)
                         {
-                            uint8_t currentIndex = redBankController->getCurrentDirectMessageIndex();
+                            uint8_t currentIndex = chatHistoryStore->getCurrentDirectMessageIndex();
                             if (event->inputEvent == INPUT_BROKER_UP)
                             {
                                 // 向上浏览（更旧的消息）
                                 if (currentIndex > 0)
                                 {
-                                    redBankController->setCurrentDirectMessageIndex(currentIndex - 1);
+                                    chatHistoryStore->setCurrentDirectMessageIndex(currentIndex - 1);
                                 }
                                 else
                                 {
                                     // 循环到最新消息
-                                    redBankController->setCurrentDirectMessageIndex(msgCount - 1);
+                                    chatHistoryStore->setCurrentDirectMessageIndex(msgCount - 1);
                                 }
                                 setFastFramerate();
                                 LOG_INFO("Screen: UP - Previous direct message");
@@ -1736,12 +1754,12 @@ namespace graphics
                                 // 向下浏览（更新的消息）
                                 if (currentIndex < msgCount - 1)
                                 {
-                                    redBankController->setCurrentDirectMessageIndex(currentIndex + 1);
+                                    chatHistoryStore->setCurrentDirectMessageIndex(currentIndex + 1);
                                 }
                                 else
                                 {
                                     // 循环到最旧消息
-                                    redBankController->setCurrentDirectMessageIndex(0);
+                                    chatHistoryStore->setCurrentDirectMessageIndex(0);
                                 }
                                 setFastFramerate();
                                 LOG_INFO("Screen: DOWN - Next direct message");
@@ -1764,34 +1782,11 @@ namespace graphics
                 {
                     showNextFrame();
                 }
-#if defined(RED_BANK_S3)
-                // RED_BANK_S3: 处理UP/DOWN事件用于浏览频道消息
-                else if (event->inputEvent == INPUT_BROKER_UP)
-                {
-                    uint8_t currentFrame = ui->getUiState()->currentFrame;
-                    bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
-                    if (isChannelFrame)
-                    {
-                        showPrevPacket();
-                        LOG_INFO("Screen: UP - Previous packet");
-                    }
-                }
-                else if (event->inputEvent == INPUT_BROKER_DOWN)
-                {
-                    uint8_t currentFrame = ui->getUiState()->currentFrame;
-                    bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
-                    if (isChannelFrame)
-                    {
-                        showNextPacket();
-                        LOG_INFO("Screen: DOWN - Next packet");
-                    }
-                }
-#endif
                 else if (event->inputEvent == INPUT_BROKER_SELECT)
                 {
                     uint8_t currentFrame = this->ui->getUiState()->currentFrame;
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
                     // 在频道消息页面长按 ENTER，弹出频道消息操作菜单（交由 MenuHandler 控制）
                     if (currentFrame == framesetInfo.positions.channelMessage)
                     {
@@ -1824,8 +1819,8 @@ namespace graphics
                     }
                     else if (currentFrame == framesetInfo.positions.textMessage)
                     {
-#ifdef RED_BANK_S3
-                        // RED_BANK_S3: 在私信页面长按 ENTER，弹出操作菜单
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+                        // 在私信页面长按 ENTER，弹出操作菜单
                         menuHandler::menuQueue = menuHandler::direct_message_action_menu;
                         menuHandler::handleMenuSwitch(dispdev);
 #else

@@ -684,7 +684,7 @@ namespace graphics
         void handleOnPress();
         void handleShowNextFrame();
         void handleShowPrevFrame();
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         void handleShowNextPacket();
         void handleShowPrevPacket();
 #endif

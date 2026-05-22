@@ -15,7 +15,7 @@
 #include "modules/AdminModule.h"
 #include "modules/CannedMessageModule.h"
 #include "modules/KeyVerificationModule.h"
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
 #include "graphics/draw/ChannelMessageRenderer.h"
 #endif
 
@@ -36,6 +36,17 @@ namespace graphics
     static menuHandler::screenMenus pendingOverlayMenu = menuHandler::menu_none;
     static char pendingConfirmMessage[256];
     static std::function<void()> pendingConfirmCallback;
+
+    static void setHardwareMenuActive(bool active)
+    {
+#ifdef RED_BANK_S3
+        if (redBankController)
+            redBankController->setMenuActive(active);
+#elif defined(REDCOAST_SOLO_915)
+        if (fiveWayInput)
+            fiveWayInput->setMenuActive(active);
+#endif
+    }
 #endif
 
     static void requestMenuSwitch(menuHandler::screenMenus targetMenu)
@@ -155,7 +166,7 @@ namespace graphics
                 {
                     config.lora.ignore_mqtt = true; // Ignore MQTT by default if region has a duty cycle limit
                 }
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
                 const auto is433Region = [](meshtastic_Config_LoRaConfig_RegionCode region)
                 {
                     return (region == meshtastic_Config_LoRaConfig_RegionCode_CN ||
@@ -645,8 +656,8 @@ namespace graphics
         screen->showOverlayBanner(bannerOptions);
     }
 
-#if defined(RED_BANK_S3)
-    // RED_BANK_S3: 频道历史消息页面的频道选择菜单
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    // RED_BANK_S3 / REDCOAST_SOLO_915: 频道历史消息页面的频道选择菜单
     void menuHandler::channelHistoryMenu()
     {
         LOG_INFO("channelHistoryMenu() called, validChannelCount=%d", validChannelCount);
@@ -746,10 +757,10 @@ namespace graphics
 
             channelIndex = static_cast<size_t>(selectedChannel);
 
-            if (redBankController)
+            if (chatHistoryStore)
             {
                 uint16_t packetListSize =
-                    redBankController->_getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+                    chatHistoryStore->getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
                 channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
             }
             else
@@ -757,10 +768,7 @@ namespace graphics
                 channelPacketBrowseIndex = 0;
             }
 
-            if (redBankController)
-            {
-                redBankController->setMenuActive(false);
-            }
+            setHardwareMenuActive(false);
 
             screen->runNow(); // 立即刷新，使频道历史页面更新
         };
@@ -1438,7 +1446,7 @@ namespace graphics
 
     void menuHandler::directMessageNodePickerMenu()
     {
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         screen->showNodePicker("Select Node for DM", 0, [](uint32_t nodenum) -> void
 #else
         screen->showNodePicker("Select Node for DM", 30000, [](uint32_t nodenum) -> void
@@ -1446,10 +1454,10 @@ namespace graphics
                                {
                                    LOG_INFO("Menu: Direct message node picker selected node 0x%08x", nodenum);
 
-#if defined(RED_BANK_S3)
-                                   if (redBankController)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+                                   if (chatHistoryStore)
                                    {
-                                       redBankController->setCurrentDirectMessageNode(nodenum);
+                                       chatHistoryStore->setCurrentDirectMessageNode(nodenum);
                                        screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
                                    }
 #endif
@@ -1458,7 +1466,7 @@ namespace graphics
 
     void menuHandler::directMessageActionMenu()
     {
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         enum optionsNumbers
         {
             Back = 0,
@@ -1487,14 +1495,14 @@ namespace graphics
             }
             else if (selected == Preset)
             {
-                if (cannedMessageModule && redBankController)
+                if (cannedMessageModule && chatHistoryStore)
                 {
-                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
                     if (currentNode != 0)
                     {
-                        // RED_BANK_S3: We are leaving the overlay/menu context; prevent further ENTER presses
+                        // We are leaving the overlay/menu context; prevent further ENTER presses
                         // from being treated as menu selections.
-                        redBankController->setMenuActive(false);
+                        setHardwareMenuActive(false);
                         cannedMessageModule->LaunchWithDestination(currentNode);
                     }
                     else
@@ -1505,20 +1513,20 @@ namespace graphics
             }
             else if (selected == DelThis)
             {
-                if (redBankController)
+                if (chatHistoryStore)
                 {
 
-                    LOG_INFO("DM DelThis: selected, checking redBankController");
-                    NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                    LOG_INFO("DM DelThis: selected, checking chatHistoryStore");
+                    NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
                     if (currentNode != 0)
                     {
                         LOG_INFO("DM DelThis: currentNode=%08x, Calling showConfirmationBanner", currentNode);
                         menuHandler::showConfirmationBanner("Delete this message?", [currentNode]() -> void
                                                             {
-                                int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                                int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
                                 if (msgCount > 0)
                                 {
-                                    redBankController->deleteCurrentDirectMessage();
+                                    chatHistoryStore->deleteCurrentDirectMessage();
                                     screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
                                 } });
                     }
@@ -1527,8 +1535,8 @@ namespace graphics
             }
             else if (selected == DelAll)
             {
-                LOG_INFO("DM DelAll: selected, checking redBankController");
-                NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+                LOG_INFO("DM DelAll: selected, checking chatHistoryStore");
+                NodeNum currentNode = chatHistoryStore ? chatHistoryStore->getCurrentDirectMessageNode() : 0;
                 if (currentNode != 0)
                 {
                     char confirmMsg[64];
@@ -1536,12 +1544,12 @@ namespace graphics
                     LOG_INFO("DM DelAll: currentNode=%08x, Calling showConfirmationBanner", currentNode);
                     menuHandler::showConfirmationBanner(confirmMsg, [currentNode]() -> void
                                                         {
-                            if (redBankController)
+                            if (chatHistoryStore)
                             {
-                                int msgCount = redBankController->_getDirectMessageListSizeForNode(currentNode);
+                                int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
                                 if (msgCount > 0)
                                 {
-                                    redBankController->deleteAllDirectMessagesForNode(currentNode);
+                                    chatHistoryStore->deleteAllDirectMessagesForNode(currentNode);
                                     screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
                                 }
                             } });
@@ -1555,7 +1563,7 @@ namespace graphics
 
     void menuHandler::channelMessageActionMenu()
     {
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         enum optionsNumbers
         {
             Back = 0,
@@ -1588,23 +1596,20 @@ namespace graphics
                 if (cannedMessageModule)
                 {
                     uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
-                    if (redBankController)
-                    {
-                        // RED_BANK_S3: We are leaving the overlay/menu context; prevent further ENTER presses
-                        // from being treated as menu selections.
-                        redBankController->setMenuActive(false);
-                    }
+                    // We are leaving the overlay/menu context; prevent further ENTER presses
+                    // from being treated as menu selections.
+                    setHardwareMenuActive(false);
                     cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST, currentChannel);
                 }
             }
             else if (selected == DelThis)
             {
-                LOG_INFO("Channel DelThis: selected, checking redBankController");
-                if (redBankController)
+                LOG_INFO("Channel DelThis: selected, checking chatHistoryStore");
+                if (chatHistoryStore)
                 {
                     uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
                     uint16_t currentPacketIndex = channelPacketBrowseIndex;
-                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    int msgCount = chatHistoryStore->getMeshPacketListSize(currentChannel);
                     LOG_INFO("Channel DelThis: currentChannel=%d, currentPacketIndex=%d, msgCount=%d",
                              currentChannel, currentPacketIndex, msgCount);
 
@@ -1616,10 +1621,10 @@ namespace graphics
                                 LOG_INFO("Channel DelThis CONFIRM: before delete, channel=%d, packetIndex=%d, oldBrowseIndex=%d",
                                          currentChannel, currentPacketIndex, oldBrowseIndex);
                                 
-                                redBankController->deleteCurrentChannelMessage(currentChannel, currentPacketIndex);
+                                chatHistoryStore->deleteCurrentChannelMessage(currentChannel, currentPacketIndex);
                                 
                                 // 调整浏览索引
-                                int newMsgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                                int newMsgCount = chatHistoryStore->getMeshPacketListSize(currentChannel);
                                 LOG_INFO("Channel DelThis CONFIRM: after delete, newMsgCount=%d", newMsgCount);
                                 if (newMsgCount > 0)
                                 {
@@ -1650,11 +1655,11 @@ namespace graphics
             }
             else if (selected == DelAll)
             {
-                LOG_INFO("Channel DelAll: selected, checking redBankController");
-                if (redBankController)
+                LOG_INFO("Channel DelAll: selected, checking chatHistoryStore");
+                if (chatHistoryStore)
                 {
                     uint8_t currentChannel = static_cast<uint8_t>(channelIndex);
-                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    int msgCount = chatHistoryStore->getMeshPacketListSize(currentChannel);
                     LOG_INFO("Channel DelAll: currentChannel=%d, msgCount=%d", currentChannel, msgCount);
 
                     char confirmMsg[64];
@@ -1662,10 +1667,10 @@ namespace graphics
                     LOG_INFO("Channel DelAll: Calling showConfirmationBanner");
                     menuHandler::showConfirmationBanner(confirmMsg, [currentChannel]() -> void
                                                         {
-                    int msgCount = redBankController->_getMeshPacketListSize(currentChannel);
+                    int msgCount = chatHistoryStore->getMeshPacketListSize(currentChannel);
                     if (msgCount > 0)
                     {
-                        redBankController->deleteAllChannelMessagesForChannel(currentChannel);
+                        chatHistoryStore->deleteAllChannelMessagesForChannel(currentChannel);
                         channelPacketBrowseIndex = 0;
                         screen->setFrames(graphics::Screen::FOCUS_PRESERVE); } });
                 }
@@ -1697,7 +1702,7 @@ namespace graphics
 
     void menuHandler::numberTest()
     {
-#if defined(RED_BANK_S3)
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         screen->showNumberPicker("Pick a number\n ", 0, 4,
 #else
         screen->showNumberPicker("Pick a number\n ", 30000, 4,
@@ -1951,8 +1956,8 @@ namespace graphics
 
     void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     {
-        bool processedDeferredOverlayMenu = false;
 #if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        bool processedDeferredOverlayMenu = false;
         if (menuQueue == menu_none && pendingOverlayMenu != menu_none && !NotificationRenderer::isOverlayBannerShowing())
         {
             menuQueue = pendingOverlayMenu;
@@ -2068,8 +2073,6 @@ namespace graphics
             showConfirmationBanner(pendingConfirmMessage, pendingConfirmCallback);
             LOG_INFO("handleMenuSwitch: showConfirmationBanner called");
             break;
-#endif
-#if defined(RED_BANK_S3)
         case direct_message_node_picker:
             directMessageNodePickerMenu();
             break;
@@ -2086,18 +2089,10 @@ namespace graphics
 #endif
         }
         menuQueue = menu_none;
-#ifdef RED_BANK_S3
-        // RED_BANK_S3: 如果显示了新菜单，重新设置菜单激活状态
-        if (screen && screen->isOverlayBannerShowing() && redBankController)
-        {
-            redBankController->setMenuActive(true);
-        }
-#elif defined(REDCOAST_SOLO_915)
-        if (screen && screen->isOverlayBannerShowing() && fiveWayInput)
-        {
-            fiveWayInput->setMenuActive(true);
-        }
-#endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        // 如果显示了新菜单，重新设置菜单激活状态
+        if (screen && screen->isOverlayBannerShowing())
+            setHardwareMenuActive(true);
 
         if (processedDeferredOverlayMenu && screen)
         {
@@ -2111,6 +2106,7 @@ namespace graphics
 #endif
             screen->forceDisplay(true);
         }
+#endif
     }
 
     void menuHandler::saveUIConfig()

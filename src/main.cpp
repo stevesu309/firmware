@@ -162,6 +162,10 @@ void setupNicheGraphics();
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
 // Power log helper (works on ESP32 and NRF52)
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
 #include "red_bank_s3/Flash.h"
@@ -943,6 +947,9 @@ SPI.setFrequency(4000000);
 
 #if defined(RED_BANK_S3)
     redBankController = new RedBankS3::RedBankController();
+#endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    chatHistoryStore = new ChatHistoryStore();
 #endif
     // setup TZ prior to time actions.
 #if !MESHTASTIC_EXCLUDE_TZ

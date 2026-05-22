@@ -1,9 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <map>
-#include "mesh/generated/meshtastic/mesh.pb.h"
-#include "NodeDB.h"
+#include "configuration.h"
+#include <stdint.h>
 
 namespace RedBankS3
 {
@@ -26,33 +24,7 @@ namespace RedBankS3
         void setup();
         void loop();
 
-        bool isMeshPacketListEmpty(uint8_t channel);
-        void saveMeshPacket(const meshtastic_MeshPacket &mp);
-        meshtastic_MeshPacket getRecentMeshPacket(uint8_t channel, uint8_t recent_index);
-        int _getMeshPacketListSize(uint8_t channel);
         uint8_t getDirection(void);
-
-        void push_packet(uint8_t channel_index, const meshtastic_MeshPacket &mp);
-        void restoreChannelPackets(void);
-        void restoreDirectMessages(void);
-        void deleteCurrentChannelMessage(uint8_t channel_index, uint16_t packet_index);
-        void deleteAllChannelMessagesForChannel(uint8_t channel_index);
-
-        // 私信相关方法
-        bool isDirectMessageListEmpty();
-        bool isDirectMessageListEmptyForNode(NodeNum nodeNum);
-        meshtastic_MeshPacket getRecentDirectMessage(uint8_t recent_index);
-        int _getDirectMessageListSize();
-        int _getDirectMessageListSizeForNode(NodeNum nodeNum);
-        void push_direct_message(const meshtastic_MeshPacket &mp);
-        void setCurrentDirectMessageNode(NodeNum nodeNum);
-        NodeNum getCurrentDirectMessageNode() { return currentDirectMessageNode; }
-        uint8_t getCurrentDirectMessageIndex() { return currentDirectMessageIndex; }
-        void setCurrentDirectMessageIndex(uint8_t index) { currentDirectMessageIndex = index; }
-        std::vector<NodeNum> getDirectMessageNodeList();
-        int getDirectMessageNodeCount();
-        void deleteCurrentDirectMessage();
-        void deleteAllDirectMessagesForNode(NodeNum nodeNum);
 
 #if HAS_SCREEN
         void scanAdcKeypad();
@@ -84,15 +56,6 @@ namespace RedBankS3
 #endif // HAS_SCREEN
 
     private:
-        // 消息列表容量
-        static const int MESH_PACKET_LIST_CAPCITY = 10;
-        // 消息列表
-        std::vector<meshtastic_MeshPacket> channelPackets[8];
-        // 私信列表 - 按节点组织，每个节点最多20条
-        static const int DIRECT_MESSAGE_LIST_CAPACITY = 10;
-        std::map<NodeNum, std::vector<meshtastic_MeshPacket>> directMessagesByNode;
-        NodeNum currentDirectMessageNode = 0;  // 当前选中的节点
-        uint8_t currentDirectMessageIndex = 0; // 当前浏览的消息索引
         // 当前消息索引
         int m_currentMeshPacketIndex;
         uint8_t direction;

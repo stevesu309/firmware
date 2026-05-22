@@ -96,9 +96,10 @@ namespace graphics
       static char tempBuf[237];
       int width = display->getWidth();
       int height = display->getHeight();
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
 
 #if HAS_SCREEN
+#ifdef RED_BANK_S3
       if (redBankController->getCurrentRotation() == 0 && width > height)
       {
         std::swap(width, height); // 调换宽高
@@ -111,8 +112,13 @@ namespace graphics
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
+#else
+      uint8_t currentRotation = (width < height) ? 0 : 3;
+      display->setTextAlignment(TEXT_ALIGN_LEFT);
+#endif
       FontSelection fontSel = selectFontForRotation(currentRotation);
 #else
+      uint8_t currentRotation = 3;
       FontSelection fontSel = selectFontForRotation(3);
 #endif
       const uint8_t *selectedFont = fontSel.font;
@@ -200,11 +206,15 @@ namespace graphics
 
       // display packet info
       // uint8_t direction = 0;
-      uint16_t packetListSize = redBankController->_getMeshPacketListSize(localActualChannelIndex);
+      if (!chatHistoryStore)
+      {
+        return;
+      }
+
+      uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(localActualChannelIndex);
 
       if (packetListSize == 0)
       {
-        LOG_INFO("packetListSize = %d\n", packetListSize);
         return;
       }
 
@@ -213,7 +223,7 @@ namespace graphics
         channelPacketBrowseIndex = packetListSize - 1;
       }
 
-      const meshtastic_MeshPacket &mp = redBankController->getRecentMeshPacket(localActualChannelIndex, channelPacketBrowseIndex);
+      const meshtastic_MeshPacket &mp = chatHistoryStore->getRecentMeshPacket(localActualChannelIndex, channelPacketBrowseIndex);
       // added by QCB end
       meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(getFrom(&mp));
 

@@ -33,7 +33,6 @@ extern "C"
 {
 #endif // __cplusplus
 
-// #define TTGO_T_ECHO
 // #define USE_EINK
 // #define USE_EINK_DYNAMICDISPLAY
 // Number of pins defined in PinDescription array
@@ -57,13 +56,12 @@ extern "C"
 
 #define LED_STATE_ON 0 // State when LED is lit
 
-#define SW_F1 (0 + 6)  // 确认键
-#define SW_F2 (0 + 8)  // 左键
-#define SW_F3 (0 + 9)  // 上键
-#define SW_F4 (0 + 10) // 下键
-#define SW_F5 (0 + 11) // 右键
-
-#define SW_BUT (32 + 10) // 取消键
+#define SW_F1 (0 + 6)    // 上键
+#define SW_F2 (0 + 8)    // 左键
+#define SW_F3 (0 + 9)    // 右键
+#define SW_F4 (0 + 10)   // 下键
+#define SW_F5 (0 + 11)   // 取消键
+#define SW_BUT (32 + 10) // 确认键
 
 /*
  * Analog pins

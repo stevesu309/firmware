@@ -8,19 +8,10 @@
 namespace redcoast915
 {
 
-  // #define SW_F1 (0 + 6)
-  // #define SW_F2 (0 + 8)
-  // #define SW_F3 (0 + 9)
-  // #define SW_F4 (0 + 10)
-  // #define SW_F5 (0 + 11)
-
-  // #define SW_BUT (32 + 10) // 取消键
-
   namespace
   {
     constexpr const char *kInputSource = "FiveWayGpioInput";
 
-    // Helper to keep all synthesized key events consistent.
     void injectInputEvent(input_broker_event eventType)
     {
       if (!inputBroker)
@@ -34,6 +25,54 @@ namespace redcoast915
       event.touchY = 0;
       inputBroker->injectInputEvent(&event);
     }
+
+    // SW_F1=UP, SW_F2=LEFT, SW_F3=RIGHT, SW_F4=DOWN, SW_F5=CANCEL, SW_BUT=ENTER
+    struct KeyState
+    {
+      bool up = false;
+      bool left = false;
+      bool right = false;
+      bool down = false;
+      bool cancel = false;
+      bool enter = false;
+    };
+
+    KeyState readKeys()
+    {
+      KeyState keys;
+      keys.up = digitalRead(SW_F1) == LOW;
+      keys.left = digitalRead(SW_F2) == LOW;
+      keys.right = digitalRead(SW_F3) == LOW;
+      keys.down = digitalRead(SW_F4) == LOW;
+      keys.cancel = digitalRead(SW_F5) == LOW;
+      keys.enter = digitalRead(SW_BUT) == LOW;
+      return keys;
+    }
+
+    void handleDirectionRepeat(bool pressed, bool &held, uint32_t &nextRepeatAt, input_broker_event eventType, const char *label)
+    {
+      if (pressed && !held)
+      {
+        held = true;
+        nextRepeatAt = millis() + FiveWayGpioInput::DIRECTION_REPEAT_DELAY;
+        injectInputEvent(eventType);
+        LOG_INFO("%s: press", label);
+      }
+      else if (!pressed && held)
+      {
+        held = false;
+      }
+      else if (pressed && held)
+      {
+        uint32_t now = millis();
+        if (now >= nextRepeatAt)
+        {
+          injectInputEvent(eventType);
+          nextRepeatAt = now + FiveWayGpioInput::DIRECTION_REPEAT_INTERVAL;
+          LOG_INFO("%s: repeat", label);
+        }
+      }
+    }
   } // namespace
 
   FiveWayGpioInput::FiveWayGpioInput()
@@ -43,16 +82,16 @@ namespace redcoast915
   FiveWayGpioInput::~FiveWayGpioInput()
   {
   }
+
 #ifdef REDCOAST_SOLO_915
   void FiveWayGpioInput::setup()
   {
-
-    pinMode(SW_F1, INPUT_PULLUP);
-    pinMode(SW_F2, INPUT_PULLUP);
-    pinMode(SW_F3, INPUT_PULLUP);
-    pinMode(SW_F4, INPUT_PULLUP);
-    pinMode(SW_F5, INPUT_PULLUP);
-    pinMode(SW_BUT, INPUT_PULLUP);
+    pinMode(SW_F1, INPUT_PULLUP);  // UP
+    pinMode(SW_F2, INPUT_PULLUP);  // LEFT
+    pinMode(SW_F3, INPUT_PULLUP);  // RIGHT
+    pinMode(SW_F4, INPUT_PULLUP);  // DOWN
+    pinMode(SW_F5, INPUT_PULLUP);  // CANCEL
+    pinMode(SW_BUT, INPUT_PULLUP); // ENTER
   }
 
   void FiveWayGpioInput::setMenuActive(bool active)
@@ -60,8 +99,6 @@ namespace redcoast915
     bool wasActive = menuActive;
     menuActive = active;
 
-    // Force a cleanup refresh when leaving menu mode to avoid stale overlay
-    // remnants on E-Ink during menu transitions.
     if (wasActive && !active && screen && screen->getDisplayDevice())
     {
 #ifdef USE_EINK
@@ -70,228 +107,70 @@ namespace redcoast915
     }
   }
 
-  void FiveWayGpioInput::loop()
+  void FiveWayGpioInput::handleEnterKey(bool enter, bool lastEnter, bool isOverlayActive)
   {
-    static bool lastF1 = false;
-    static bool lastF2 = false;
-    static bool lastF3 = false;
-    static bool lastF4 = false;
-    static bool lastF5 = false;
-    static bool lastBut = false;
-    static bool initialized = false;
+    const bool inMenuFlow = isOverlayActive || menuActive;
 
-    bool f1 = digitalRead(SW_F1) == LOW;
-    bool f2 = digitalRead(SW_F2) == LOW;
-    bool f3 = digitalRead(SW_F3) == LOW;
-    bool f4 = digitalRead(SW_F4) == LOW;
-    bool f5 = digitalRead(SW_F5) == LOW;
-    bool but = digitalRead(SW_BUT) == LOW;
-
-    // Seed edge-detection state from the current electrical level so we
-    // don't generate fake presses immediately after boot.
-    if (!initialized)
-    {
-      lastF1 = f1;
-      lastF2 = f2;
-      lastF3 = f3;
-      lastF4 = f4;
-      lastF5 = f5;
-      lastBut = but;
-      initialized = true;
-      return;
-    }
-
-    if (screen && !screen->getScreenOn())
-    {
-      // Allow ENTER to wake the display even while all other key handling
-      // is suppressed during screen-off mode.
-      if (but && !lastBut)
-      {
-        screen->setOn(true);
-        LOG_INFO("Screen off: ENTER short press - Wake screen");
-      }
-
-      enterButtonPressed = false;
-      enterLongPressTriggered = false;
-      escButtonPressed = false;
-      leftButtonPressed = false;
-      rightButtonPressed = false;
-      upButtonPressed = false;
-      downButtonPressed = false;
-      lastF1 = f1;
-      lastF2 = f2;
-      lastF3 = f3;
-      lastF4 = f4;
-      lastF5 = f5;
-      lastBut = but;
-      return;
-    }
-
-    bool isOverlayActive = screen && screen->isOverlayBannerShowing();
-
-    // Keep a sticky local menu flag so select/cancel still behave correctly
-    // while the overlay renderer transitions between menu screens.
-    if (isOverlayActive && !menuActive)
-      setMenuActive(true);
-    else if (menuActive && !isOverlayActive)
-      setMenuActive(false);
-
-    // Open the menu as soon as ENTER has
-    // been held long enough, without waiting for button release.
-    if (f5 && enterButtonPressed && !enterLongPressTriggered)
-    {
-      uint32_t pressDuration = millis() - enterButtonPressTime;
-      if (!isOverlayActive && !menuActive && pressDuration >= LONG_PRESS_THRESHOLD)
-      {
-        enterLongPressTriggered = true;
-        injectInputEvent(INPUT_BROKER_SELECT);
-        setMenuActive(true);
-        LOG_INFO("Normal: Long press detected - Open menu immediately");
-      }
-    }
-
-    // ENTER still uses release handling for short press select/turn-on, and
-    // to provide a fallback if the long-press threshold is crossed near release.
-    if (but && !lastBut)
+    if (enter && !lastEnter)
     {
       enterButtonPressed = true;
       enterButtonPressTime = millis();
       enterLongPressTriggered = false;
+      return;
     }
-    else if (!but && lastBut)
+
+    // Open menu as soon as threshold is reached; no release required
+    if (enter && enterButtonPressed && !enterLongPressTriggered && !inMenuFlow)
     {
-      uint32_t pressDuration = millis() - enterButtonPressTime;
-      bool wasLongPressTriggered = enterLongPressTriggered;
+      if (millis() - enterButtonPressTime >= LONG_PRESS_THRESHOLD)
+      {
+        enterLongPressTriggered = true;
+        injectInputEvent(INPUT_BROKER_SELECT);
+        setMenuActive(true);
+        LOG_INFO("ENTER: long press - open menu");
+      }
+      return;
+    }
+
+    if (!enter && lastEnter)
+    {
+      const bool menuOpenedWhileHeld = enterLongPressTriggered;
       enterButtonPressed = false;
       enterLongPressTriggered = false;
 
-      if (isOverlayActive || menuActive)
+      if (menuOpenedWhileHeld)
+        return;
+
+      if (inMenuFlow)
       {
-        if (pressDuration < LONG_PRESS_THRESHOLD)
+        if (millis() - enterButtonPressTime < LONG_PRESS_THRESHOLD)
         {
           setMenuActive(true);
           injectInputEvent(INPUT_BROKER_SELECT);
-          LOG_INFO("Overlay/Menu: Short press - Select option");
+          LOG_INFO("ENTER: short press - select");
         }
+        return;
       }
-      else
-      {
-        if (!wasLongPressTriggered && pressDuration >= LONG_PRESS_THRESHOLD)
-        {
-          injectInputEvent(INPUT_BROKER_SELECT);
-          setMenuActive(true);
-          LOG_INFO("Normal: Long press on release - Open menu");
-        }
-        else
-        {
-          if (screen)
-            screen->setOn(true);
-          LOG_INFO("Normal: ENTER short press");
-        }
-      }
+
+      if (screen)
+        screen->setOn(true);
+      LOG_INFO("ENTER: short press");
+    }
+  }
+
+  void FiveWayGpioInput::handleCancelKey(bool cancel, bool lastCancel, bool isOverlayActive)
+  {
+    if (cancel && !lastCancel)
+    {
+      cancelButtonPressed = true;
+      cancelButtonPressTime = millis();
+      return;
     }
 
-    // Direction keys send one event on initial press, then repeat at a fixed
-    // cadence while held to support scrolling through menus and lists.
-    if (f2 && !lastF2)
+    if (!cancel && lastCancel)
     {
-      leftButtonPressed = true;
-      leftButtonNextRepeatAt = millis() + DIRECTION_REPEAT_DELAY;
-      injectInputEvent(INPUT_BROKER_LEFT);
-      LOG_INFO("LEFT button: Inject INPUT_BROKER_LEFT event");
-    }
-    else if (!f2 && lastF2)
-    {
-      leftButtonPressed = false;
-    }
-    else if (f2 && leftButtonPressed)
-    {
-      uint32_t now = millis();
-      if (now >= leftButtonNextRepeatAt)
-      {
-        injectInputEvent(INPUT_BROKER_LEFT);
-        leftButtonNextRepeatAt = now + DIRECTION_REPEAT_INTERVAL;
-        LOG_INFO("LEFT button: Repeat INPUT_BROKER_LEFT event");
-      }
-    }
-
-    if (f1 && !lastF1)
-    {
-      upButtonPressed = true;
-      upButtonPressTime = millis();
-      upButtonNextRepeatAt = upButtonPressTime + DIRECTION_REPEAT_DELAY;
-      injectInputEvent(INPUT_BROKER_UP);
-      LOG_INFO("UP button: Inject INPUT_BROKER_UP event");
-    }
-    else if (!f1 && lastF1)
-    {
-      upButtonPressed = false;
-    }
-    else if (f1 && upButtonPressed)
-    {
-      uint32_t now = millis();
-      if (now >= upButtonNextRepeatAt)
-      {
-        injectInputEvent(INPUT_BROKER_UP);
-        upButtonNextRepeatAt = now + DIRECTION_REPEAT_INTERVAL;
-        LOG_INFO("UP button: Repeat INPUT_BROKER_UP event");
-      }
-    }
-
-    if (f4 && !lastF4)
-    {
-      downButtonPressed = true;
-      downButtonPressTime = millis();
-      downButtonNextRepeatAt = downButtonPressTime + DIRECTION_REPEAT_DELAY;
-      injectInputEvent(INPUT_BROKER_DOWN);
-      LOG_INFO("DOWN button: Inject INPUT_BROKER_DOWN event");
-    }
-    else if (!f4 && lastF4)
-    {
-      downButtonPressed = false;
-    }
-    else if (f4 && downButtonPressed)
-    {
-      uint32_t now = millis();
-      if (now >= downButtonNextRepeatAt)
-      {
-        injectInputEvent(INPUT_BROKER_DOWN);
-        downButtonNextRepeatAt = now + DIRECTION_REPEAT_INTERVAL;
-        LOG_INFO("DOWN button: Repeat INPUT_BROKER_DOWN event");
-      }
-    }
-
-    if (f3 && !lastF3)
-    {
-      rightButtonPressed = true;
-      rightButtonNextRepeatAt = millis() + DIRECTION_REPEAT_DELAY;
-      injectInputEvent(INPUT_BROKER_RIGHT);
-      LOG_INFO("RIGHT button: Inject INPUT_BROKER_RIGHT event");
-    }
-    else if (!f3 && lastF3)
-    {
-      rightButtonPressed = false;
-    }
-    else if (f3 && rightButtonPressed)
-    {
-      uint32_t now = millis();
-      if (now >= rightButtonNextRepeatAt)
-      {
-        injectInputEvent(INPUT_BROKER_RIGHT);
-        rightButtonNextRepeatAt = now + DIRECTION_REPEAT_INTERVAL;
-        LOG_INFO("RIGHT button: Repeat INPUT_BROKER_RIGHT event");
-      }
-    }
-
-    if (f5 && !lastF5)
-    {
-      escButtonPressed = true;
-      escButtonPressTime = millis();
-    }
-    else if (!f5 && lastF5)
-    {
-      uint32_t pressDuration = millis() - escButtonPressTime;
-      escButtonPressed = false;
+      const uint32_t pressDuration = millis() - cancelButtonPressTime;
+      cancelButtonPressed = false;
 
       if (isOverlayActive || menuActive)
       {
@@ -299,29 +178,72 @@ namespace redcoast915
         {
           injectInputEvent(INPUT_BROKER_CANCEL);
           setMenuActive(false);
-          LOG_INFO("Menu: Short press - Close menu");
+          LOG_INFO("CANCEL: short press - close menu");
         }
+        return;
+      }
+
+      if (pressDuration >= SHUTDOWN_PRESS_THRESHOLD)
+      {
+        shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+        LOG_INFO("CANCEL: long press - shutdown");
       }
       else
       {
-        if (pressDuration >= SHUTDOWN_PRESS_THRESHOLD)
-        {
-          shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
-          LOG_INFO("Normal: Long press 6s - Shutdown triggered");
-        }
-        else
-        {
-          LOG_INFO("Normal: CANCEL short press");
-        }
+        LOG_INFO("CANCEL: short press");
       }
     }
+  }
 
-    lastF1 = f1;
-    lastF2 = f2;
-    lastF3 = f3;
-    lastF4 = f4;
-    lastF5 = f5;
-    lastBut = but;
+  void FiveWayGpioInput::loop()
+  {
+    static KeyState lastKeys{};
+    static bool initialized = false;
+
+    const KeyState keys = readKeys();
+
+    if (!initialized)
+    {
+      lastKeys = keys;
+      initialized = true;
+      return;
+    }
+
+    if (screen && !screen->getScreenOn())
+    {
+      if (keys.enter && !lastKeys.enter)
+      {
+        screen->setOn(true);
+        LOG_INFO("Screen off: ENTER - wake");
+      }
+
+      enterButtonPressed = false;
+      enterLongPressTriggered = false;
+      cancelButtonPressed = false;
+      leftButtonPressed = false;
+      rightButtonPressed = false;
+      upButtonPressed = false;
+      downButtonPressed = false;
+      lastKeys = keys;
+      return;
+    }
+
+    const bool isOverlayActive = screen && screen->isOverlayBannerShowing();
+
+    if (isOverlayActive && !menuActive)
+      setMenuActive(true);
+    else if (menuActive && !isOverlayActive)
+      setMenuActive(false);
+
+    handleEnterKey(keys.enter, lastKeys.enter, isOverlayActive);
+    handleCancelKey(keys.cancel, lastKeys.cancel, isOverlayActive);
+
+    handleDirectionRepeat(keys.left, leftButtonPressed, leftButtonNextRepeatAt, INPUT_BROKER_LEFT, "LEFT");
+    handleDirectionRepeat(keys.right, rightButtonPressed, rightButtonNextRepeatAt, INPUT_BROKER_RIGHT, "RIGHT");
+    handleDirectionRepeat(keys.up, upButtonPressed, upButtonNextRepeatAt, INPUT_BROKER_UP, "UP");
+    handleDirectionRepeat(keys.down, downButtonPressed, downButtonNextRepeatAt, INPUT_BROKER_DOWN, "DOWN");
+
+    lastKeys = keys;
   }
 #endif
-}
+} // namespace redcoast915

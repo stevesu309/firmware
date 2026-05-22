@@ -1163,11 +1163,11 @@ void CannedMessageModule::sendText(NodeNum dest, ChannelIndex channel, const cha
     // Send to mesh and phone (even if no phone connected, to track ACKs)
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
     // 保存发送的私信到私信列表（确保双向保存）
-    if (p->to != 0xffffffff)
+    if (chatHistoryStore && p->to != 0xffffffff)
     {
-        redBankController->saveMeshPacket(*p);
+        chatHistoryStore->saveMeshPacket(*p);
     }
 #endif
 

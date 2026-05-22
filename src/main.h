@@ -64,6 +64,11 @@ extern UdpMulticastHandler *udpHandler;
 // Global Screen singleton.
 extern graphics::Screen *screen;
 
+// Global chat history store singleton.
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
 // Global RedBankS3Controller singleton.
 #if defined(RED_BANK_S3)
 #include "red_bank_s3/RedBankController.h"

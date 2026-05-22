@@ -12,7 +12,7 @@
 #include "PowerStatus.h"
 #include "graphics/SharedUIDisplay.h"
 #include "meshUtils.h"
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3)
 #include "red_bank_s3/RedBankController.h"
 #endif
 
@@ -52,9 +52,10 @@ namespace graphics
       static char tempBuf[237];
       int width = display->getWidth();
       int height = display->getHeight();
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
 
 #if HAS_SCREEN
+#ifdef RED_BANK_S3
       if (redBankController->getCurrentRotation() == 0 && width > height)
       {
         std::swap(width, height); // 调换宽高
@@ -67,6 +68,10 @@ namespace graphics
       display->setTextAlignment(TEXT_ALIGN_LEFT);
       // 根据屏幕旋转角度选择合适的字体大小
       uint8_t currentRotation = redBankController->getCurrentRotation();
+#else
+      display->setTextAlignment(TEXT_ALIGN_LEFT);
+      uint8_t currentRotation = (width < height) ? 0 : 3;
+#endif
       FontSelection fontSel = selectFontForRotation(currentRotation);
 #else
       FontSelection fontSel = selectFontForRotation(3);
@@ -76,7 +81,12 @@ namespace graphics
 
       display->setFont(selectedFont);
 
-      NodeNum currentNode = redBankController->getCurrentDirectMessageNode();
+      if (!chatHistoryStore)
+      {
+        return;
+      }
+
+      NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
       meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(currentNode);
 
       char title[10] = "DM";
@@ -86,7 +96,7 @@ namespace graphics
       }
 
       // 检查当前节点是否有私信
-      if (redBankController->isDirectMessageListEmptyForNode(currentNode))
+      if (chatHistoryStore->isDirectMessageListEmptyForNode(currentNode))
       {
         drawCommonHeader(display, x, y, title, false);
         const char *messageString = "No messages with this node";
@@ -98,15 +108,15 @@ namespace graphics
 
       drawCommonHeader(display, x, y, title, false);
       // 获取当前节点的消息列表大小
-      uint16_t directMsgListSize = redBankController->_getDirectMessageListSizeForNode(currentNode);
-      uint8_t msgIndex = redBankController->getCurrentDirectMessageIndex();
-      const meshtastic_MeshPacket &mp = redBankController->getRecentDirectMessage(msgIndex);
+      uint16_t directMsgListSize = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
+      uint8_t msgIndex = chatHistoryStore->getCurrentDirectMessageIndex();
+      const meshtastic_MeshPacket &mp = chatHistoryStore->getRecentDirectMessage(msgIndex);
 
       // 确保索引有效
       if (msgIndex >= directMsgListSize)
       {
         msgIndex = directMsgListSize - 1;
-        redBankController->setCurrentDirectMessageIndex(msgIndex);
+        chatHistoryStore->setCurrentDirectMessageIndex(msgIndex);
       }
 
       // 获取发送者或接收者信息
