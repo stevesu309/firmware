@@ -286,6 +286,24 @@ bool EInkDisplay::connect()
         // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
         // adafruitDisplay->setFullWindow();
     }
+#elif defined(RED_TEST)
+    {
+        delay(10);    // 给外设电源一点稳定时间
+        SPI1.begin(); // 使用 variant.h 里的 PIN_SPI1_SCK/MOSI/MISO
+
+        auto lowLevel = new EINK_DISPLAY_MODEL(
+            PIN_EINK_CS,
+            PIN_EINK_DC,
+            PIN_EINK_RES,
+            PIN_EINK_BUSY,
+            SPI1);
+
+        adafruitDisplay = new GxEPD2_BW<EINK_DISPLAY_MODEL, EINK_DISPLAY_MODEL::HEIGHT>(*lowLevel);
+        adafruitDisplay->init(115200, true, 10, false);
+        adafruitDisplay->setRotation(3);
+        // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
+        // adafruitDisplay->setFullWindow();
+    }
 #elif defined(PCA10059) || defined(ME25LS01)
     {
         auto lowLevel = new EINK_DISPLAY_MODEL(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY);
