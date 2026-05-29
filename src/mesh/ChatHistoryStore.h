@@ -10,13 +10,15 @@ class ChatHistoryStore
   public:
     ChatHistoryStore();
 
+    // 从 flash 恢复聊天历史（在 NodeDB / channelFile 就绪后调用，勿在构造函数中做重 IO）。
+    void loadFromDisk();
+
     // 频道消息历史：按 channel index 保存最近的广播消息。
     bool isMeshPacketListEmpty(uint8_t channel) const;
     void saveMeshPacket(const meshtastic_MeshPacket &mp);
     meshtastic_MeshPacket getRecentMeshPacket(uint8_t channel, uint8_t recentIndex) const;
     int getMeshPacketListSize(uint8_t channel) const;
 
-    // 从 NodeDB 的 proto 文件恢复/删除频道消息历史。
     void restoreChannelPackets();
     void restoreDirectMessages();
     void deleteCurrentChannelMessage(uint8_t channelIndex, uint16_t packetIndex);
@@ -37,6 +39,9 @@ class ChatHistoryStore
     void deleteCurrentDirectMessage();
     void deleteAllDirectMessagesForNode(NodeNum nodeNum);
 
+    // 将内存中未落盘的历史写入 flash（关机/睡眠/重启前调用）。
+    void persistToDisk();
+
   private:
     static constexpr uint8_t kMaxChannels = 8;
     static constexpr uint8_t kChannelMessageCapacity = 10;
@@ -49,8 +54,17 @@ class ChatHistoryStore
     NodeNum currentDirectMessageNode = 0;
     uint8_t currentDirectMessageIndex = 0;
 
+    uint8_t dirtyChannelMask = 0;
+    std::vector<NodeNum> dirtyDmNodes;
+
     void pushChannelPacket(uint8_t channelIndex, const meshtastic_MeshPacket &mp);
     void pushDirectMessage(const meshtastic_MeshPacket &mp);
+    void markChannelDirty(uint8_t channelIndex);
+    void markDmNodeDirty(NodeNum nodeNum);
+    void clearChannelDirty(uint8_t channelIndex);
+    void clearDmNodeDirty(NodeNum nodeNum);
+    void persistChannelToDisk(uint8_t channelIndex);
+    void persistDirectMessagesForNodeToDisk(NodeNum nodeNum);
 };
 
 extern ChatHistoryStore *chatHistoryStore;

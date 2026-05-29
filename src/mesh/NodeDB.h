@@ -281,15 +281,6 @@ public:
     bool restorePreferences(meshtastic_AdminMessage_BackupLocation location,
                             int restoreWhat = SEGMENT_CONFIG | SEGMENT_MODULECONFIG | SEGMENT_DEVICESTATE | SEGMENT_CHANNELS);
 
-    bool saveChannelPacketToDisk(uint8_t channel_index, uint8_t packet_index, const meshtastic_MeshPacket &mp);
-    bool restoreMeshPacket(uint8_t channel_index, uint8_t packet_index, meshtastic_MeshPacket &mp);
-    bool deleteChannelPacketFromDisk(uint8_t channel_index, uint8_t packet_index);
-    bool deleteAllChannelPacketsForChannel(uint8_t channel_index);
-    bool saveDirectMessagePacketToDisk(NodeNum node_num, uint8_t packet_index, const meshtastic_MeshPacket &mp);
-    bool restoreDirectMessagePacket(NodeNum node_num, uint8_t packet_index, meshtastic_MeshPacket &mp);
-    bool deleteDirectMessagePacketFromDisk(NodeNum node_num, uint8_t packet_index);
-    bool deleteAllDirectMessagePacketsForNode(NodeNum node_num);
-
 private:
     uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
     uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually

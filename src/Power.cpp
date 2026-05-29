@@ -22,6 +22,9 @@
 #if defined(RED_BANK_S3) && (defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52))
 #include "red_bank_s3/Flash.h"
 #endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
 
 #if defined(ARCH_PORTDUINO)
 #include "api/WiFiServerAPI.h"
@@ -773,6 +776,10 @@ void Power::powerCommandsCheck()
 
 void Power::reboot()
 {
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
+#endif
     notifyReboot.notifyObservers(NULL);
 #if defined(ARCH_ESP32)
     ESP.restart();
@@ -813,6 +820,10 @@ void Power::shutdown()
 #endif
 #if !defined(ARCH_STM32WL)
     playShutdownMelody();
+#endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
 #endif
     nodeDB->saveToDisk();
 

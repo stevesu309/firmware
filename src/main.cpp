@@ -950,6 +950,7 @@ SPI.setFrequency(4000000);
 #endif
 #if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
     chatHistoryStore = new ChatHistoryStore();
+    chatHistoryStore->loadFromDisk();
 #endif
     // setup TZ prior to time actions.
 #if !MESHTASTIC_EXCLUDE_TZ
