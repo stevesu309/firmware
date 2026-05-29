@@ -63,6 +63,7 @@ extern "C"
 #define SW_F5 (0 + 11)   // 取消键
 #define SW_BUT (32 + 10) // 确认键
 
+#define BUTTON_PIN SW_BUT
 /*
  * Analog pins
  */

@@ -80,7 +80,7 @@ const unsigned char lightning_bolt_v[] PROGMEM = {0b00000100, 0b00000110, 0b0001
 #define mail_width 10
 #define mail_height 7
 
-#ifdef RED_BANK_S3
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915) || defined(RED_TEST)
 
 static const uint8_t icon_CH[] PROGMEM = {
     0b10010110,
