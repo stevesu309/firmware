@@ -56,12 +56,12 @@ extern "C"
 
 #define LED_STATE_ON 0 // State when LED is lit
 
-#define SW_F1 (0 + 6)    // 上键
-#define SW_F2 (0 + 8)    // 左键
-#define SW_F3 (0 + 9)    // 右键
-#define SW_F4 (0 + 10)   // 下键
-#define SW_F5 (0 + 11)   // 取消键
-#define SW_BUT (32 + 10) // 确认键
+#define SW_F1 (32 + 11) // 上键
+#define SW_F2 (0 + 9)   // 左键
+#define SW_F3 (0 + 6)   // 右键
+#define SW_F4 (0 + 8)   // 下键
+#define SW_F5 (0 + 10)  // 取消键
+#define SW_BUT (0 + 11) // 确认键
 
 #define BUTTON_PIN SW_BUT
 /*
@@ -137,11 +137,13 @@ External serial flash GD25Q32C
 #define PIN_EINK_RES (0 + 2)
 #define PIN_EINK_SCLK (0 + 31)
 #define PIN_EINK_MOSI (0 + 29) // also called SDI
+#define PIN_EINK_EN (32 + 10)
 
-// Controls power for all peripherals (eink + GPS + LoRa + Sensor)
-#define PIN_POWER_EN (0 + 12)
-#define SX126X_POWER_EN (0 + 12)
-  // #define PIN_POWER_EN1 (0 + 13)
+// Peripheral power enables (active high)
+#define PIN_POWER_EN (0 + 12) // GNSS (L76K)
+#define GNSS_POWER_EN (0 + 12)
+#define SX126X_POWER_EN (0 + 13) // LoRa (SX1262)
+#define PIN_PWR_DELAY_MS 10
 
 #define PIN_SPI1_MISO \
   (32 + 7) // FIXME not really needed, but for now the SPI code requires something to be defined, pick an used GPIO
@@ -152,15 +154,17 @@ External serial flash GD25Q32C
    * GPS pins
    */
 
+#define HAS_GPS 1
 #define GPS_L76K
+#define PIN_GPS_EN GNSS_POWER_EN
 #define PIN_GPS_REINIT (32 + 5) // An output to reset L76K GPS. As per datasheet, low for > 100ms will reset the L76K
 
 #define PIN_GPS_STANDBY (32 + 2) // An output to wake GPS, low means allow sleep, high means force wake
 // Seems to be missing on this new board
-// #define PIN_GPS_PPS (32 + 4)  // Pulse per second input from the GPS
-#define GPS_TX_PIN (32 + 9) // This is for bits going TOWARDS the CPU
-#define GPS_RX_PIN (32 + 8) // This is for bits going TOWARDS the GPS
-
+#define PIN_GPS_PPS (32 + 4)   // Pulse per second input from the GPS
+#define GPS_TX_PIN (32 + 9)    // This is for bits going TOWARDS the CPU
+#define GPS_RX_PIN (32 + 8)    // This is for bits going TOWARDS the GPS
+#define GPS_ONOFF_PIN (32 + 7) //
 #define GPS_THREAD_INTERVAL 50
 
 #define PIN_SERIAL1_RX GPS_TX_PIN

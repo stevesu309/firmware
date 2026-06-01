@@ -92,6 +92,8 @@ namespace redcoast915
     pinMode(SW_F4, INPUT_PULLUP);  // DOWN
     pinMode(SW_F5, INPUT_PULLUP);  // CANCEL
     pinMode(SW_BUT, INPUT_PULLUP); // ENTER
+    pinMode(GPS_ONOFF_PIN, OUTPUT);
+    digitalWrite(GPS_ONOFF_PIN, HIGH);
   }
 
   void FiveWayGpioInput::setMenuActive(bool active)

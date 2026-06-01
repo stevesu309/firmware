@@ -139,6 +139,10 @@ def normalize_serial_port(port):
 
 
 def should_auto_upload_chinese_font():
+    val = env.GetProjectOption("custom_auto_upload_chinese_font", None)
+    if val is None:
+        return False
+
     if platform.name != "nordicnrf52":
         return False
 

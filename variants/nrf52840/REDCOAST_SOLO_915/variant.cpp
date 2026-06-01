@@ -42,7 +42,7 @@ void initVariant()
   // pinMode(PIN_LED3, OUTPUT);
   // ledOff(PIN_LED3);
 
-  // // Keep QSPI flash deselected by default to avoid boot-time bus contention.
+  // Keep QSPI flash deselected by default to avoid boot-time bus contention.
   pinMode(PIN_QSPI_CS, OUTPUT);
   digitalWrite(PIN_QSPI_CS, HIGH);
 
@@ -50,5 +50,15 @@ void initVariant()
   // Some board revisions gate external peripherals (including QSPI flash) via PWR_EN.
   pinMode(PIN_PWR_EN, OUTPUT);
   digitalWrite(PIN_PWR_EN, HIGH);
+#endif
+
+  // GNSS and LoRa have separate enable pins; bring both up before any SPI activity.
+#ifdef PIN_POWER_EN
+  pinMode(PIN_POWER_EN, OUTPUT);
+  digitalWrite(PIN_POWER_EN, HIGH);
+#endif
+#ifdef SX126X_POWER_EN
+  pinMode(SX126X_POWER_EN, OUTPUT);
+  digitalWrite(SX126X_POWER_EN, HIGH);
 #endif
 }
