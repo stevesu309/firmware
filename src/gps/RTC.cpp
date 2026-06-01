@@ -28,7 +28,7 @@ RTCQuality getRTCQuality()
 
 // stuff that really should be in in the instance instead...
 static uint32_t
-    timeStartMsec; // Once we have a GPS lock, this is where we hold the initial msec clock that corresponds to that time
+    timeStartMsec;              // Once we have a GPS lock, this is where we hold the initial msec clock that corresponds to that time
 static uint64_t zeroOffsetSecs; // GPS based time in secs since 1970 - only updated once on initial lock
 
 /**
@@ -39,7 +39,8 @@ RTCSetResult readFromRTC()
 {
     struct timeval tv; /* btw settimeofday() is helpful here too*/
 #ifdef RV3028_RTC
-    if (rtc_found.address == RV3028_RTC) {
+    if (rtc_found.address == RV3028_RTC)
+    {
         uint32_t now = millis();
         Melopero_RV3028 rtc;
 #if WIRE_INTERFACES_COUNT == 2
@@ -162,7 +163,8 @@ RTCSetResult readFromRTC()
         }
     }
 #else
-    if (!gettimeofday(&tv, NULL)) {
+    if (!gettimeofday(&tv, NULL))
+    {
         uint32_t now = millis();
         uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
         LOG_DEBUG("Read RTC time as %ld", printableEpoch);
@@ -209,21 +211,30 @@ RTCSetResult perhapsSetRTC(RTCQuality q, const struct timeval *tv, bool forceUpd
 #endif
 
     bool shouldSet;
-    if (forceUpdate) {
+    if (forceUpdate)
+    {
         shouldSet = true;
         LOG_DEBUG("Override current RTC quality (%s) with incoming time of RTC quality of %s", RtcName(currentQuality),
                   RtcName(q));
-    } else if (q > currentQuality) {
+    }
+    else if (q > currentQuality)
+    {
         shouldSet = true;
         LOG_DEBUG("Upgrade time to quality %s", RtcName(q));
-    } else if (q == RTCQualityGPS) {
+    }
+    else if (q == RTCQualityGPS)
+    {
         shouldSet = true;
         LOG_DEBUG("Reapply GPS time: %ld secs", printableEpoch);
-    } else if (q == RTCQualityNTP && !Throttle::isWithinTimespanMs(lastSetMsec, (12 * 60 * 60 * 1000UL))) {
+    }
+    else if (q == RTCQualityNTP && !Throttle::isWithinTimespanMs(lastSetMsec, (12 * 60 * 60 * 1000UL)))
+    {
         // Every 12 hrs we will slam in a new NTP or Phone GPS / NTP time, to correct for local RTC clock drift
         shouldSet = true;
         LOG_DEBUG("Reapply external time to correct clock drift %ld secs", printableEpoch);
-    } else {
+    }
+    else
+    {
         shouldSet = false;
         LOG_DEBUG("Current RTC quality: %s. Ignore time of RTC quality of %s", RtcName(currentQuality), RtcName(q));
     }
@@ -232,7 +243,8 @@ RTCSetResult perhapsSetRTC(RTCQuality q, const struct timeval *tv, bool forceUpd
         RTCQuality oldQuality = currentQuality;
         currentQuality = q;
         lastSetMsec = now;
-        if (currentQuality >= RTCQualityNTP) {
+        if (currentQuality >= RTCQualityNTP)
+        {
             lastSetFromPhoneNtpOrGps = now;
         }
 
@@ -241,7 +253,8 @@ RTCSetResult perhapsSetRTC(RTCQuality q, const struct timeval *tv, bool forceUpd
         zeroOffsetSecs = tv->tv_sec;
         // If this platform has a settable RTC, set it
 #ifdef RV3028_RTC
-        if (rtc_found.address == RV3028_RTC) {
+        if (rtc_found.address == RV3028_RTC)
+        {
             Melopero_RV3028 rtc;
 #if WIRE_INTERFACES_COUNT == 2
             rtc.initI2C(rtc_found.port == ScanI2C::I2CPort::WIRE1 ? Wire1 : Wire);
@@ -299,14 +312,17 @@ RTCSetResult perhapsSetRTC(RTCQuality q, const struct timeval *tv, bool forceUpd
         readFromRTC();
         triggerNodeInfoCheckOnTimeSource(oldQuality, currentQuality);
         return RTCSetResultSuccess;
-    } else {
+    }
+    else
+    {
         return RTCSetResultNotSet; // RTC was already set with a higher quality time
     }
 }
 
 const char *RtcName(RTCQuality quality)
 {
-    switch (quality) {
+    switch (quality)
+    {
     case RTCQualityNone:
         return "None";
     case RTCQualityDevice:
@@ -363,12 +379,26 @@ RTCSetResult perhapsSetRTC(RTCQuality q, const struct tm &t)
 #endif
 
     // LOG_DEBUG("Got time from GPS month=%d, year=%d, unixtime=%ld", t.tm_mon, t.tm_year, tv.tv_sec);
-    if (t.tm_year < 0 || t.tm_year >= 300) {
-        // LOG_DEBUG("Ignore invalid GPS month=%d, year=%d, unixtime=%ld", t.tm_mon, t.tm_year, tv.tv_sec);
+
+    // tm_year从1900年开始计算
+    if (t.tm_year < 0 || t.tm_year >= 300)
+    {
+        // LOG_WARN("Ignore invalid GPS year=%d (out of range)", t.tm_year + 1900);
         return RTCSetResultInvalidTime;
-    } else {
-        return perhapsSetRTC(q, &tv);
     }
+
+    if (t.tm_year < 120)
+    { // 2020年
+        // LOG_WARN("Ignore GPS time too old: year=%d", t.tm_year + 1900);
+        return RTCSetResultInvalidTime;
+    }
+    if (t.tm_year > 170)
+    { // 2070年
+        // LOG_WARN("Ignore GPS time too new (likely not locked): year=%d", t.tm_year + 1900);
+        return RTCSetResultInvalidTime;
+    }
+
+    return perhapsSetRTC(q, &tv);
 }
 
 /**
@@ -396,9 +426,12 @@ int32_t getTZOffset()
  */
 uint32_t getTime(bool local)
 {
-    if (local) {
+    if (local)
+    {
         return (((uint32_t)millis() - timeStartMsec) / 1000) + zeroOffsetSecs + getTZOffset();
-    } else {
+    }
+    else
+    {
         return (((uint32_t)millis() - timeStartMsec) / 1000) + zeroOffsetSecs;
     }
 }

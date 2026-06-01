@@ -35,8 +35,7 @@
 #define RDEF(name, freq_start, freq_end, duty_cycle, spacing, power_limit, audio_permitted, frequency_switching, wide_lora)      \
     {                                                                                                                            \
         meshtastic_Config_LoRaConfig_RegionCode_##name, freq_start, freq_end, duty_cycle, spacing, power_limit, audio_permitted, \
-            frequency_switching, wide_lora, #name                                                                                \
-    }
+        frequency_switching, wide_lora, #name}
 
 const RegionInfo regions[] = {
     /*
@@ -72,7 +71,7 @@ const RegionInfo regions[] = {
     /*
         https://lora-alliance.org/wp-content/uploads/2020/11/lorawan_regional_parameters_v1.0.3reva_0.pdf
      */
-    RDEF(CN, 470.0f, 510.0f, 100, 0, 19, true, false, false),
+    RDEF(CN, 470.0f, 510.0f, 100, 0, 22, true, false, false),
 
     /*
         https://lora-alliance.org/wp-content/uploads/2020/11/lorawan_regional_parameters_v1.0.3reva_0.pdf
@@ -545,9 +544,12 @@ separated by 2.16 MHz with respect to the adjacent channels. Channel zero starts
 uint32_t RadioInterface::getPacketTime(const meshtastic_MeshPacket *p, bool received)
 {
     uint32_t pl = 0;
-    if (p->which_payload_variant == meshtastic_MeshPacket_encrypted_tag) {
+    if (p->which_payload_variant == meshtastic_MeshPacket_encrypted_tag)
+    {
         pl = p->encrypted.size + sizeof(PacketHeader);
-    } else {
+    }
+    else
+    {
         size_t numbytes = pb_encode_to_bytes(bytes, sizeof(bytes), &meshtastic_Data_msg, &p->decoded);
         pl = numbytes + sizeof(PacketHeader);
     }
@@ -625,7 +627,9 @@ uint32_t RadioInterface::getTxDelayMsecWeighted(meshtastic_MeshPacket *p)
     if (shouldRebroadcastEarlyLikeRouter(p)) {
         delay = random(0, 2 * CWsize) * slotTimeMsec;
         LOG_DEBUG("rx_snr found in packet. Router: setting tx delay:%d", delay);
-    } else {
+    }
+    else
+    {
         // offset the maximum delay for routers: (2 * CWmax * slotTimeMsec)
         delay = (2 * CWmax * slotTimeMsec) + random(0, pow_of_2(CWsize)) * slotTimeMsec;
         LOG_DEBUG("rx_snr found in packet. Setting tx delay:%d", delay);
@@ -640,7 +644,8 @@ void printPacket(const char *prefix, const meshtastic_MeshPacket *p)
     std::string out =
         DEBUG_PORT.mt_sprintf("%s (id=0x%08x fr=0x%08x to=0x%08x, transport = %u, WantAck=%d, HopLim=%d Ch=0x%x", prefix, p->id,
                               p->from, p->to, p->transport_mechanism, p->want_ack, p->hop_limit, p->channel);
-    if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag) {
+    if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag)
+    {
         auto &s = p->decoded;
 
         out += DEBUG_PORT.mt_sprintf(" Portnum=%d", s.portnum);
@@ -665,7 +670,9 @@ void printPacket(const char *prefix, const meshtastic_MeshPacket *p)
             out += DEBUG_PORT.mt_sprintf(" successId=%08x", s.ackVariant.success_id);
         else if (s.which_ackVariant == SubPacket_fail_id_tag)
             out += DEBUG_PORT.mt_sprintf(" failId=%08x", s.ackVariant.fail_id); */
-    } else {
+    }
+    else
+    {
         out += " encrypted";
         out += DEBUG_PORT.mt_sprintf(" len=%d", p->encrypted.size + sizeof(PacketHeader));
     }
@@ -790,7 +797,9 @@ void RadioInterface::applyModemConfig()
                 cr = loraConfig.coding_rate;
                 LOG_INFO("Using custom Coding Rate %u", cr);
             }
-        } else {
+        }
+        else
+        {
             sf = loraConfig.spread_factor;
             cr = loraConfig.coding_rate;
             bw = bwCodeToKHz(loraConfig.bandwidth);
@@ -822,7 +831,9 @@ void RadioInterface::applyModemConfig()
             // Set to default modem preset
             loraConfig.use_preset = true;
             loraConfig.modem_preset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST;
-        } else {
+        }
+        else
+        {
             validConfig = true;
         }
     }
@@ -860,7 +871,8 @@ void RadioInterface::applyModemConfig()
     float freq = myRegion->freqStart + (bw / 2000) + (channel_num * (bw / 1000));
 
     // override if we have a verbatim frequency
-    if (loraConfig.override_frequency) {
+    if (loraConfig.override_frequency)
+    {
         freq = loraConfig.override_frequency;
         channel_num = -1;
     }
@@ -892,10 +904,13 @@ uint32_t RadioInterface::computeSlotTimeMsec()
     float sumPropagationTurnaroundMACTime = 0.2 + 0.4 + 7; // in milliseconds
     float symbolTime = pow_of_2(sf) / bw;                  // in milliseconds
 
-    if (myRegion->wideLora) {
+    if (myRegion->wideLora)
+    {
         // CAD duration derived from AN1200.22 of SX1280
         return (NUM_SYM_CAD_24GHZ + (2 * sf + 3) / 32) * symbolTime + sumPropagationTurnaroundMACTime;
-    } else {
+    }
+    else
+    {
         // CAD duration for SX127x is max. 2.25 symbols, for SX126x it is number of symbols + 0.5 symbol
         return max(2.25, NUM_SYM_CAD + 0.5) * symbolTime + sumPropagationTurnaroundMACTime;
     }
@@ -912,7 +927,8 @@ void RadioInterface::limitPower(int8_t loraMaxPower)
     if (myRegion->powerLimit)
         maxPower = myRegion->powerLimit;
 
-    if ((power > maxPower) && !devicestate.owner.is_licensed) {
+    if ((power > maxPower) && !devicestate.owner.is_licensed)
+    {
         LOG_INFO("Lower transmit power because of regulatory limits");
         power = maxPower;
     }
@@ -957,7 +973,8 @@ void RadioInterface::limitPower(int8_t loraMaxPower)
 
 void RadioInterface::deliverToReceiver(meshtastic_MeshPacket *p)
 {
-    if (router) {
+    if (router)
+    {
         p->transport_mechanism = meshtastic_MeshPacket_TransportMechanism_TRANSPORT_LORA;
         router->enqueueReceivedMessage(p);
     }
@@ -979,7 +996,8 @@ size_t RadioInterface::beginSending(meshtastic_MeshPacket *p)
     radioBuffer.header.channel = p->channel;
     radioBuffer.header.next_hop = p->next_hop;
     radioBuffer.header.relay_node = p->relay_node;
-    if (p->hop_limit > HOP_MAX) {
+    if (p->hop_limit > HOP_MAX)
+    {
         LOG_WARN("hop limit %d is too high, setting to %d", p->hop_limit, HOP_RELIABLE);
         p->hop_limit = HOP_RELIABLE;
     }

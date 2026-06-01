@@ -26,6 +26,14 @@
 static constexpr uint32_t GPS_UPDATE_ALWAYS_ON_THRESHOLD_MS = 10 * 1000UL;
 static constexpr uint32_t GPS_FIX_HOLD_MAX_MS = 20000;
 
+// Allow defining the polarity of the STANDBY output.  default is LOW for standby
+#ifndef GPS_STANDBY_ACTIVE
+#define GPS_STANDBY_ACTIVE LOW
+#endif
+
+static constexpr uint32_t GPS_UPDATE_ALWAYS_ON_THRESHOLD_MS = 10 * 1000UL;
+static constexpr uint32_t GPS_FIX_HOLD_MAX_MS = 20000;
+
 typedef enum {
     GNSS_MODEL_ATGM336H,
     GNSS_MODEL_MTK,
@@ -45,14 +53,16 @@ typedef enum {
     GNSS_MODEL_CM121
 } GnssModel_t;
 
-typedef enum {
+typedef enum
+{
     GNSS_RESPONSE_NONE,
     GNSS_RESPONSE_NAK,
     GNSS_RESPONSE_FRAME_ERRORS,
     GNSS_RESPONSE_OK,
 } GPS_RESPONSE;
 
-enum GPSPowerState : uint8_t {
+enum GPSPowerState : uint8_t
+{
     GPS_ACTIVE,    // Awake and want a position
     GPS_IDLE,      // Awake, but not wanting another position yet
     GPS_SOFTSLEEP, // Physically powered on, but soft-sleeping
@@ -60,7 +70,8 @@ enum GPSPowerState : uint8_t {
     GPS_OFF        // Powered off indefinitely
 };
 
-struct ChipInfo {
+struct ChipInfo
+{
     String chipName;        // The name of the chip (for logging)
     String detectionString; // The string to match in the response
     GnssModel_t driver;     // The driver to use
@@ -72,7 +83,7 @@ struct ChipInfo {
  */
 class GPS : private concurrency::OSThread
 {
-  public:
+public:
     meshtastic_Position p = meshtastic_Position_init_default;
 
     /** This is normally bound to config.position.gps_en_gpio but some rare boards (like heltec tracker) need more advanced
@@ -128,7 +139,7 @@ class GPS : private concurrency::OSThread
     // Let the GPS hardware save power between updates
     void down();
 
-  private:
+private:
     GPS() : concurrency::OSThread("GPS") {}
 
     /// Record that we have a GPS

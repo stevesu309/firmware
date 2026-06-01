@@ -1,5 +1,7 @@
 #pragma once
-
+#include "graphics/fonts/OLEDDisplayFontsAR.h"
+#include "graphics/draw/DrawChineseFont.h"
+// #include "graphics/fonts/chinese_test_font_16.h"
 #ifdef OLED_PL
 #include "graphics/fonts/OLEDDisplayFontsPL.h"
 #endif
@@ -88,9 +90,9 @@
 #endif
 #endif
 
-#if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) ||      \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || defined(ST7796_CS) ||             \
-     defined(USE_ST7796) || defined(HACKADAY_COMMUNICATOR)) &&                                                                   \
+#if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || defined(ST7796_CS) ||        \
+     defined(USE_ST7796) || defined(HACKADAY_COMMUNICATOR)) &&                                                              \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
 // The screen is bigger so use bigger fonts
 #define FONT_SMALL FONT_MEDIUM_LOCAL // Height: 19
@@ -104,6 +106,44 @@
 #define FONT_SMALL FONT_SMALL_LOCAL   // Height: 13
 #define FONT_MEDIUM FONT_MEDIUM_LOCAL // Height: 19
 #define FONT_LARGE FONT_LARGE_LOCAL   // Height: 28
+#endif
+
+#if defined(RED_BANK_S3) && defined(USE_EINK)
+#undef FONT_SMALL
+#undef FONT_MEDIUM
+// #undef FONT_LARGE
+#define FONT_SMALL Arimo_Regular_14
+#define FONT_MEDIUM Arimo_Regular_16
+// #define FONT_LARGE chinese_font22
+#endif
+
+#if defined(REDCOAST_SOLO_915) && defined(USE_EINK)
+#undef FONT_SMALL
+#undef FONT_MEDIUM
+#undef FONT_LARGE
+#define FONT_SMALL Arimo_Regular_14
+#define FONT_MEDIUM Arimo_Regular_16
+#define FONT_LARGE Arimo_Regular_16
+
+#endif
+
+#if defined(RED_BANK_S3) && defined(USE_EINK)
+#undef FONT_SMALL
+#undef FONT_MEDIUM
+// #undef FONT_LARGE
+#define FONT_SMALL Arimo_Regular_14
+#define FONT_MEDIUM Arimo_Regular_16
+// #define FONT_LARGE chinese_font22
+#endif
+
+#if defined(REDCOAST_SOLO_915) && defined(USE_EINK)
+#undef FONT_SMALL
+#undef FONT_MEDIUM
+#undef FONT_LARGE
+#define FONT_SMALL Arimo_Regular_14
+#define FONT_MEDIUM Arimo_Regular_16
+#define FONT_LARGE Arimo_Regular_16
+
 #endif
 
 #if defined(CROWPANEL_ESP32S3_5_EPAPER) || defined(T5_S3_EPAPER_PRO)

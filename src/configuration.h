@@ -346,7 +346,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 
 #ifndef GPS_BAUDRATE
-#define GPS_BAUDRATE 9600
+#define GPS_BAUDRATE 115200
 #define GPS_BAUDRATE_FIXED 0
 #else
 #define GPS_BAUDRATE_FIXED 1

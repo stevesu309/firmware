@@ -30,9 +30,9 @@
 
 namespace
 {
-constexpr uint16_t kPreferredBleMtu = 517;
-constexpr uint16_t kPreferredBleTxOctets = 251;
-constexpr uint16_t kPreferredBleTxTimeUs = (kPreferredBleTxOctets + 14) * 8;
+    constexpr uint16_t kPreferredBleMtu = 517;
+    constexpr uint16_t kPreferredBleTxOctets = 251;
+    constexpr uint16_t kPreferredBleTxTimeUs = (kPreferredBleTxOctets + 14) * 8;
 } // namespace
 #endif
 
@@ -54,13 +54,15 @@ static std::atomic<uint16_t> nimbleBluetoothConnHandle{BLE_HS_CONN_HANDLE_NONE};
 
 static void clearPairingDisplay()
 {
-    if (!passkeyShowing) {
+    if (!passkeyShowing)
+    {
         return;
     }
 
     passkeyShowing = false;
 #if HAS_SCREEN
-    if (screen) {
+    if (screen)
+    {
         screen->endAlert();
     }
 #endif
@@ -132,7 +134,7 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
         - Otherwise, you're going to wait ~100ms or so until the main loop wakes up from some other cause.
     */
 
-  public:
+public:
     BluetoothPhoneAPI() : concurrency::OSThread("NimbleBluetooth") { api_type = TYPE_BLE; }
 
     /* Packets from phone (BLE onWrite callback) */
@@ -156,10 +158,11 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
     std::atomic<int32_t> notifyCount{0};
     std::atomic<int32_t> writeCount{0};
 
-  protected:
+protected:
     virtual int32_t runOnce() override
     {
-        while (runOnceHasWorkToDo()) {
+        while (runOnceHasWorkToDo())
+        {
             /*
               PROCESS fromPhoneQueue BEFORE toPhoneQueue:
 
@@ -192,9 +195,11 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
         LOG_INFO("BLE onConfigStart");
 
         // Prefer high throughput during config/setup, at the cost of high power consumption (for a few seconds)
-        if (bleServer && isConnected()) {
+        if (bleServer && isConnected())
+        {
             uint16_t conn_handle = nimbleBluetoothConnHandle.load();
-            if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            if (conn_handle != BLE_HS_CONN_HANDLE_NONE)
+            {
                 requestHighThroughputConnection(conn_handle);
             }
         }
@@ -205,9 +210,11 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
         LOG_INFO("BLE onConfigComplete");
 
         // Switch to lower power consumption BLE connection params for steady-state use after config/setup is complete
-        if (bleServer && isConnected()) {
+        if (bleServer && isConnected())
+        {
             uint16_t conn_handle = nimbleBluetoothConnHandle.load();
-            if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            if (conn_handle != BLE_HS_CONN_HANDLE_NONE)
+            {
                 requestLowerPowerConnection(conn_handle);
             }
         }
@@ -231,12 +238,17 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
          * toPhoneQueue because the client will just reconnect after a disconnect, losing nothing.
          */
 
-        if (!isConnected()) {
+        if (!isConnected())
+        {
             return false;
-        } else if (isSendingPackets()) {
+        }
+        else if (isSendingPackets())
+        {
             // If we're in STATE_SEND_PACKETS, we must wait for onRead before calling getFromRadio.
             return false;
-        } else {
+        }
+        else
+        {
             // In other states, we can preload as long as there's space in the toPhoneQueue.
             return toPhoneQueueSize < NIMBLE_BLUETOOTH_TO_PHONE_QUEUE_SIZE;
         }
@@ -248,10 +260,12 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
         uint8_t fromRadioBytes[meshtastic_FromRadio_size] = {0};
         size_t numBytes = 0;
 
-        if (onReadCallbackIsWaitingForData || runOnceToPhoneCanPreloadNextPacket()) {
+        if (onReadCallbackIsWaitingForData || runOnceToPhoneCanPreloadNextPacket())
+        {
             numBytes = getFromRadio(fromRadioBytes);
 
-            if (numBytes == 0) {
+            if (numBytes == 0)
+            {
                 /*
                   Client expected a read, but we have nothing to send.
 
@@ -261,9 +275,12 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
                   In other states, this is fine **so long as we've already processed pending onWrites first**, because the client
                   may requesting wantConfig and immediately doing a read.
                 */
-            } else {
+            }
+            else
+            {
                 // Push to toPhoneQueue, protected by toPhoneMutex. Hold the mutex as briefly as possible.
-                if (toPhoneQueueSize < NIMBLE_BLUETOOTH_TO_PHONE_QUEUE_SIZE) {
+                if (toPhoneQueueSize < NIMBLE_BLUETOOTH_TO_PHONE_QUEUE_SIZE)
+                {
                     // Note: the comparison above is safe without a mutex because we are the only method that *increases*
                     // toPhoneQueueSize. (It's okay if toPhoneQueueSize *decreases* in the NimBLE task meanwhile.)
 
@@ -278,7 +295,9 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
                     LOG_DEBUG("BLE getFromRadio returned numBytes=%u, pushed toPhoneQueueSize=%u", numBytes,
                               toPhoneQueueSize.load());
 #endif
-                } else {
+                }
+                else
+                {
                     // Shouldn't happen because the onRead callback shouldn't be waiting if the queue is full!
                     LOG_ERROR("Shouldn't happen! Drop FromRadio packet, toPhoneQueue full (%u bytes)", numBytes);
                 }
@@ -294,7 +313,8 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
     void runOnceHandleFromPhoneQueue()
     {
         // Handle packets we received from onWrite from the phone.
-        if (fromPhoneQueueSize > 0) {
+        if (fromPhoneQueueSize > 0)
+        {
             // Note: the comparison above is safe without a mutex because we are the only method that *decreases*
             // fromPhoneQueueSize. (It's okay if fromPhoneQueueSize *increases* in the NimBLE task meanwhile.)
 
@@ -307,7 +327,8 @@ class BluetoothPhoneAPI : public PhoneAPI, public concurrency::OSThread
                 val = fromPhoneQueue[0];
 
                 // Shift the rest of the queue down
-                for (uint8_t i = 1; i < fromPhoneQueueSize; i++) {
+                for (uint8_t i = 1; i < fromPhoneQueueSize; i++)
+                {
                     fromPhoneQueue[i - 1] = fromPhoneQueue[i];
                 }
 
@@ -430,8 +451,10 @@ class NimbleBluetoothToRadioCallback : public NimBLECharacteristicCallbacks
 
         auto val = pCharacteristic->getValue();
 
-        if (memcmp(lastToRadio, val.data(), val.length()) != 0) {
-            if (bluetoothPhoneAPI->fromPhoneQueueSize < NIMBLE_BLUETOOTH_FROM_PHONE_QUEUE_SIZE) {
+        if (memcmp(lastToRadio, val.data(), val.length()) != 0)
+        {
+            if (bluetoothPhoneAPI->fromPhoneQueueSize < NIMBLE_BLUETOOTH_FROM_PHONE_QUEUE_SIZE)
+            {
                 // Note: the comparison above is safe without a mutex because we are the only method that *increases*
                 // fromPhoneQueueSize. (It's okay if fromPhoneQueueSize *decreases* in the main task meanwhile.)
                 memcpy(lastToRadio, val.data(), val.length());
@@ -452,10 +475,14 @@ class NimbleBluetoothToRadioCallback : public NimBLECharacteristicCallbacks
                 LOG_DEBUG("BLE onWrite(%d): append to fromPhoneQueue took %u ms. numBytes=%d", currentWriteCount,
                           finishMillis - startMillis, val.length());
 #endif
-            } else {
+            }
+            else
+            {
                 LOG_WARN("BLE onWrite(%d): Drop ToRadio packet, fromPhoneQueue full (%u bytes)", currentWriteCount, val.length());
             }
-        } else {
+        }
+        else
+        {
             LOG_DEBUG("BLE onWrite(%d): Drop duplicate ToRadio packet (%u bytes)", currentWriteCount, val.length());
         }
     }
@@ -480,7 +507,8 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
 #endif
 
         // Is there a packet ready to go, or do we have to ask the main task to get one for us?
-        if (bluetoothPhoneAPI->toPhoneQueueSize > 0) {
+        if (bluetoothPhoneAPI->toPhoneQueueSize > 0)
+        {
             // Note: the comparison above is safe without a mutex because we are the only method that *decreases*
             // toPhoneQueueSize. (It's okay if toPhoneQueueSize *increases* in the main task meanwhile.)
 
@@ -488,19 +516,23 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
 #ifdef DEBUG_NIMBLE_ON_READ_TIMING
             LOG_DEBUG("BLE onRead(%d): packet already waiting, no need to set onReadCallbackIsWaitingForData", currentReadCount);
 #endif
-        } else {
+        }
+        else
+        {
             // Tell the main task that we'd like a packet.
             bluetoothPhoneAPI->onReadCallbackIsWaitingForData = true;
 
             // Wait for the main task to produce a packet for us, up to about 20 seconds.
             // It normally takes just a few milliseconds, but at initial startup, etc, the main task can get blocked for longer
             // doing various setup tasks.
-            while (bluetoothPhoneAPI->onReadCallbackIsWaitingForData && tries < 4000) {
+            while (bluetoothPhoneAPI->onReadCallbackIsWaitingForData && tries < 4000)
+            {
                 // Schedule the main task runOnce to run ASAP.
                 bluetoothPhoneAPI->setIntervalFromNow(0);
                 concurrency::mainDelay.interrupt(); // wake up main loop if sleeping
 
-                if (!bluetoothPhoneAPI->onReadCallbackIsWaitingForData) {
+                if (!bluetoothPhoneAPI->onReadCallbackIsWaitingForData)
+                {
                     // we may be able to break even before a delay, if the call to interrupt woke up the main loop and it ran
                     // already
 #ifdef DEBUG_NIMBLE_ON_READ_TIMING
@@ -515,7 +547,8 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
                 delay(tries < 20 ? 1 : 5);
                 tries++;
 
-                if (tries == 4000) {
+                if (tries == 4000)
+                {
                     LOG_WARN(
                         "BLE onRead(%d): timeout waiting for data after %u ms, %d tries, giving up and returning 0-size response",
                         currentReadCount, millis() - startMillis, tries);
@@ -529,13 +562,15 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
         { // scope for toPhoneMutex mutex
             std::lock_guard<std::mutex> guard(bluetoothPhoneAPI->toPhoneMutex);
             size_t toPhoneQueueSize = bluetoothPhoneAPI->toPhoneQueueSize.load();
-            if (toPhoneQueueSize > 0) {
+            if (toPhoneQueueSize > 0)
+            {
                 // Copy from the front of the toPhoneQueue
                 memcpy(fromRadioBytes, bluetoothPhoneAPI->toPhoneQueue[0].data(), bluetoothPhoneAPI->toPhoneQueueByteSizes[0]);
                 numBytes = bluetoothPhoneAPI->toPhoneQueueByteSizes[0];
 
                 // Shift the rest of the queue down
-                for (uint8_t i = 1; i < toPhoneQueueSize; i++) {
+                for (uint8_t i = 1; i < toPhoneQueueSize; i++)
+                {
                     memcpy(bluetoothPhoneAPI->toPhoneQueue[i - 1].data(), bluetoothPhoneAPI->toPhoneQueue[i].data(),
                            bluetoothPhoneAPI->toPhoneQueueByteSizes[i]);
                     // The above line is similar to:
@@ -552,7 +587,9 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
                 // Safe decrement due to onDisconnect
                 if (bluetoothPhoneAPI->toPhoneQueueSize > 0)
                     bluetoothPhoneAPI->toPhoneQueueSize--;
-            } else {
+            }
+            else
+            {
                 // nothing in the toPhoneQueue; that's fine, and we'll just have numBytes=0.
             }
         }
@@ -566,7 +603,8 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
         pCharacteristic->setValue(fromRadioBytes, numBytes);
 
         // If we sent something, wake up the main loop if it's sleeping in case there are more packets ready to enqueue.
-        if (numBytes != 0) {
+        if (numBytes != 0)
+        {
             bluetoothPhoneAPI->setIntervalFromNow(0);
             concurrency::mainDelay.interrupt(); // wake up main loop if sleeping
         }
@@ -576,10 +614,10 @@ class NimbleBluetoothFromRadioCallback : public NimBLECharacteristicCallbacks
 class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
 {
 #ifdef NIMBLE_TWO
-  public:
+public:
     NimbleBluetoothServerCallback(NimbleBluetooth *ble) { this->ble = ble; }
 
-  private:
+private:
     NimbleBluetooth *ble;
 
     virtual uint32_t onPassKeyDisplay()
@@ -589,7 +627,8 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
     {
         uint32_t passkey = config.bluetooth.fixed_pin;
 
-        if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_RANDOM_PIN) {
+        if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_RANDOM_PIN)
+        {
             LOG_INFO("Use random passkey");
             // This is the passkey to be entered on peer - we pick a number >100,000 to ensure 6 digits
             passkey = random(100000, 999999);
@@ -601,8 +640,10 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         bluetoothStatus->updateStatus(&newStatus);
 
 #if HAS_SCREEN // Todo: migrate this display code back into Screen class, and observe bluetoothStatus
-        if (screen) {
-            screen->startAlert([passkey](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) -> void {
+        if (screen)
+        {
+            screen->startAlert([passkey](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) -> void
+                               {
                 char btPIN[16] = "888888";
                 snprintf(btPIN, sizeof(btPIN), "%06u", passkey);
                 int x_offset = display->width() / 2;
@@ -620,13 +661,12 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
                 snprintf(pin, sizeof(pin), "%.3s %.3s", btPIN, btPIN + 3);
                 y_offset = display->height() == 64 ? y_offset + FONT_HEIGHT_SMALL - 5 : y_offset + FONT_HEIGHT_SMALL + 5;
                 display->drawString(x_offset + x, y_offset + y, pin);
-
+                LOG_INFO("pin is : %s",pin);
                 display->setFont(FONT_SMALL);
                 char deviceName[64];
                 snprintf(deviceName, sizeof(deviceName), "Name: %s", getDeviceName());
                 y_offset = display->height() == 64 ? y_offset + FONT_HEIGHT_LARGE - 6 : y_offset + FONT_HEIGHT_LARGE + 5;
-                display->drawString(x_offset + x, y_offset + y, deviceName);
-            });
+                display->drawString(x_offset + x, y_offset + y, deviceName); });
         }
 #endif
         passkeyShowing = true;
@@ -663,17 +703,23 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
 #if NIMBLE_ENABLE_2M_PHY && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C6))
         int phyResult =
             ble_gap_set_prefered_le_phy(connHandle, BLE_GAP_LE_PHY_2M_MASK, BLE_GAP_LE_PHY_2M_MASK, BLE_GAP_LE_PHY_CODED_ANY);
-        if (phyResult == 0) {
+        if (phyResult == 0)
+        {
             LOG_INFO("BLE conn %u requested 2M PHY", connHandle);
-        } else {
+        }
+        else
+        {
             LOG_WARN("Failed to prefer 2M PHY for conn %u, rc=%d", connHandle, phyResult);
         }
 #endif
 
         int dataLenResult = ble_gap_set_data_len(connHandle, kPreferredBleTxOctets, kPreferredBleTxTimeUs);
-        if (dataLenResult == 0) {
+        if (dataLenResult == 0)
+        {
             LOG_INFO("BLE conn %u requested data length %u bytes", connHandle, kPreferredBleTxOctets);
-        } else {
+        }
+        else
+        {
             LOG_WARN("Failed to raise data length for conn %u, rc=%d", connHandle, dataLenResult);
         }
 
@@ -703,7 +749,8 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         bluetoothStatus->updateStatus(&newStatus);
         clearPairingDisplay();
 
-        if (bluetoothPhoneAPI) {
+        if (bluetoothPhoneAPI)
+        {
             bluetoothPhoneAPI->close();
 
             { // scope for fromPhoneMutex mutex
@@ -732,10 +779,14 @@ class NimbleBluetoothServerCallback : public NimBLEServerCallbacks
         ble->startAdvertising();
 #else
         NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
-        if (!pAdvertising->start(0)) {
-            if (pAdvertising->isAdvertising()) {
+        if (!pAdvertising->start(0))
+        {
+            if (pAdvertising->isAdvertising())
+            {
                 LOG_DEBUG("BLE advertising already running");
-            } else {
+            }
+            else
+            {
                 LOG_ERROR("BLE failed to restart advertising");
             }
         }
@@ -788,28 +839,33 @@ bool NimbleBluetooth::isConnected()
 int NimbleBluetooth::getRssi()
 {
 #if defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C6)
-    if (!bleServer || !isConnected()) {
+    if (!bleServer || !isConnected())
+    {
         return 0; // No active BLE connection
     }
 
     uint16_t connHandle = nimbleBluetoothConnHandle.load();
 
-    if (connHandle == BLE_HS_CONN_HANDLE_NONE) {
+    if (connHandle == BLE_HS_CONN_HANDLE_NONE)
+    {
         const auto peers = bleServer->getPeerDevices();
-        if (!peers.empty()) {
+        if (!peers.empty())
+        {
             connHandle = peers.front();
             nimbleBluetoothConnHandle = connHandle;
         }
     }
 
-    if (connHandle == BLE_HS_CONN_HANDLE_NONE) {
+    if (connHandle == BLE_HS_CONN_HANDLE_NONE)
+    {
         return 0; // Connection handle not available yet
     }
 
     int8_t rssi = 0;
     const int rc = ble_gap_conn_rssi(connHandle, &rssi);
 
-    if (rc == 0) {
+    if (rc == 0)
+    {
         return rssi;
     }
     LOG_DEBUG("BLE RSSI read failed, rc=%d", rc);
@@ -830,29 +886,72 @@ void NimbleBluetooth::setup()
 
 #if NIMBLE_ENABLE_2M_PHY && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C6))
     int mtuResult = NimBLEDevice::setMTU(kPreferredBleMtu);
-    if (mtuResult == 0) {
+    if (mtuResult == 0)
+    {
         LOG_INFO("BLE MTU request set to %u", kPreferredBleMtu);
-    } else {
+    }
+    else
+    {
         LOG_WARN("Unable to request MTU %u, rc=%d", kPreferredBleMtu, mtuResult);
     }
 
     int phyResult = ble_gap_set_prefered_default_le_phy(BLE_GAP_LE_PHY_2M_MASK, BLE_GAP_LE_PHY_2M_MASK);
-    if (phyResult == 0) {
+    if (phyResult == 0)
+    {
         LOG_INFO("BLE default PHY preference set to 2M");
-    } else {
+    }
+    else
+    {
         LOG_WARN("Failed to prefer 2M PHY by default, rc=%d", phyResult);
     }
 
     int dataLenResult = ble_gap_write_sugg_def_data_len(kPreferredBleTxOctets, kPreferredBleTxTimeUs);
-    if (dataLenResult == 0) {
+    if (dataLenResult == 0)
+    {
         LOG_INFO("BLE suggested data length set to %u bytes", kPreferredBleTxOctets);
-    } else {
+    }
+    else
+    {
         LOG_WARN("Failed to raise suggested data length (%u/%u), rc=%d", kPreferredBleTxOctets, kPreferredBleTxTimeUs,
                  dataLenResult);
     }
 #endif
 
-    if (config.bluetooth.mode != meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN) {
+#if NIMBLE_ENABLE_2M_PHY && (defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32C6))
+    int mtuResult = NimBLEDevice::setMTU(kPreferredBleMtu);
+    if (mtuResult == 0)
+    {
+        LOG_INFO("BLE MTU request set to %u", kPreferredBleMtu);
+    }
+    else
+    {
+        LOG_WARN("Unable to request MTU %u, rc=%d", kPreferredBleMtu, mtuResult);
+    }
+
+    int phyResult = ble_gap_set_prefered_default_le_phy(BLE_GAP_LE_PHY_2M_MASK, BLE_GAP_LE_PHY_2M_MASK);
+    if (phyResult == 0)
+    {
+        LOG_INFO("BLE default PHY preference set to 2M");
+    }
+    else
+    {
+        LOG_WARN("Failed to prefer 2M PHY by default, rc=%d", phyResult);
+    }
+
+    int dataLenResult = ble_gap_write_sugg_def_data_len(kPreferredBleTxOctets, kPreferredBleTxTimeUs);
+    if (dataLenResult == 0)
+    {
+        LOG_INFO("BLE suggested data length set to %u bytes", kPreferredBleTxOctets);
+    }
+    else
+    {
+        LOG_WARN("Failed to raise suggested data length (%u/%u), rc=%d", kPreferredBleTxOctets, kPreferredBleTxTimeUs,
+                 dataLenResult);
+    }
+#endif
+
+    if (config.bluetooth.mode != meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN)
+    {
         NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM | BLE_SM_PAIR_AUTHREQ_SC);
         NimBLEDevice::setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
         NimBLEDevice::setSecurityRespKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
@@ -875,14 +974,17 @@ void NimbleBluetooth::setupService()
     NimBLECharacteristic *ToRadioCharacteristic;
     NimBLECharacteristic *FromRadioCharacteristic;
     // Define the characteristics that the app is looking for
-    if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN) {
+    if (config.bluetooth.mode == meshtastic_Config_BluetoothConfig_PairingMode_NO_PIN)
+    {
         ToRadioCharacteristic = bleService->createCharacteristic(TORADIO_UUID, NIMBLE_PROPERTY::WRITE);
         // Allow notifications so phones can stream FromRadio without polling.
         FromRadioCharacteristic = bleService->createCharacteristic(FROMRADIO_UUID, NIMBLE_PROPERTY::READ);
         fromNumCharacteristic = bleService->createCharacteristic(FROMNUM_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ);
         logRadioCharacteristic =
             bleService->createCharacteristic(LOGRADIO_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ, 512U);
-    } else {
+    }
+    else
+    {
         ToRadioCharacteristic = bleService->createCharacteristic(
             TORADIO_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_AUTHEN | NIMBLE_PROPERTY::WRITE_ENC);
         FromRadioCharacteristic = bleService->createCharacteristic(
@@ -906,7 +1008,7 @@ void NimbleBluetooth::setupService()
 
     // Setup the battery service
     NimBLEService *batteryService = bleServer->createService(NimBLEUUID((uint16_t)0x180f)); // 0x180F is the Battery Service
-    BatteryCharacteristic = batteryService->createCharacteristic( // 0x2A19 is the Battery Level characteristic)
+    BatteryCharacteristic = batteryService->createCharacteristic(                           // 0x2A19 is the Battery Level characteristic)
         (uint16_t)0x2a19, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY, 1);
 #ifdef NIMBLE_TWO
     NimBLE2904 *batteryLevelDescriptor = BatteryCharacteristic->create2904();
@@ -930,7 +1032,8 @@ void NimbleBluetooth::startAdvertising()
     legacyAdvertising.setScannable(true);
     legacyAdvertising.setConnectable(true);
     legacyAdvertising.setFlags(BLE_HS_ADV_F_DISC_GEN);
-    if (powerStatus->getHasBattery() == 1) {
+    if (powerStatus->getHasBattery() == 1)
+    {
         legacyAdvertising.setCompleteServices(NimBLEUUID((uint16_t)0x180f));
     }
     legacyAdvertising.setCompleteServices(NimBLEUUID(MESH_SERVICE_UUID));
@@ -942,11 +1045,16 @@ void NimbleBluetooth::startAdvertising()
     legacyScanResponse.setConnectable(true);
     legacyScanResponse.setName(getDeviceName());
 
-    if (!pAdvertising->setInstanceData(0, legacyAdvertising)) {
+    if (!pAdvertising->setInstanceData(0, legacyAdvertising))
+    {
         LOG_ERROR("BLE failed to set legacyAdvertising");
-    } else if (!pAdvertising->setScanResponseData(0, legacyScanResponse)) {
+    }
+    else if (!pAdvertising->setScanResponseData(0, legacyScanResponse))
+    {
         LOG_ERROR("BLE failed to set legacyScanResponse");
-    } else if (!pAdvertising->start(0, 0, 0)) {
+    }
+    else if (!pAdvertising->start(0, 0, 0))
+    {
         LOG_ERROR("BLE failed to start legacyAdvertising");
     }
 #else
@@ -961,7 +1069,8 @@ void NimbleBluetooth::startAdvertising()
 /// Given a level between 0-100, update the BLE attribute
 void updateBatteryLevel(uint8_t level)
 {
-    if ((config.bluetooth.enabled == true) && bleServer && nimbleBluetooth->isConnected()) {
+    if ((config.bluetooth.enabled == true) && bleServer && nimbleBluetooth->isConnected())
+    {
         BatteryCharacteristic->setValue(&level, 1);
 #ifdef NIMBLE_TWO
         BatteryCharacteristic->notify(&level, 1, BLE_HS_CONN_HANDLE_NONE);
@@ -979,7 +1088,8 @@ void NimbleBluetooth::clearBonds()
 
 void NimbleBluetooth::sendLog(const uint8_t *logMessage, size_t length)
 {
-    if (!bleServer || !isConnected() || length > 512) {
+    if (!bleServer || !isConnected() || length > 512)
+    {
         return;
     }
 #ifdef NIMBLE_TWO

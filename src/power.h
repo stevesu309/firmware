@@ -18,6 +18,10 @@
 #define OCV_ARRAY 4190, 4050, 3990, 3890, 3800, 3720, 3630, 3530, 3420, 3300, 3100
 #endif
 
+#if defined(RED_BANK_S3)
+#define OCV_ARRAY 4030, 3947, 3864, 3781, 3698, 3615, 3532, 3449, 3366, 3283, 3200
+#endif
+
 /*Note: 12V lead acid is 6 cells, most board accept only 1 cell LiIon/LiPo*/
 #ifndef NUM_CELLS
 #define NUM_CELLS 1
@@ -84,60 +88,60 @@ extern XPowersLibInterface *PMU;
 class Power : public concurrency::OSThread
 {
 
-  public:
-    Observable<const meshtastic::PowerStatus *> newStatus;
+public:
+  Observable<const meshtastic::PowerStatus *> newStatus;
 
-    Power();
+  Power();
 
-    void powerCommandsCheck();
-    void readPowerStatus();
-    virtual bool setup();
-    virtual int32_t runOnce() override;
-    void setStatusHandler(meshtastic::PowerStatus *handler) { statusHandler = handler; }
-    const uint16_t OCV[11] = {OCV_ARRAY};
+  void powerCommandsCheck();
+  void readPowerStatus();
+  virtual bool setup();
+  virtual int32_t runOnce() override;
+  void setStatusHandler(meshtastic::PowerStatus *handler) { statusHandler = handler; }
+  const uint16_t OCV[11] = {OCV_ARRAY};
 
 #ifdef ARCH_ESP32
-    int beforeLightSleep(void *unused);
-    int afterLightSleep(esp_sleep_wakeup_cause_t cause);
+  int beforeLightSleep(void *unused);
+  int afterLightSleep(esp_sleep_wakeup_cause_t cause);
 #endif
 
-    void attachPowerInterrupts();
-    void detachPowerInterrupts();
+  void attachPowerInterrupts();
+  void detachPowerInterrupts();
 
-  protected:
-    meshtastic::PowerStatus *statusHandler;
+protected:
+  meshtastic::PowerStatus *statusHandler;
 
-    /// Setup a xpowers chip axp192/axp2101, return true if found
-    bool axpChipInit();
-    /// Setup a simple ADC input based battery sensor
-    bool analogInit();
-    /// Setup cw2015 battery level sensor
-    bool cw2015Init();
-    /// Setup a 17048 battery level sensor
-    bool max17048Init();
-    /// Setup a Lipo charger
-    bool lipoChargerInit();
-    /// Setup a meshSolar battery sensor
-    bool meshSolarInit();
-    /// Setup a serial battery sensor
-    bool serialBatteryInit();
+  /// Setup a xpowers chip axp192/axp2101, return true if found
+  bool axpChipInit();
+  /// Setup a simple ADC input based battery sensor
+  bool analogInit();
+  /// Setup cw2015 battery level sensor
+  bool cw2015Init();
+  /// Setup a 17048 battery level sensor
+  bool max17048Init();
+  /// Setup a Lipo charger
+  bool lipoChargerInit();
+  /// Setup a meshSolar battery sensor
+  bool meshSolarInit();
+  /// Setup a serial battery sensor
+  bool serialBatteryInit();
 
-  private:
-    void shutdown();
-    void reboot();
-    // open circuit voltage lookup table
-    uint8_t low_voltage_counter;
-    uint32_t lastLogTime = 0;
+private:
+  void shutdown();
+  void reboot();
+  // open circuit voltage lookup table
+  uint8_t low_voltage_counter;
+  uint32_t lastLogTime = 0;
 
 #ifdef ARCH_ESP32
-    // Get notified when lightsleep begins and ends
-    CallbackObserver<Power, void *> lsObserver = CallbackObserver<Power, void *>(this, &Power::beforeLightSleep);
-    CallbackObserver<Power, esp_sleep_wakeup_cause_t> lsEndObserver =
-        CallbackObserver<Power, esp_sleep_wakeup_cause_t>(this, &Power::afterLightSleep);
+  // Get notified when lightsleep begins and ends
+  CallbackObserver<Power, void *> lsObserver = CallbackObserver<Power, void *>(this, &Power::beforeLightSleep);
+  CallbackObserver<Power, esp_sleep_wakeup_cause_t> lsEndObserver =
+      CallbackObserver<Power, esp_sleep_wakeup_cause_t>(this, &Power::afterLightSleep);
 #endif
 
 #ifdef DEBUG_HEAP
-    uint32_t lastheap;
+  uint32_t lastheap;
 #endif
 };
 

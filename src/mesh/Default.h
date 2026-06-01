@@ -29,7 +29,7 @@
 #define default_neighbor_info_broadcast_secs 6 * 60 * 60
 #define min_node_info_broadcast_secs 60 * 60 // No regular broadcasts of more than once an hour
 #define min_neighbor_info_broadcast_secs 4 * 60 * 60
-#define default_map_publish_interval_secs 60 * 60
+#define default_map_publish_interval_secs 60 * 60 // 地图发布间隔：1小时
 #ifdef USERPREFS_RINGTONE_NAG_SECS
 #define default_ringtone_nag_secs USERPREFS_RINGTONE_NAG_SECS
 #else
@@ -44,15 +44,15 @@
 #define default_mqtt_encryption_enabled true
 #define default_mqtt_tls_enabled false
 
-#define IF_ROUTER(routerVal, normalVal)                                                                                          \
-    ((config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER ||                                                        \
-      config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE)                                                     \
-         ? (routerVal)                                                                                                           \
+#define IF_ROUTER(routerVal, normalVal)                                      \
+    ((config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER ||    \
+      config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) \
+         ? (routerVal)                                                       \
          : (normalVal))
 
 class Default
 {
-  public:
+public:
     static uint32_t getConfiguredOrDefaultMs(uint32_t configuredInterval);
     static uint32_t getConfiguredOrDefaultMs(uint32_t configuredInterval, uint32_t defaultInterval);
     static uint32_t getConfiguredOrDefault(uint32_t configured, uint32_t defaultValue);
@@ -62,22 +62,28 @@ class Default
     static uint8_t getConfiguredOrDefaultHopLimit(uint8_t configured);
     static uint32_t getConfiguredOrMinimumValue(uint32_t configured, uint32_t minValue);
 
-  private:
+private:
     // Note: Kept as uint32_t to match the public API parameter type
     static float congestionScalingCoefficient(uint32_t numOnlineNodes)
     {
-        if (numOnlineNodes <= 40) {
+        if (numOnlineNodes <= 40)
+        {
             return 1.0;
-        } else {
+        }
+        else
+        {
             // Resolve SF and BW from preset or manual config
             // When use_preset is true, config.lora.spread_factor and bandwidth may be 0
             // because applyModemConfig() sets them on RadioInterface, not on config.lora
             float bwKHz;
             uint8_t sf;
             uint8_t cr;
-            if (config.lora.use_preset) {
+            if (config.lora.use_preset)
+            {
                 modemPresetToParams(config.lora.modem_preset, false, bwKHz, sf, cr);
-            } else {
+            }
+            else
+            {
                 sf = config.lora.spread_factor;
                 bwKHz = bwCodeToKHz(config.lora.bandwidth);
             }

@@ -9,7 +9,14 @@ const uint8_t SATELLITE_IMAGE[] PROGMEM = {0x00, 0x08, 0x00, 0x1C, 0x00, 0x0E, 0
 #define imgSatellite_width 8
 #define imgSatellite_height 8
 const uint8_t imgSatellite[] PROGMEM = {
-    0b00000000, 0b00000000, 0b00000000, 0b00011000, 0b11011011, 0b11111111, 0b11011011, 0b00011000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00011000,
+    0b11011011,
+    0b11111111,
+    0b11011011,
+    0b00011000,
 };
 
 const uint8_t imgUSB[] PROGMEM = {0x00, 0xfc, 0xf0, 0xfc, 0x88, 0xff, 0x86, 0xfe, 0x85, 0xfe, 0x89, 0xff, 0xf1, 0xfc, 0x00, 0xfc};
@@ -26,9 +33,9 @@ const uint8_t bluetoothConnectedIcon[36] PROGMEM = {0xfe, 0x01, 0xff, 0x03, 0x03
                                                     0xf3, 0x3f, 0x33, 0x30, 0x33, 0x33, 0x33, 0x33, 0x03, 0x33, 0xff, 0x33,
                                                     0xfe, 0x31, 0x00, 0x30, 0x30, 0x30, 0x30, 0x30, 0xf0, 0x3f, 0xe0, 0x1f};
 
-#if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) ||      \
-     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || defined(ST7796_CS) ||             \
-     defined(USE_ST7796) || defined(HACKADAY_COMMUNICATOR) || ARCH_PORTDUINO) &&                                                 \
+#if (defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || defined(ST7701_CS) || defined(ST7735_CS) || \
+     defined(ST7789_CS) || defined(USE_ST7789) || defined(HX8357_CS) || defined(ILI9488_CS) || defined(ST7796_CS) ||        \
+     defined(USE_ST7796) || defined(HACKADAY_COMMUNICATOR) || ARCH_PORTDUINO) &&                                            \
     !defined(DISPLAY_FORCE_SMALL_FONTS)
 const uint8_t imgQuestionL1[] PROGMEM = {0xff, 0x01, 0x01, 0x32, 0x7b, 0x49, 0x49, 0x6f, 0x26, 0x01, 0x01, 0xff};
 const uint8_t imgQuestionL2[] PROGMEM = {0x0f, 0x08, 0x08, 0x08, 0x06, 0x0f, 0x0f, 0x06, 0x08, 0x08, 0x08, 0x0f};
@@ -73,6 +80,33 @@ const unsigned char lightning_bolt_v[] PROGMEM = {0b00000100, 0b00000110, 0b0001
 
 #define mail_width 10
 #define mail_height 7
+
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915) || defined(RED_TEST)
+
+static const uint8_t icon_CH[] PROGMEM = {
+    0b10010110,
+    0b10011001,
+    0b11110001,
+    0b10010001,
+    0b10011001,
+    0b10010110,
+    0b00000000,
+    0b11111111,
+};
+
+static const uint8_t icon_DM[] PROGMEM = {
+    0b10001011,
+    0b11011101,
+    0b10101101,
+    0b10001101,
+    0b10001101,
+    0b10001011,
+    0b00000000,
+    0b11111111,
+};
+
+#endif
+
 static const unsigned char mail[] PROGMEM = {
     0b11111111, 0b00, // Top line
     0b10000001, 0b00, // Edges

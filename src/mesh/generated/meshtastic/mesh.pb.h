@@ -325,6 +325,8 @@ typedef enum _meshtastic_HardwareModel {
     meshtastic_HardwareModel_T_IMPULSE_PLUS = 135,
     /* Lilygo T-Echo Card */
     meshtastic_HardwareModel_T_ECHO_CARD = 136,
+    /* RedBank S3 */
+    meshtastic_HardwareModel_REDBANK_S3 = 137,
     /* ------------------------------------------------------------------------------------------------------------------------------------------
  Reserved ID For developing private Ports. These will show up in live traffic sparsely, so we can use a high number. Keep it within 8 bits.
  ------------------------------------------------------------------------------------------------------------------------------------------ */

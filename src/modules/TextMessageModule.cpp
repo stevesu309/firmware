@@ -36,12 +36,18 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
             graphics::MessageRenderer::handleNewMessage(display, sm, mp);
         })
     // Only trigger screen wake if configuration allows it
-    if (shouldWakeOnReceivedMessage()) {
+    if (shouldWakeOnReceivedMessage())
+    {
         powerFSM.trigger(EVENT_RECEIVED_MSG);
     }
 
     // Notify any observers (e.g. external modules that care about packets)
     notifyObservers(&mp);
+
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->saveMeshPacket(mp);
+#endif
 
     return ProcessMessage::CONTINUE; // Let others look at this message also if they want
 }
@@ -53,8 +59,10 @@ bool TextMessageModule::wantPacket(const meshtastic_MeshPacket *p)
 
 bool TextMessageModule::recentlySeen(uint32_t id)
 {
-    for (size_t i = 0; i < TEXT_PACKET_LIST_SIZE; i++) {
-        if (textPacketList[i] != 0 && textPacketList[i] == id) {
+    for (size_t i = 0; i < TEXT_PACKET_LIST_SIZE; i++)
+    {
+        if (textPacketList[i] != 0 && textPacketList[i] == id)
+        {
             return true;
         }
     }

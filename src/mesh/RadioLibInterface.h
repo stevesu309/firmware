@@ -74,6 +74,12 @@ class RadioLibInterface : public RadioInterface, protected concurrency::Notified
                          .ldrOptimize = (1 << sf) / bw >= 16}};
     }
 
+    // Pin numbers used for this radio instance (useful for debug logging)
+    const RADIOLIB_PIN_TYPE csPin;
+    const RADIOLIB_PIN_TYPE irqPin;
+    const RADIOLIB_PIN_TYPE rstPin;
+    const RADIOLIB_PIN_TYPE busyPin;
+
     /**
      * We use a meshtastic sync word, but hashed with the Channel name.  For releases before 1.2 we used 0x12 (or for very old
      * loads 0x14) Note: do not use 0x34 - that is reserved for lorawan

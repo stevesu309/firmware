@@ -98,8 +98,10 @@ void printPartitionTable()
     esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_ANY, ESP_PARTITION_SUBTYPE_ANY, NULL);
 
     // Loop through the iterator
-    if (it != NULL) {
-        do {
+    if (it != NULL)
+    {
+        do
+        {
             const esp_partition_t *part = esp_partition_get(it);
 
             // Print details: Label, Type (Hex), Subtype (Hex), Offset (Hex), Size (Hex)
@@ -112,7 +114,9 @@ void printPartitionTable()
 
         // Release the iterator memory
         esp_partition_iterator_release(it);
-    } else {
+    }
+    else
+    {
         printf("No partitions found.\n");
     }
     printf("-----------------------\n");
@@ -156,13 +160,32 @@ void setupNicheGraphics();
 #include "nicheGraphics.h"
 #endif
 
+#if defined(RED_BANK_S3)
+#include "red_bank_s3/RedBankController.h"
+RedBankS3::RedBankController *redBankController = nullptr;
+#endif
+
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
+// Power log helper (works on ESP32 and NRF52)
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
+#include "red_bank_s3/Flash.h"
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+#include "redcoast915/FiveWayGpioInput.h"
+redcoast915::FiveWayGpioInput *fiveWayInput = nullptr;
+#endif
+
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
 #endif
 
 using namespace concurrency;
 
-volatile static const char slipstreamTZString[] = {USERPREFS_TZ_STRING};
+volatile static const char slipstreamTZString[] = {"tzplaceholder                                         "};
 
 // We always create a screen object, but we only init it if we find the hardware
 graphics::Screen *screen = nullptr;
@@ -234,9 +257,12 @@ const char *getDeviceName()
     static char name[20];
     snprintf(name, sizeof(name), "%02x%02x", dmac[4], dmac[5]);
     // if the shortname exists and is NOT the new default of ab3c, use it for BLE name.
-    if (strcmp(owner.short_name, name) != 0) {
+    if (strcmp(owner.short_name, name) != 0)
+    {
         snprintf(name, sizeof(name), "%s_%02x%02x", owner.short_name, dmac[4], dmac[5]);
-    } else {
+    }
+    else
+    {
         snprintf(name, sizeof(name), "Meshtastic_%02x%02x", dmac[4], dmac[5]);
     }
     return name;
@@ -278,13 +304,15 @@ void earlyInitVariant() {}
 // blink user led in 3 flashes sequence to indicate what is happening
 void waitUntilPowerLevelSafe()
 {
-    while (powerHAL_isPowerLevelSafe() == false) {
+    while (powerHAL_isPowerLevelSafe() == false)
+    {
 
 #ifdef LED_POWER
 
         // 3x: blink for 300 ms, pause for 300 ms
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
+        {
             digitalWrite(LED_POWER, LED_STATE_ON);
             delay(300);
             digitalWrite(LED_POWER, LED_STATE_OFF);
@@ -372,7 +400,8 @@ void setup()
     RTCQuality ourQuality = RTCQualityDevice;
 
     std::string timeCommandResult = exec("timedatectl status | grep synchronized | grep yes -c");
-    if (timeCommandResult[0] == '1') {
+    if (timeCommandResult[0] == '1')
+    {
         ourQuality = RTCQualityNTP;
     }
 
@@ -381,9 +410,11 @@ void setup()
     tv.tv_usec = 0;
     perhapsSetRTC(ourQuality, &tv);
 #endif
-
+    LOG_INFO("Meshtastic %s starting up", optstr(APP_VERSION));
     powerMonInit();
+    LOG_INFO("powerMonInit done");
     serialSinceMsec = millis();
+    LOG_INFO("Serial since %d msec", serialSinceMsec);
 
     LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
 
@@ -401,7 +432,6 @@ void setup()
 #endif
 
     initDeepSleep();
-
 #if defined(MODEM_POWER_EN)
     pinMode(MODEM_POWER_EN, OUTPUT);
     digitalWrite(MODEM_POWER_EN, LOW);
@@ -455,6 +485,32 @@ void setup()
     LOG_INFO("Wait for peripherals to stabilize");
     delay(PERIPHERAL_WARMUP_MS);
 #endif
+
+#if defined(RED_BANK_S3)
+    // RED_BANK_S3: Ensure LoRa power and both LoRa chip selects are in a safe state
+    // BEFORE initializing SPI/radio. This prevents sporadic SPI failures (RadioLib err=-2)
+    // caused by unpowered modules or bus contention from the "other" LoRa chip.
+#ifdef PIN_LORA_EN
+    pinMode(PIN_LORA_EN, OUTPUT);
+    digitalWrite(PIN_LORA_EN, HIGH);
+    delay(10); // allow power rail to stabilize
+#endif
+
+#ifdef LORA_CS_900
+    pinMode(LORA_CS_900, OUTPUT);
+    digitalWrite(LORA_CS_900, HIGH);
+#endif
+#ifdef LORA_CS_433
+    pinMode(LORA_CS_433, OUTPUT);
+    digitalWrite(LORA_CS_433, HIGH);
+#endif
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+    fiveWayInput = new redcoast915::FiveWayGpioInput();
+    fiveWayInput->setup();
+#endif
+
     initSPI();
 
     OSThread::setup();
@@ -480,10 +536,13 @@ void setup()
     LOG_INFO("Starting Bus with (SDA) %d and (SCL) %d: ", I2C_SDA, I2C_SCL);
     Wire.begin(I2C_SDA, I2C_SCL);
 #elif defined(ARCH_PORTDUINO)
-    if (portduino_config.i2cdev != "") {
+    if (portduino_config.i2cdev != "")
+    {
         LOG_INFO("Use %s as I2C device", portduino_config.i2cdev.c_str());
         Wire.begin(portduino_config.i2cdev.c_str());
-    } else {
+    }
+    else
+    {
         LOG_INFO("No I2C device configured, Skip");
     }
 #elif HAS_WIRE
@@ -518,8 +577,17 @@ void setup()
     power->setStatusHandler(powerStatus);
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
+    LOG_INFO("Power setup complete");
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARCH_NRF52)
+    // Esp32PowerLog::ExtFlashSelfTest();
+    // 定时保存电量日志（默认每小时一次）
+    // Esp32PowerLog::PwrLogClear(); // 如需清除一次数据，取消注释、刷机启动一次后再注释回去
+    // Esp32PowerLog::PwrLogStart(2U * 60U * 1000U);
 
+#endif
+    // Esp32PowerLog::PwrLogDump(72);
 #if !MESHTASTIC_EXCLUDE_I2C
+
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
     auto i2cScanner = std::unique_ptr<ScanI2CTwoWire>(new ScanI2CTwoWire());
@@ -534,7 +602,8 @@ void setup()
 #if defined(I2C_SDA)
     i2cScanner->scanPort(ScanI2C::I2CPort::WIRE);
 #elif defined(ARCH_PORTDUINO)
-    if (portduino_config.i2cdev != "") {
+    if (portduino_config.i2cdev != "")
+    {
         LOG_INFO("Scan for i2c devices");
         i2cScanner->scanPort(ScanI2C::I2CPort::WIRE);
     }
@@ -543,9 +612,12 @@ void setup()
 #endif
 
     auto i2cCount = i2cScanner->countDevices();
-    if (i2cCount == 0) {
+    if (i2cCount == 0)
+    {
         LOG_INFO("No I2C devices found");
-    } else {
+    }
+    else
+    {
         LOG_INFO("%i I2C devices found", i2cCount);
 #ifdef SENSOR_GPS_CONFLICT
         sensor_detected = true;
@@ -558,7 +630,8 @@ void setup()
 #endif // ARCH_ESP32
 #ifdef ARCH_ESP32
     // Don't init display if we don't have one or we are waking headless due to a timer event
-    if (wakeCause == ESP_SLEEP_WAKEUP_TIMER) {
+    if (wakeCause == ESP_SLEEP_WAKEUP_TIMER)
+    {
         LOG_DEBUG("suppress screen wake because this is a headless timer wakeup");
         i2cScanner->setSuppressScreen();
     }
@@ -568,8 +641,10 @@ void setup()
     auto screenInfo = i2cScanner->firstScreen();
     screen_found = screenInfo.type != ScanI2C::DeviceType::NONE ? screenInfo.address : ScanI2C::ADDRESS_NONE;
 
-    if (screen_found.port != ScanI2C::I2CPort::NO_I2C) {
-        switch (screenInfo.type) {
+    if (screen_found.port != ScanI2C::I2CPort::NO_I2C)
+    {
+        switch (screenInfo.type)
+        {
         case ScanI2C::DeviceType::SCREEN_SH1106:
             screen_model = meshtastic_Config_DisplayConfig_OledType::meshtastic_Config_DisplayConfig_OledType_OLED_SH1106;
             break;
@@ -593,10 +668,13 @@ void setup()
 
     auto kb_info = i2cScanner->firstKeyboard();
 
-    if (kb_info.type != ScanI2C::DeviceType::NONE) {
+    if (kb_info.type != ScanI2C::DeviceType::NONE)
+    {
         kb_found = true;
+
         cardkb_found = kb_info.address;
-        switch (kb_info.type) {
+        switch (kb_info.type)
+        {
         case ScanI2C::DeviceType::RAK14004:
             kb_model = 0x02;
             break;
@@ -645,7 +723,8 @@ void setup()
 #ifdef HAS_TPS65233
     // TPS65233 is a power management IC for satellite modems, used in the Dreamcatcher
     // We are switching it off here since we don't use an LNB.
-    if (i2cScanner->exists(ScanI2C::DeviceType::TPS65233)) {
+    if (i2cScanner->exists(ScanI2C::DeviceType::TPS65233))
+    {
         Wire.beginTransmission(TPS65233_ADDR);
         Wire.write(0);   // Register 0
         Wire.write(128); // Turn off the LNB power, keep I2C Control enabled
@@ -708,7 +787,8 @@ void setup()
     // Initialize transmit history to persist broadcast throttle timers across reboots
     TransmitHistory::getInstance()->loadFromDisk();
 #if HAS_TFT
-    if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
+    if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_COLOR)
+    {
         tftSetup();
     }
 #endif
@@ -724,18 +804,20 @@ void setup()
         playStartMelody();
 
 #if HAS_SCREEN
-        // fixed screen override?
+    // fixed screen override?
 #if defined(USE_SH1107)
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // set dimension of 128x128
     screen_geometry = GEOMETRY_128_128;
 #elif defined(USE_SH1107_128_64)
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // keep dimension of 128x64
 #else
-    if (config.display.oled != meshtastic_Config_DisplayConfig_OledType_OLED_AUTO) {
+    if (config.display.oled != meshtastic_Config_DisplayConfig_OledType_OLED_AUTO)
+    {
         screen_model = config.display.oled;
 
         // Fix: update geometry for SH1107 128x128 selected via menu
-        if (screen_model == meshtastic_Config_DisplayConfig_OledType_OLED_SH1107_128_128) {
+        if (screen_model == meshtastic_Config_DisplayConfig_OledType_OLED_SH1107_128_128)
+        {
             screen_geometry = GEOMETRY_128_128;
             screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // normalize
         }
@@ -750,7 +832,8 @@ void setup()
 
 #if !MESHTASTIC_EXCLUDE_I2C
 #if !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_ACCELEROMETER
-    if (acc_info.type != ScanI2C::DeviceType::NONE) {
+    if (acc_info.type != ScanI2C::DeviceType::NONE)
+    {
         accelerometerThread = new AccelerometerThread(acc_info.type);
     }
 #endif
@@ -758,7 +841,8 @@ void setup()
 #if defined(HAS_NEOPIXEL) || defined(UNPHONE) || defined(RGBLED_RED)
     ambientLightingThread = new AmbientLightingThread(ScanI2C::DeviceType::NONE);
 #elif !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
-    if (rgb_found.type != ScanI2C::DeviceType::NONE) {
+    if (rgb_found.type != ScanI2C::DeviceType::NONE)
+    {
         ambientLightingThread = new AmbientLightingThread(rgb_found.type);
     }
 #endif
@@ -792,7 +876,8 @@ void setup()
     SPI.begin(false);
 #endif // HW_SPI1_DEVICE
 #elif ARCH_PORTDUINO
-    if (portduino_config.lora_spi_dev != "ch341") {
+    if (portduino_config.lora_spi_dev != "ch341")
+    {
         SPI.begin();
     }
 #elif !defined(ARCH_ESP32) // ARCH_RP2040
@@ -805,7 +890,7 @@ void setup()
     SPI.begin();
 #endif
 #else
-        // ESP32
+// ESP32
 #if defined(HW_SPI1_DEVICE)
     SPI1.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
     LOG_DEBUG("SPI1.begin(SCK=%d, MISO=%d, MOSI=%d, NSS=%d)", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
@@ -819,15 +904,17 @@ void setup()
 
     // Initialize the screen first so we can show the logo while we start up everything else.
 #if HAS_SCREEN
-    if (config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
+    if (config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR)
+    {
 
-#if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) ||       \
-    defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(ST7796_CS) ||              \
+#if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || \
+    defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(ST7796_CS) ||        \
     defined(USE_SPISSD1306) || defined(USE_ST7796) || defined(HACKADAY_COMMUNICATOR)
         screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #elif defined(ARCH_PORTDUINO)
         if ((screen_found.port != ScanI2C::I2CPort::NO_I2C || portduino_config.displayPanel) &&
-            config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
+            config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR)
+        {
             screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
         }
 #else
@@ -835,19 +922,32 @@ void setup()
             screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
     }
-#endif // HAS_SCREEN
 
+#if defined(RED_BANK_S3)
+    redBankController = new RedBankS3::RedBankController();
+#endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    chatHistoryStore = new ChatHistoryStore();
+    chatHistoryStore->loadFromDisk();
+#endif
+#endif
     // TODO Remove magic string
     // setup TZ prior to time actions.
 #if !MESHTASTIC_EXCLUDE_TZ
     LOG_DEBUG("Use compiled/slipstreamed %s", slipstreamTZString); // important, removing this clobbers our magic string
-    if (*config.device.tzdef && config.device.tzdef[0] != 0) {
+    if (*config.device.tzdef && config.device.tzdef[0] != 0)
+    {
         LOG_DEBUG("Saved TZ: %s ", config.device.tzdef);
         setenv("TZ", config.device.tzdef, 1);
-    } else {
-        if (strncmp((const char *)slipstreamTZString, "tzpl", 4) == 0) {
+    }
+    else
+    {
+        if (strncmp((const char *)slipstreamTZString, "tzpl", 4) == 0)
+        {
             setenv("TZ", "GMT0", 1);
-        } else {
+        }
+        else
+        {
             setenv("TZ", (const char *)slipstreamTZString, 1);
             strcpy(config.device.tzdef, (const char *)slipstreamTZString);
         }
@@ -861,17 +961,27 @@ void setup()
 #if !MESHTASTIC_EXCLUDE_GPS
     // If we're taking on the repeater role, ignore GPS
 #ifdef SENSOR_GPS_CONFLICT
-    if (sensor_detected == false) {
+    if (sensor_detected == false)
+    {
 #endif
-        if (HAS_GPS) {
-            if (config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT) {
+        if (HAS_GPS)
+        {
+            if (config.position.gps_mode != meshtastic_Config_PositionConfig_GpsMode_NOT_PRESENT)
+            {
                 gps = GPS::createGps();
-                if (gps) {
+                if (gps)
+                {
                     gpsStatus->observe(&gps->newStatus);
-                } else {
+                }
+                else
+                {
                     LOG_DEBUG("Run without GPS");
                 }
             }
+        }
+        else
+        {
+            LOG_INFO("NO GPS: %d", HAS_GPS);
         }
 #ifdef SENSOR_GPS_CONFLICT
     }
@@ -892,7 +1002,8 @@ void setup()
 #ifdef ARCH_PORTDUINO
     // FIXME: portduino does not ever call onNetworkConnected so call it here because I don't know what happen if I call
     // onNetworkConnected there
-    if (config.network.enabled_protocols & meshtastic_Config_NetworkConfig_ProtocolFlags_UDP_BROADCAST) {
+    if (config.network.enabled_protocols & meshtastic_Config_NetworkConfig_ProtocolFlags_UDP_BROADCAST)
+    {
         udpHandler->start();
     }
 #endif
@@ -918,7 +1029,8 @@ void setup()
 
 #if !defined(MESHTASTIC_EXCLUDE_PKI)
     // warn the user about a low entropy key
-    if (nodeDB->keyIsLowEntropy && !nodeDB->hasWarned) {
+    if (nodeDB->keyIsLowEntropy && !nodeDB->hasWarned)
+    {
         LOG_WARN(LOW_ENTROPY_WARNING);
         meshtastic_ClientNotification *cn = clientNotificationPool.allocZeroed();
         cn->level = meshtastic_LogRecord_Level_WARNING;
@@ -947,14 +1059,15 @@ void setup()
 #if !MESHTASTIC_EXCLUDE_I2C
 // Don't call screen setup until after nodedb is setup (because we need
 // the current region name)
-#if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) ||       \
-    defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(ST7796_CS) ||              \
+#if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) || \
+    defined(ST7789_CS) || defined(HX8357_CS) || defined(USE_ST7789) || defined(ILI9488_CS) || defined(ST7796_CS) ||        \
     defined(USE_ST7796) || defined(USE_SPISSD1306) || defined(HACKADAY_COMMUNICATOR)
     if (screen)
         screen->setup();
 #elif defined(ARCH_PORTDUINO)
     if ((screen_found.port != ScanI2C::I2CPort::NO_I2C || portduino_config.displayPanel) &&
-        config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
+        config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR)
+    {
         screen->setup();
     }
 #else
@@ -980,7 +1093,7 @@ void setup()
 
 #ifndef ARCH_PORTDUINO
 
-        // Initialize Wifi
+    // Initialize Wifi
 #if HAS_WIFI
     initWifi();
 #endif
@@ -998,9 +1111,11 @@ void setup()
 
 #ifdef ARCH_PORTDUINO
 #if __has_include(<ulfius.h>)
-    if (portduino_config.webserverport != -1) {
+    if (portduino_config.webserverport != -1)
+    {
         piwebServerThread = new PiWebServerThread();
-        std::atexit([] { delete piwebServerThread; });
+        std::atexit([]
+                    { delete piwebServerThread; });
     }
 #endif
     initApiServer(TCPPort);
@@ -1011,7 +1126,8 @@ void setup()
 
     if (!rIf)
         RECORD_CRITICALERROR(meshtastic_CriticalErrorCode_NO_RADIO);
-    else {
+    else
+    {
         // Log bit rate to debug output
         LOG_DEBUG("LoRA bitrate = %f bytes / sec", (float(meshtastic_Constants_DATA_PAYLOAD_LEN) /
                                                     (float(rIf->getPacketTime(meshtastic_Constants_DATA_PAYLOAD_LEN)))) *
@@ -1029,14 +1145,24 @@ void setup()
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-    LOG_DEBUG("Free heap  : %7d bytes", ESP.getFreeHeap());
-    LOG_DEBUG("Free PSRAM : %7d bytes", ESP.getFreePsram());
+    LOG_INFO("CPU frequency  : %7u MHz", ESP.getCpuFreqMHz());
+
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxBlock = ESP.getMaxAllocHeap();
+    const uint32_t minFree = ESP.getMinFreeHeap();
+    const uint32_t fragPct = (freeHeap > 0) ? (100U - (maxBlock * 100U / freeHeap)) : 0U;
+
+    LOG_DEBUG("Heap free      : %7u bytes", freeHeap);
+    LOG_DEBUG("Heap max block : %7u bytes", maxBlock);
+    LOG_DEBUG("Heap min free  : %7u bytes", minFree);
+    LOG_DEBUG("Heap frag      : %7u %%", fragPct);
+    LOG_DEBUG("Free PSRAM     : %7u bytes", ESP.getFreePsram());
 #endif
 
-    // We manually run this to update the NodeStatus
-    nodeDB->notifyObservers(true);
+#if defined(RED_BANK_S3)
+    redBankController->setup();
+#endif
 }
-
 #endif
 uint32_t rebootAtMsec;     // If not zero we will reboot at this time (used to reboot shortly after the update completes)
 uint32_t shutdownAtMsec;   // If not zero we will shutdown at this time (used to shutdown from python or mobile client)
@@ -1097,7 +1223,7 @@ extern meshtastic_DeviceMetadata getDeviceMetadata()
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_BLUETOOTH_CONFIG;
 #endif
 
-#if defined(ARCH_NRF52) && !HAS_ETHERNET // nrf52 doesn't have network unless it's a RAK ethernet gateway currently
+#if defined(ARCH_NRF52) && !HAS_ETHERNET                                          // nrf52 doesn't have network unless it's a RAK ethernet gateway currently
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_NETWORK_CONFIG; // No network on nRF52
 #elif defined(ARCH_RP2040) && !HAS_WIFI && !HAS_ETHERNET
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_NETWORK_CONFIG; // No network on RP2040
@@ -1114,7 +1240,8 @@ void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, Scan
                          meshtastic_TelemetrySensorType sensorType)
 {
     auto found = i2cScanner->find(deviceType);
-    if (found.type != ScanI2C::DeviceType::NONE) {
+    if (found.type != ScanI2C::DeviceType::NONE)
+    {
         nodeTelemetrySensorsMap[sensorType].first = found.address.address;
         nodeTelemetrySensorsMap[sensorType].second = i2cScanner->fetchI2CBus(found.address);
     }
@@ -1125,7 +1252,6 @@ void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, Scan
 void loop()
 {
     runASAP = false;
-
 #ifdef ARCH_ESP32
     esp32Loop();
 #endif
@@ -1134,24 +1260,37 @@ void loop()
 #endif
     power->powerCommandsCheck();
 
-    if (RadioLibInterface::instance != nullptr) {
+    if (RadioLibInterface::instance != nullptr)
+    {
         static uint32_t lastRadioMissedIrqPoll;
-        if (!Throttle::isWithinTimespanMs(lastRadioMissedIrqPoll, 1000)) {
+        if (!Throttle::isWithinTimespanMs(lastRadioMissedIrqPoll, 1000))
+        {
             lastRadioMissedIrqPoll = millis();
             RadioLibInterface::instance->pollMissedIrqs();
         }
 
         // Periodic AGC reset — warm sleep + recalibrate to prevent stuck AGC gain
         static uint32_t lastAgcReset;
-        if (!Throttle::isWithinTimespanMs(lastAgcReset, AGC_RESET_INTERVAL_MS)) {
+        if (!Throttle::isWithinTimespanMs(lastAgcReset, AGC_RESET_INTERVAL_MS))
+        {
             lastAgcReset = millis();
             RadioLibInterface::instance->resetAGC();
         }
     }
 
+#if defined(RED_BANK_S3)
+    redBankController->loop();
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+    if (fiveWayInput)
+        fiveWayInput->loop();
+#endif
+
 #ifdef DEBUG_STACK
     static uint32_t lastPrint = 0;
-    if (!Throttle::isWithinTimespanMs(lastPrint, 10 * 1000L)) {
+    if (!Throttle::isWithinTimespanMs(lastPrint, 10 * 1000L))
+    {
         lastPrint = millis();
         meshtastic::printThreadInfo("main");
     }
@@ -1163,34 +1302,45 @@ void loop()
         inputBroker->processInputEventQueue();
 #endif
 #if ARCH_PORTDUINO
-    if (portduino_config.lora_spi_dev == "ch341" && ch341Hal != nullptr) {
+    if (portduino_config.lora_spi_dev == "ch341" && ch341Hal != nullptr)
+    {
         ch341Hal->checkError();
     }
-    if (portduino_status.LoRa_in_error && rebootAtMsec == 0) {
+    if (portduino_status.LoRa_in_error && rebootAtMsec == 0)
+    {
         LOG_ERROR("LoRa in error detected, attempting to recover");
         router->addInterface(nullptr);
-        if (portduino_config.lora_spi_dev == "ch341") {
-            if (ch341Hal != nullptr) {
+        if (portduino_config.lora_spi_dev == "ch341")
+        {
+            if (ch341Hal != nullptr)
+            {
                 delete ch341Hal;
                 ch341Hal = nullptr;
                 sleep(3);
             }
-            try {
+            try
+            {
                 ch341Hal = new Ch341Hal(0, portduino_config.lora_usb_serial_num, portduino_config.lora_usb_vid,
                                         portduino_config.lora_usb_pid);
-            } catch (std::exception &e) {
+            }
+            catch (std::exception &e)
+            {
                 std::cerr << e.what() << std::endl;
                 std::cerr << "Could not initialize CH341 device!" << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
         auto rIf = initLoRa();
-        if (rIf) {
+        if (rIf)
+        {
             router->addInterface(std::move(rIf));
             portduino_status.LoRa_in_error = false;
-        } else {
+        }
+        else
+        {
             LOG_WARN("Reconfigure failed, rebooting");
-            if (screen) {
+            if (screen)
+            {
                 screen->showSimpleBanner("Rebooting...");
             }
             rebootAtMsec = millis() + 25;
@@ -1198,7 +1348,8 @@ void loop()
     }
 #if HAS_TFT
     if (screen && portduino_config.displayPanel == x11 &&
-        config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
+        config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR)
+    {
         auto dispdev = screen->getDisplayDevice();
         if (dispdev)
             static_cast<TFTDisplay *>(dispdev)->sdlLoop();
@@ -1209,9 +1360,9 @@ void loop()
     messageStoreAutosaveTick();
 #endif
     long delayMsec = mainController.runOrDelay();
-
     // We want to sleep as long as possible here - because it saves power
-    if (!runASAP && loopCanSleep()) {
+    if (!runASAP && loopCanSleep())
+    {
 #ifdef DEBUG_LOOP_TIMING
         LOG_DEBUG("main loop delay: %d", delayMsec);
 #endif

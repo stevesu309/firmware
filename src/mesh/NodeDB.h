@@ -127,7 +127,12 @@ enum LoadFileResult {
     OTHER_FAILURE = 5
 };
 
-enum UserLicenseStatus { NotKnown, NotLicensed, Licensed };
+enum UserLicenseStatus
+{
+    NotKnown,
+    NotLicensed,
+    Licensed
+};
 
 class NodeDB
 {
@@ -138,9 +143,9 @@ class NodeDB
     // HashMap<NodeNum, NodeInfo> nodes;
     // Note: these two references just point into our static array we serialize to/from disk
 
-  public:
+public:
     std::vector<meshtastic_NodeInfoLite> *meshNodes;
-    bool updateGUI = false; // we think the gui should definitely be redrawn, screen will clear this once handled
+    bool updateGUI = false;                           // we think the gui should definitely be redrawn, screen will clear this once handled
     meshtastic_NodeInfoLite *updateGUIforNode = NULL; // if currently showing this node, we think you should update the GUI
     Observable<const meshtastic::NodeStatus *> newStatus;
     pb_size_t numMeshNodes;
@@ -274,14 +279,15 @@ class NodeDB
 
     void setLocalPosition(meshtastic_Position position, bool timeOnly = false)
     {
-        if (timeOnly) {
+        if (timeOnly)
+        {
             LOG_DEBUG("Set local position time only: time=%u timestamp=%u", position.time, position.timestamp);
             localPosition.time = position.time;
             localPosition.timestamp = position.timestamp > 0 ? position.timestamp : position.time;
             return;
         }
-        LOG_DEBUG("Set local position: lat=%i lon=%i time=%u timestamp=%u", position.latitude_i, position.longitude_i,
-                  position.time, position.timestamp);
+        // LOG_DEBUG("Set local position: lat=%i lon=%i time=%u timestamp=%u", position.latitude_i, position.longitude_i,
+        //           position.time, position.timestamp);
         localPosition = position;
         if (position.latitude_i != 0 || position.longitude_i != 0) {
             localPositionUpdatedSinceBoot = true;
@@ -299,6 +305,12 @@ class NodeDB
     bool restorePreferences(meshtastic_AdminMessage_BackupLocation location,
                             int restoreWhat = SEGMENT_CONFIG | SEGMENT_MODULECONFIG | SEGMENT_DEVICESTATE | SEGMENT_CHANNELS);
 
+private:
+    uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
+    uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
+    /// Find a node in our DB, create an empty NodeInfoLite if missing
+    meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
+
     /// Notify observers of changes to the DB
     void notifyObservers(bool forceUpdate = false)
     {
@@ -307,14 +319,14 @@ class NodeDB
         newStatus.notifyObservers(&status);
     }
 
-  private:
+private:
     bool duplicateWarned = false;
     bool localPositionUpdatedSinceBoot = false;
     uint32_t lastNodeDbSave = 0;    // when we last saved our db to flash
     uint32_t lastBackupAttempt = 0; // when we last tried a backup automatically or manually
     uint32_t lastSort = 0;          // When last sorted the nodeDB
     /// Find a node in our DB, create an empty NodeInfoLite if missing
-    meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
+    // meshtastic_NodeInfoLite *getOrCreateMeshNode(NodeNum n);
 
     /*
      * Internal boolean to track sorting paused
@@ -381,9 +393,9 @@ extern uint32_t error_address;
 #define NODEINFO_BITFIELD_IS_MUTED_SHIFT 1
 #define NODEINFO_BITFIELD_IS_MUTED_MASK (1 << NODEINFO_BITFIELD_IS_MUTED_SHIFT)
 
-#define Module_Config_size                                                                                                       \
-    (ModuleConfig_CannedMessageConfig_size + ModuleConfig_ExternalNotificationConfig_size + ModuleConfig_MQTTConfig_size +       \
-     ModuleConfig_RangeTestConfig_size + ModuleConfig_SerialConfig_size + ModuleConfig_StoreForwardConfig_size +                 \
+#define Module_Config_size                                                                                                 \
+    (ModuleConfig_CannedMessageConfig_size + ModuleConfig_ExternalNotificationConfig_size + ModuleConfig_MQTTConfig_size + \
+     ModuleConfig_RangeTestConfig_size + ModuleConfig_SerialConfig_size + ModuleConfig_StoreForwardConfig_size +           \
      ModuleConfig_TelemetryConfig_size + ModuleConfig_size)
 
 // Please do not remove this comment, it makes trunk and compiler happy at the same time.
