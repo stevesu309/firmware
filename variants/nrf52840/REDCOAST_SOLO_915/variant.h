@@ -16,8 +16,6 @@
  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-// #ifndef _VARIANT_TTGO_EINK_V1_0_
-// #define _VARIANT_TTGO_EINK_V1_0_
 
 /** Master clock frequency */
 #define VARIANT_MCK (64000000ul)
@@ -51,7 +49,7 @@ extern "C"
 #define LED_BLUE PIN_LED1
 #define LED_GREEN PIN_LED2
 
-#define LED_BUILTIN LED_BLUE
+// #define LED_BUILTIN LED_BLUE
 #define LED_CONN PIN_GREEN
 
 #define LED_STATE_ON 0 // State when LED is lit
@@ -63,7 +61,7 @@ extern "C"
 #define SW_F5 (0 + 10)  // 取消键
 #define SW_BUT (0 + 11) // 确认键
 
-#define BUTTON_PIN SW_BUT
+// #define BUTTON_PIN SW_BUT
 /*
  * Analog pins
  */
@@ -119,7 +117,6 @@ External serial flash GD25Q32C
 // CPU?
 #define SX126X_BUSY (0 + 17)
 #define SX126X_RESET (0 + 25)
-// Not really an E22 but TTGO seems to be trying to clone that
 #define SX126X_DIO2_AS_RF_SWITCH
   // #define SX126X_DIO3_TCXO_VOLTAGE 1.8
   // #define TCXO_OPTIONAL
@@ -130,7 +127,6 @@ External serial flash GD25Q32C
    * eink display pins
    */
 
-// #define PIN_EINK_EN (32 + 11) // Note: this is really just backlight power
 #define PIN_EINK_CS (0 + 30)
 #define PIN_EINK_BUSY (0 + 3)
 #define PIN_EINK_DC (0 + 28)
@@ -139,14 +135,13 @@ External serial flash GD25Q32C
 #define PIN_EINK_MOSI (0 + 29) // also called SDI
 #define PIN_EINK_EN (32 + 10)
 
-// Peripheral power enables (active high)
-#define PIN_POWER_EN (0 + 12) // GNSS (L76K)
-#define GNSS_POWER_EN (0 + 12)
+// // Peripheral power enables (active high)
+// #define PIN_POWER_EN (0 + 12)
+#define GNSS_POWER_EN (0 + 12) // GNSS (L76K)
 #define SX126X_POWER_EN (0 + 13) // LoRa (SX1262)
 #define PIN_PWR_DELAY_MS 10
 
-#define PIN_SPI1_MISO \
-  (32 + 7) // FIXME not really needed, but for now the SPI code requires something to be defined, pick an used GPIO
+#define PIN_SPI1_MISO -1 
 #define PIN_SPI1_MOSI PIN_EINK_MOSI
 #define PIN_SPI1_SCK PIN_EINK_SCLK
 
@@ -157,15 +152,17 @@ External serial flash GD25Q32C
 #define HAS_GPS 1
 #define GPS_L76K
 #define PIN_GPS_EN GNSS_POWER_EN
-#define PIN_GPS_REINIT (32 + 5) // An output to reset L76K GPS. As per datasheet, low for > 100ms will reset the L76K
+// Hard reset — P1.05, active HIGH via NPN transistor (high=reset, low=idle)
+// GPS_RESET_MODE defaults to HIGH in GPS.cpp — matches this circuit.
+#define PIN_GPS_RESET   (32+5)   // P1.05
 
 #define PIN_GPS_STANDBY (32 + 2) // An output to wake GPS, low means allow sleep, high means force wake
 // Seems to be missing on this new board
 #define PIN_GPS_PPS (32 + 4)   // Pulse per second input from the GPS
-#define GPS_TX_PIN (32 + 9)    // This is for bits going TOWARDS the CPU
-#define GPS_RX_PIN (32 + 8)    // This is for bits going TOWARDS the GPS
+#define GPS_TX_PIN (32 + 8)    // This is for bits going TOWARDS the CPU
+#define GPS_RX_PIN (32 + 9)    // This is for bits going TOWARDS the GPS
 #define GPS_ONOFF_PIN (32 + 7) //
-#define GPS_THREAD_INTERVAL 50
+
 
 #define PIN_SERIAL1_RX GPS_TX_PIN
 #define PIN_SERIAL1_TX GPS_RX_PIN
@@ -199,7 +196,12 @@ External serial flash GD25Q32C
 #define VBAT_AR_INTERNAL AR_INTERNAL_3_0
 #define ADC_MULTIPLIER (2.0F)
 
-  // #define NO_EXT_GPIO 1
+// #define NO_EXT_GPIO 1
+
+/*
+ * Serial interfaces
+ */
+#define SERIAL_PRINT_PORT 0
 
 #define HAS_RTC 1
 

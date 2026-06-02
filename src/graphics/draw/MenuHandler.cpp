@@ -70,51 +70,32 @@ namespace graphics
     bool test_enabled = false;
     uint8_t test_count = 0;
 
-    void menuHandler::loraMenu()
-    {
-        static const char *optionsArray[] = {"Back", "Device Role", "Radio Preset", "Frequency Slot", "LoRa Region"};
-        enum optionsNumbers
-        {
-            Back = 0,
-            DeviceRolePicker = 1,
-            RadioPresetPicker = 2,
-            FrequencySlot = 3,
-            LoraPicker = 4
-        };
-        BannerOverlayOptions bannerOptions;
-        bannerOptions.message = "LoRa Actions";
-        bannerOptions.optionsArrayPtr = optionsArray;
-        bannerOptions.optionsCount = 5;
-        bannerOptions.bannerCallback = [](int selected) -> void
-        {
-            if (selected == Back)
-            {
-                // No action
-            }
-            else if (selected == DeviceRolePicker)
-            {
-                menuHandler::menuQueue = menuHandler::DeviceRolePicker;
-            }
-            else if (selected == RadioPresetPicker)
-            {
-                menuHandler::menuQueue = menuHandler::RadioPresetPicker;
-            }
-            else if (selected == FrequencySlot)
-            {
-                menuHandler::menuQueue = menuHandler::FrequencySlot;
-            }
-            else if (selected == LoraPicker)
-            {
-                menuHandler::menuQueue = menuHandler::LoraPicker;
-            }
-        };
-        screen->showOverlayBanner(bannerOptions);
-    }
+void menuHandler::loraMenu()
+{
+    static const char *optionsArray[] = {"Back", "Device Role", "Radio Preset", "Frequency Slot", "LoRa Region"};
+    enum optionsNumbers { Back = 0, DeviceRolePicker = 1, RadioPresetPicker = 2, FrequencySlot = 3, LoraPicker = 4 };
+    BannerOverlayOptions bannerOptions;
+    bannerOptions.message = "LoRa Actions";
+    bannerOptions.optionsArrayPtr = optionsArray;
+    bannerOptions.optionsCount = 5;
+    bannerOptions.bannerCallback = [](int selected) -> void {
+        if (selected == Back) {
+            // No action
+        } else if (selected == DeviceRolePicker) {
+            menuHandler::menuQueue = menuHandler::DeviceRolePicker;
+        } else if (selected == RadioPresetPicker) {
+            menuHandler::menuQueue = menuHandler::RadioPresetPicker;
+        } else if (selected == FrequencySlot) {
+            menuHandler::menuQueue = menuHandler::FrequencySlot;
+        } else if (selected == LoraPicker) {
+            menuHandler::menuQueue = menuHandler::LoraPicker;
+        }
+    };
+    screen->showOverlayBanner(bannerOptions);
+}
 
-    // RED_BANK_S3 / REDCOAST_SOLO_915: 用于延迟显示 overlay 内触发的下一个菜单，
-    // 避免当前 overlay 的 resetBanner() 抹掉新菜单的首次显示。
 #if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-    static menuHandler::screenMenus pendingOverlayMenu = menuHandler::menu_none;
+    static menuHandler::screenMenus pendingOverlayMenu = menuHandler::MenuNone;
     static char pendingConfirmMessage[256];
     static std::function<void()> pendingConfirmCallback;
 
@@ -1247,6 +1228,7 @@ namespace graphics
 #if defined(PIN_EINK_EN)
                 if (uiconfig.screen_brightness == 1)
                 {
+                    
                     uiconfig.screen_brightness = 0;
                     digitalWrite(PIN_EINK_EN, LOW);
                 }
@@ -1302,6 +1284,27 @@ namespace graphics
     {
         cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST);
     }
+
+#ifdef EINK_RA01S_GP02
+void menuHandler::animationMenu()
+{
+    const uint8_t count = graphics::AnimationRenderer::getAnimCount();
+    // Build a static array of name pointers (max ANIM_COUNT animations).
+    static const char *optionsArray[32];
+    for (uint8_t i = 0; i < count && i < 32; i++)
+        optionsArray[i] = graphics::AnimationRenderer::getAnimName(i);
+
+    BannerOverlayOptions bannerOptions;
+    bannerOptions.message         = "Select Animation";
+    bannerOptions.optionsArrayPtr = optionsArray;
+    bannerOptions.optionsCount    = count;
+    bannerOptions.durationMs      = 120000;
+    bannerOptions.bannerCallback  = [](int selected) -> void {
+        graphics::AnimationRenderer::setAnimation(static_cast<uint8_t>(selected));
+    };
+    screen->showOverlayBanner(bannerOptions);
+}
+#endif
 
     void menuHandler::textMessageBaseMenu()
     {
@@ -2979,20 +2982,15 @@ namespace graphics
         screen->showOverlayBanner(bannerOptions);
     }
 
-    void menuHandler::traceRouteMenu()
-    {
-#if defined(RED_BANK_S3)
-        screen->showNodePicker("Node to Trace", 0, [](uint32_t nodenum) -> void
-#else
-        screen->showNodePicker("Node to Trace", 30000, [](uint32_t nodenum) -> void
-#endif
-                               {
-            LOG_INFO("Menu: Node picker selected node 0x%08x, traceRouteModule=%p", nodenum, traceRouteModule);
-            if (traceRouteModule)
-            {
-                traceRouteModule->startTraceRoute(nodenum);
-            } });
-    }
+void menuHandler::traceRouteMenu()
+{
+    screen->showNodePicker("Node to Trace", 30000, [](uint32_t nodenum) -> void {
+        LOG_INFO("Menu: Node picker selected node 0x%08x, traceRouteModule=%p", nodenum, traceRouteModule);
+        if (traceRouteModule) {
+            traceRouteModule->startTraceRoute(nodenum);
+        }
+    });
+}
 
     void menuHandler::directMessageNodePickerMenu()
     {
@@ -3286,16 +3284,11 @@ namespace graphics
         screen->showOverlayBanner(bannerOptions);
     }
 
-    void menuHandler::numberTest()
-    {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-        screen->showNumberPicker("Pick a number\n ", 0, 4,
-#else
-        screen->showNumberPicker("Pick a number\n ", 30000, 4,
-#endif
-                                 [](int number_picked) -> void
-                                 { LOG_WARN("Nodenum: %u", number_picked); });
-    }
+void menuHandler::numberTest()
+{
+    screen->showNumberPicker("Pick a number\n ", 30000, 4,
+                             [](int number_picked) -> void { LOG_WARN("Nodenum: %u", number_picked); });
+}
 
     void menuHandler::wifiBaseMenu()
     {
@@ -3508,16 +3501,11 @@ namespace graphics
         screen->showOverlayBanner(bannerOptions);
     }
 
-    void menuHandler::keyVerificationInitMenu()
-    {
-#if defined(RED_BANK_S3)
-        screen->showNodePicker("Node to Verify", 0,
-#else
-        screen->showNodePicker("Node to Verify", 30000,
-#endif
-                               [](uint32_t selected) -> void
-                               { keyVerificationModule->sendInitialRequest(selected); });
-    }
+void menuHandler::keyVerificationInitMenu()
+{
+    screen->showNodePicker("Node to Verify", 30000,
+                           [](uint32_t selected) -> void { keyVerificationModule->sendInitialRequest(selected); });
+}
 
     void menuHandler::keyVerificationFinalPrompt()
     {
@@ -3531,11 +3519,7 @@ namespace graphics
             static const char *optionsArray[] = {"Reject", "Accept"};
             graphics::BannerOverlayOptions options;
             options.message = message;
-#if defined(RED_BANK_S3)
-            options.durationMs = 0; // RED_BANK_S3: 永不超时
-#else
             options.durationMs = 30000; // 默认30秒超时
-#endif
             options.optionsArrayPtr = optionsArray;
             options.optionsCount = 2;
             options.notificationType = graphics::notificationTypeEnum::selection_picker;
@@ -3551,179 +3535,149 @@ namespace graphics
         }
     }
 
-    void menuHandler::frameTogglesMenu()
-    {
-        enum optionsNumbers
-        {
-            Finish,
-            nodelist_nodes,
-            nodelist_location,
-            nodelist_lastheard,
-            nodelist_hopsignal,
-            nodelist_distance,
-            nodelist_bearings,
-            gps_position,
-            lora,
-            clock,
-            show_favorites,
-            show_env_telemetry,
-            show_aq_telemetry,
-            show_power,
-            enumEnd
-        };
-        static const char *optionsArray[enumEnd] = {"Finish"};
-        static int optionsEnumArray[enumEnd] = {Finish};
-        int options = 1;
+void menuHandler::frameTogglesMenu()
+{
+    enum optionsNumbers {
+        Finish,
+        nodelist_nodes,
+        nodelist_location,
+        nodelist_lastheard,
+        nodelist_hopsignal,
+        nodelist_distance,
+        nodelist_bearings,
+        gps_position,
+        lora,
+        clock,
+        show_favorites,
+        show_env_telemetry,
+        show_aq_telemetry,
+        show_power,
+        enumEnd
+    };
+    static const char *optionsArray[enumEnd] = {"Finish"};
+    static int optionsEnumArray[enumEnd] = {Finish};
+    int options = 1;
 
-        // Track last selected index (not enum value!)
-        static int lastSelectedIndex = 0;
+    // Track last selected index (not enum value!)
+    static int lastSelectedIndex = 0;
 
 #ifndef USE_EINK
-        optionsArray[options] = screen->isFrameHidden("nodelist_nodes") ? "Show Node Lists" : "Hide Node Lists";
-        optionsEnumArray[options++] = nodelist_nodes;
+    optionsArray[options] = screen->isFrameHidden("nodelist_nodes") ? "Show Node Lists" : "Hide Node Lists";
+    optionsEnumArray[options++] = nodelist_nodes;
 #else
-        optionsArray[options] = screen->isFrameHidden("nodelist_lastheard") ? "Show NL - Last Heard" : "Hide NL - Last Heard";
-        optionsEnumArray[options++] = nodelist_lastheard;
-        optionsArray[options] = screen->isFrameHidden("nodelist_hopsignal") ? "Show NL - Hops/Signal" : "Hide NL - Hops/Signal";
-        optionsEnumArray[options++] = nodelist_hopsignal;
+    optionsArray[options] = screen->isFrameHidden("nodelist_lastheard") ? "Show NL - Last Heard" : "Hide NL - Last Heard";
+    optionsEnumArray[options++] = nodelist_lastheard;
+    optionsArray[options] = screen->isFrameHidden("nodelist_hopsignal") ? "Show NL - Hops/Signal" : "Hide NL - Hops/Signal";
+    optionsEnumArray[options++] = nodelist_hopsignal;
 #endif
 
 #if HAS_GPS
 #ifndef USE_EINK
-        optionsArray[options] = screen->isFrameHidden("nodelist_location") ? "Show Position Lists" : "Hide Position Lists";
-        optionsEnumArray[options++] = nodelist_location;
+    optionsArray[options] = screen->isFrameHidden("nodelist_location") ? "Show Position Lists" : "Hide Position Lists";
+    optionsEnumArray[options++] = nodelist_location;
 #else
-        optionsArray[options] = screen->isFrameHidden("nodelist_distance") ? "Show NL - Distance" : "Hide NL - Distance";
-        optionsEnumArray[options++] = nodelist_distance;
-        optionsArray[options] = screen->isFrameHidden("nodelist_bearings") ? "Show NL - Bearings" : "Hide NL - Bearings";
-        optionsEnumArray[options++] = nodelist_bearings;
+    optionsArray[options] = screen->isFrameHidden("nodelist_distance") ? "Show NL - Distance" : "Hide NL - Distance";
+    optionsEnumArray[options++] = nodelist_distance;
+    optionsArray[options] = screen->isFrameHidden("nodelist_bearings") ? "Show NL - Bearings" : "Hide NL - Bearings";
+    optionsEnumArray[options++] = nodelist_bearings;
 #endif
 
-        optionsArray[options] = screen->isFrameHidden("gps") ? "Show Position" : "Hide Position";
-        optionsEnumArray[options++] = gps_position;
+    optionsArray[options] = screen->isFrameHidden("gps") ? "Show Position" : "Hide Position";
+    optionsEnumArray[options++] = gps_position;
 #endif
 
-        optionsArray[options] = screen->isFrameHidden("lora") ? "Show LoRa" : "Hide LoRa";
-        optionsEnumArray[options++] = lora;
+    optionsArray[options] = screen->isFrameHidden("lora") ? "Show LoRa" : "Hide LoRa";
+    optionsEnumArray[options++] = lora;
 
-        optionsArray[options] = screen->isFrameHidden("clock") ? "Show Clock" : "Hide Clock";
-        optionsEnumArray[options++] = clock;
+    optionsArray[options] = screen->isFrameHidden("clock") ? "Show Clock" : "Hide Clock";
+    optionsEnumArray[options++] = clock;
 
-        optionsArray[options] = screen->isFrameHidden("show_favorites") ? "Show Favorites" : "Hide Favorites";
-        optionsEnumArray[options++] = show_favorites;
+    optionsArray[options] = screen->isFrameHidden("show_favorites") ? "Show Favorites" : "Hide Favorites";
+    optionsEnumArray[options++] = show_favorites;
 
-        optionsArray[options] = moduleConfig.telemetry.environment_screen_enabled ? "Hide Env. Telemetry" : "Show Env. Telemetry";
-        optionsEnumArray[options++] = show_env_telemetry;
+    optionsArray[options] = moduleConfig.telemetry.environment_screen_enabled ? "Hide Env. Telemetry" : "Show Env. Telemetry";
+    optionsEnumArray[options++] = show_env_telemetry;
 
-        optionsArray[options] = moduleConfig.telemetry.air_quality_screen_enabled ? "Hide AQ Telemetry" : "Show AQ Telemetry";
-        optionsEnumArray[options++] = show_aq_telemetry;
+    optionsArray[options] = moduleConfig.telemetry.air_quality_screen_enabled ? "Hide AQ Telemetry" : "Show AQ Telemetry";
+    optionsEnumArray[options++] = show_aq_telemetry;
 
-        optionsArray[options] = moduleConfig.telemetry.power_screen_enabled ? "Hide Power" : "Show Power";
-        optionsEnumArray[options++] = show_power;
+    optionsArray[options] = moduleConfig.telemetry.power_screen_enabled ? "Hide Power" : "Show Power";
+    optionsEnumArray[options++] = show_power;
 
-        BannerOverlayOptions bannerOptions;
-        bannerOptions.message = "Show/Hide Frames";
-        bannerOptions.optionsArrayPtr = optionsArray;
-        bannerOptions.optionsCount = options;
-        bannerOptions.optionsEnumPtr = optionsEnumArray;
-        bannerOptions.InitialSelected = lastSelectedIndex; // Use index, not enum value
+    BannerOverlayOptions bannerOptions;
+    bannerOptions.message = "Show/Hide Frames";
+    bannerOptions.optionsArrayPtr = optionsArray;
+    bannerOptions.optionsCount = options;
+    bannerOptions.optionsEnumPtr = optionsEnumArray;
+    bannerOptions.InitialSelected = lastSelectedIndex; // Use index, not enum value
 
-        bannerOptions.bannerCallback = [options](int selected) mutable -> void
-        {
-            // Find the index of selected in optionsEnumArray
-            int idx = 0;
-            for (; idx < options; ++idx)
-            {
-                if (optionsEnumArray[idx] == selected)
-                    break;
-            }
-            lastSelectedIndex = idx;
+    bannerOptions.bannerCallback = [options](int selected) mutable -> void {
+        // Find the index of selected in optionsEnumArray
+        int idx = 0;
+        for (; idx < options; ++idx) {
+            if (optionsEnumArray[idx] == selected)
+                break;
+        }
+        lastSelectedIndex = idx;
 
-            if (selected == Finish)
-            {
-                screen->setFrames(Screen::FOCUS_DEFAULT);
-            }
-            else if (selected == nodelist_nodes)
-            {
-                screen->toggleFrameVisibility("nodelist_nodes");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == nodelist_location)
-            {
-                screen->toggleFrameVisibility("nodelist_location");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == nodelist_lastheard)
-            {
-                screen->toggleFrameVisibility("nodelist_lastheard");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == nodelist_hopsignal)
-            {
-                screen->toggleFrameVisibility("nodelist_hopsignal");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == nodelist_distance)
-            {
-                screen->toggleFrameVisibility("nodelist_distance");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == nodelist_bearings)
-            {
-                screen->toggleFrameVisibility("nodelist_bearings");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == gps_position)
-            {
-                screen->toggleFrameVisibility("gps");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == lora)
-            {
-                screen->toggleFrameVisibility("lora");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == clock)
-            {
-                screen->toggleFrameVisibility("clock");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == show_favorites)
-            {
-                screen->toggleFrameVisibility("show_favorites");
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == show_env_telemetry)
-            {
-                moduleConfig.telemetry.environment_screen_enabled = !moduleConfig.telemetry.environment_screen_enabled;
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == show_aq_telemetry)
-            {
-                moduleConfig.telemetry.air_quality_screen_enabled = !moduleConfig.telemetry.air_quality_screen_enabled;
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-            else if (selected == show_power)
-            {
-                moduleConfig.telemetry.power_screen_enabled = !moduleConfig.telemetry.power_screen_enabled;
-                menuHandler::menuQueue = menuHandler::FrameToggles;
-                screen->runNow();
-            }
-        };
-        screen->showOverlayBanner(bannerOptions);
-    }
+        if (selected == Finish) {
+            screen->setFrames(Screen::FOCUS_DEFAULT);
+        } else if (selected == nodelist_nodes) {
+            screen->toggleFrameVisibility("nodelist_nodes");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == nodelist_location) {
+            screen->toggleFrameVisibility("nodelist_location");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == nodelist_lastheard) {
+            screen->toggleFrameVisibility("nodelist_lastheard");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == nodelist_hopsignal) {
+            screen->toggleFrameVisibility("nodelist_hopsignal");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == nodelist_distance) {
+            screen->toggleFrameVisibility("nodelist_distance");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == nodelist_bearings) {
+            screen->toggleFrameVisibility("nodelist_bearings");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == gps_position) {
+            screen->toggleFrameVisibility("gps");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == lora) {
+            screen->toggleFrameVisibility("lora");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == clock) {
+            screen->toggleFrameVisibility("clock");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == show_favorites) {
+            screen->toggleFrameVisibility("show_favorites");
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == show_env_telemetry) {
+            moduleConfig.telemetry.environment_screen_enabled = !moduleConfig.telemetry.environment_screen_enabled;
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == show_aq_telemetry) {
+            moduleConfig.telemetry.air_quality_screen_enabled = !moduleConfig.telemetry.air_quality_screen_enabled;
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        } else if (selected == show_power) {
+            moduleConfig.telemetry.power_screen_enabled = !moduleConfig.telemetry.power_screen_enabled;
+            menuHandler::menuQueue = menuHandler::FrameToggles;
+            screen->runNow();
+        }
+    };
+    screen->showOverlayBanner(bannerOptions);
+}
 
     void menuHandler::displayUnitsMenu()
     {
@@ -3806,15 +3760,15 @@ namespace graphics
     {
 #if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
         bool processedDeferredOverlayMenu = false;
-        if (menuQueue == menu_none && pendingOverlayMenu != menu_none && !NotificationRenderer::isOverlayBannerShowing())
+        if (menuQueue == MenuNone && pendingOverlayMenu != MenuNone && !NotificationRenderer::isOverlayBannerShowing())
         {
             menuQueue = pendingOverlayMenu;
-            pendingOverlayMenu = menu_none;
+            pendingOverlayMenu = MenuNone;
             processedDeferredOverlayMenu = true;
         }
-        else if (menuQueue != menu_none)
+        else if (menuQueue != MenuNone)
         {
-            pendingOverlayMenu = menu_none;
+            pendingOverlayMenu = MenuNone;
         }
 #endif
         if (menuQueue != MenuNone)
@@ -3988,7 +3942,6 @@ namespace graphics
         }
         menuQueue = MenuNone;
 #if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-        // 如果显示了新菜单，重新设置菜单激活状态
         if (screen && screen->isOverlayBannerShowing())
             setHardwareMenuActive(true);
 

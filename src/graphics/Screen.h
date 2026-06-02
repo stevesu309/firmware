@@ -49,20 +49,6 @@ namespace graphics
     // Noop class for boards without screen.
     class Screen
     {
-    public:
-        enum FrameFocus : uint8_t
-        {
-            FOCUS_DEFAULT,  // No specific frame
-            FOCUS_PRESERVE, // Return to the previous frame
-            FOCUS_FAULT,
-            FOCUS_TEXTMESSAGE,
-            FOCUS_MODULE, // Note: target module should call requestFocus(), otherwise no info about which module to focus
-            FOCUS_CLOCK,
-            FOCUS_SYSTEM,
-        };
-        // Noop class for boards without screen.
-        class Screen
-        {
         public:
             enum FrameFocus : uint8_t
             {
@@ -91,21 +77,6 @@ namespace graphics
             void setFrames(FrameFocus focus) {}
             void endAlert() {}
         };
-        explicit Screen(ScanI2C::DeviceAddress, meshtastic_Config_DisplayConfig_OledType, OLEDDISPLAY_GEOMETRY);
-        void onPress() {}
-        void setup() {}
-        void setOn(bool) {}
-        void doDeepSleep() {}
-        void forceDisplay(bool forceUiUpdate = false) {}
-        void startFirmwareUpdateScreen() {}
-        void increaseBrightness() {}
-        void decreaseBrightness() {}
-        void startAlert(const char *) {}
-        void showSimpleBanner(const char *message, uint32_t durationMs = 0) {}
-        void showOverlayBanner(BannerOverlayOptions) {}
-        void setFrames(FrameFocus focus) {}
-        void endAlert() {}
-    };
 } // namespace graphics
 #else
 #include <cstring>

@@ -296,15 +296,11 @@ void MeshService::sendToMesh(meshtastic_MeshPacket *p, RxSource src, bool ccToPh
 
 bool MeshService::trySendPosition(NodeNum dest, bool wantReplies)
 {
-    meshtastic_NodeInfoLite *localNode = nodeDB->getMeshNode(nodeDB->getNodeNum());
-    meshtastic_NodeInfoLite *destNode = nodeDB->getMeshNode(dest);
+    meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(nodeDB->getNodeNum());
 
-    assert(localNode);
+    assert(node);
 
-    // 使用目标节点的 channel，如果不存在则使用本地节点的 channel
-    uint8_t channel = (destNode && destNode->channel > 0) ? destNode->channel : localNode->channel;
-
-    if (nodeDB->hasValidPosition(localNode))
+    if (nodeDB->hasValidPosition(node))
     {
 #if HAS_GPS && !MESHTASTIC_EXCLUDE_GPS
         if (positionModule)
@@ -324,8 +320,8 @@ bool MeshService::trySendPosition(NodeNum dest, bool wantReplies)
 #endif
         if (nodeInfoModule)
         {
-            LOG_INFO("Send nodeinfo ping to 0x%x, wantReplies=%d, channel=%d", dest, wantReplies, channel);
-            nodeInfoModule->sendOurNodeInfo(dest, wantReplies, channel);
+            LOG_INFO("Send nodeinfo ping to 0x%x, wantReplies=%d, channel=%d", dest, wantReplies, node->channel);
+            nodeInfoModule->sendOurNodeInfo(dest, wantReplies, node->channel);
         }
     }
     return false;

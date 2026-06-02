@@ -1188,7 +1188,7 @@ namespace graphics
         LOG_DEBUG("Found %d channels in channelFile", numChannels);
 
         int primaryChannelIndex = -1;
-        for (size_t i = 0; i < numChannels && validChannelCount < MAX_VALID_CHANNELS; i++)
+        for (int i = 0; i < numChannels && validChannelCount < MAX_VALID_CHANNELS; i++)
         {
             if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
                 channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY)
@@ -1429,32 +1429,6 @@ namespace graphics
             break;
         case FOCUS_FAULT:
             ui->switchToFrame(fsi.positions.fault);
-            break;
-        case FOCUS_TEXTMESSAGE:
-            hasUnreadMessage = false; // ✅ Clear when message is *viewed*
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-            LOG_INFO("textMessageChannel = %d,shouldDrawMessage(&devicestate.rx_text_message) = %d", textMessageChannel, shouldDrawMessage(&devicestate.rx_text_message));
-            if (!shouldDrawMessage(&devicestate.rx_text_message))
-            {
-                if (graphics::ChannelMessageRenderer::getFrameIndexByChannelIndex(textMessageChannel, &frameIndex))
-                {
-                    LOG_INFO("frameIndex = %d", frameIndex);
-                    channelIndex = textMessageChannel;
-                    if (chatHistoryStore)
-                    {
-                        uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
-                        channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
-                    }
-                    ui->switchToFrame(fsi.positions.channelMessage);
-                }
-                else
-                {
-                    LOG_INFO("frameIndex error");
-                }
-            }
-            else
-#endif
-                ui->switchToFrame(fsi.positions.textMessage);
             break;
         case FOCUS_MODULE:
             // Whichever frame was marked by MeshModule::requestFocus(), if any

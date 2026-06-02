@@ -288,9 +288,9 @@ bool EInkDisplay::connect()
     }
 #elif defined(REDCOAST_SOLO_915)
     {
-        delay(10);    // 给外设电源一点稳定时间
-        SPI1.begin(); // 使用 variant.h 里的 PIN_SPI1_SCK/MOSI/MISO
-
+        digitalWrite(PIN_EINK_EN, HIGH);
+        delay(10);
+        SPI1.begin();
         auto lowLevel = new EINK_DISPLAY_MODEL(
             PIN_EINK_CS,
             PIN_EINK_DC,
@@ -306,8 +306,8 @@ bool EInkDisplay::connect()
     }
 #elif defined(RED_TEST)
     {
-        delay(10);    // 给外设电源一点稳定时间
-        SPI1.begin(); // 使用 variant.h 里的 PIN_SPI1_SCK/MOSI/MISO
+        delay(10);   
+        SPI1.begin(); 
 
         auto lowLevel = new EINK_DISPLAY_MODEL(
             PIN_EINK_CS,
