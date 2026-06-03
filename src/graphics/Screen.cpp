@@ -461,6 +461,10 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
 #endif
             delay(100);
 #endif
+#if defined(REDCOAST_SOLO_915) && defined(PIN_EINK_EN)
+            digitalWrite(PIN_EINK_EN, HIGH);
+            delay(PIN_PWR_DELAY_MS);
+#endif
 #if !ARCH_PORTDUINO
             dispdev->displayOn();
 #endif
