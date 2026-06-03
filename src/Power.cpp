@@ -26,6 +26,10 @@
 #include "power/SGM41562.h"
 #include "sleep.h"
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
 #if defined(ARCH_PORTDUINO)
 #include "api/WiFiServerAPI.h"
 #include "input/LinuxInputImpl.h"
@@ -761,6 +765,10 @@ void Power::powerCommandsCheck()
 
 void Power::reboot()
 {
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
+#endif
     notifyReboot.notifyObservers(NULL);
 #if defined(ARCH_ESP32)
     ESP.restart();
@@ -812,6 +820,10 @@ void Power::shutdown()
 #if !defined(ARCH_STM32WL)
     playShutdownMelody();
 #endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
+#endif
     nodeDB->saveToDisk();
 #if HAS_SCREEN
     messageStore.saveToFlash();
@@ -848,6 +860,7 @@ void Power::readPowerStatus()
     OptionalBool hasBattery = OptUnknown; // These must be static because NRF_APM
                                           // code doesn't run every time
     OptionalBool isChargingNow = OptUnknown;
+    static bool lowBatteryOnePercentLogged = false;
 
     if (batteryLevel) {
         hasBattery = batteryLevel->isBatteryConnect() ? OptTrue : OptFalse;
@@ -908,6 +921,7 @@ void Power::readPowerStatus()
         lastLogTime = millis();
     }
     newStatus.notifyObservers(&powerStatus2);
+
 #ifdef DEBUG_HEAP
     if (lastheap != memGet.getFreeHeap()) {
         // Use stack-allocated buffer to avoid heap allocations in monitoring code

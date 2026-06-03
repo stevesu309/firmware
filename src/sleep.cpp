@@ -16,6 +16,9 @@
 #include "modules/StatusLEDModule.h"
 #include "sleep.h"
 #include "target_specific.h"
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
 
 #ifdef ARCH_ESP32
 // "esp_pm_config_esp32_t is deprecated, please include esp_pm.h and use esp_pm_config_t instead"
@@ -236,6 +239,10 @@ void doDeepSleep(uint32_t msecToWake, bool skipPreflight = false, bool skipSaveN
         screen->doDeepSleep(); // datasheet says this will draw only 10ua
 
     if (!skipSaveNodeDb) {
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        if (chatHistoryStore)
+            chatHistoryStore->persistToDisk();
+#endif
         nodeDB->saveToDisk();
     }
 

@@ -156,13 +156,27 @@ void setupNicheGraphics();
 #include "nicheGraphics.h"
 #endif
 
+#if defined(RED_BANK_S3)
+#include "red_bank_s3/RedBankController.h"
+RedBankS3::RedBankController *redBankController = nullptr;
+#endif
+
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+#include "redcoast915/FiveWayGpioInput.h"
+redcoast915::FiveWayGpioInput *fiveWayInput = nullptr;
+#endif
+
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
 #endif
 
 using namespace concurrency;
 
-volatile static const char slipstreamTZString[] = {USERPREFS_TZ_STRING};
+volatile static const char slipstreamTZString[] = {"tzplaceholder                                         "};
 
 // We always create a screen object, but we only init it if we find the hardware
 graphics::Screen *screen = nullptr;
@@ -381,9 +395,11 @@ void setup()
     tv.tv_usec = 0;
     perhapsSetRTC(ourQuality, &tv);
 #endif
-
+    LOG_INFO("Meshtastic %s starting up", optstr(APP_VERSION));
     powerMonInit();
+    LOG_INFO("powerMonInit done");
     serialSinceMsec = millis();
+    LOG_INFO("Serial since %d msec", serialSinceMsec);
 
     LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
 
@@ -401,7 +417,6 @@ void setup()
 #endif
 
     initDeepSleep();
-
 #if defined(MODEM_POWER_EN)
     pinMode(MODEM_POWER_EN, OUTPUT);
     digitalWrite(MODEM_POWER_EN, LOW);
@@ -455,6 +470,32 @@ void setup()
     LOG_INFO("Wait for peripherals to stabilize");
     delay(PERIPHERAL_WARMUP_MS);
 #endif
+
+#if defined(RED_BANK_S3)
+    // RED_BANK_S3: Ensure LoRa power and both LoRa chip selects are in a safe state
+    // BEFORE initializing SPI/radio. This prevents sporadic SPI failures (RadioLib err=-2)
+    // caused by unpowered modules or bus contention from the "other" LoRa chip.
+#ifdef PIN_LORA_EN
+    pinMode(PIN_LORA_EN, OUTPUT);
+    digitalWrite(PIN_LORA_EN, HIGH);
+    delay(10); // allow power rail to stabilize
+#endif
+
+#ifdef LORA_CS_900
+    pinMode(LORA_CS_900, OUTPUT);
+    digitalWrite(LORA_CS_900, HIGH);
+#endif
+#ifdef LORA_CS_433
+    pinMode(LORA_CS_433, OUTPUT);
+    digitalWrite(LORA_CS_433, HIGH);
+#endif
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+    fiveWayInput = new redcoast915::FiveWayGpioInput();
+    fiveWayInput->setup();
+#endif
+
     initSPI();
 
     OSThread::setup();
@@ -518,8 +559,9 @@ void setup()
     power->setStatusHandler(powerStatus);
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
-
+    LOG_INFO("Power setup complete");
 #if !MESHTASTIC_EXCLUDE_I2C
+
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
     auto i2cScanner = std::unique_ptr<ScanI2CTwoWire>(new ScanI2CTwoWire());
@@ -595,6 +637,7 @@ void setup()
 
     if (kb_info.type != ScanI2C::DeviceType::NONE) {
         kb_found = true;
+
         cardkb_found = kb_info.address;
         switch (kb_info.type) {
         case ScanI2C::DeviceType::RAK14004:
@@ -724,7 +767,7 @@ void setup()
         playStartMelody();
 
 #if HAS_SCREEN
-        // fixed screen override?
+    // fixed screen override?
 #if defined(USE_SH1107)
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // set dimension of 128x128
     screen_geometry = GEOMETRY_128_128;
@@ -805,7 +848,7 @@ void setup()
     SPI.begin();
 #endif
 #else
-        // ESP32
+// ESP32
 #if defined(HW_SPI1_DEVICE)
     SPI1.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
     LOG_DEBUG("SPI1.begin(SCK=%d, MISO=%d, MOSI=%d, NSS=%d)", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
@@ -835,8 +878,15 @@ void setup()
             screen = new graphics::Screen(screen_found, screen_model, screen_geometry);
 #endif
     }
-#endif // HAS_SCREEN
 
+#if defined(RED_BANK_S3)
+    redBankController = new RedBankS3::RedBankController();
+#endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    chatHistoryStore = new ChatHistoryStore();
+    chatHistoryStore->loadFromDisk();
+#endif
+#endif
     // TODO Remove magic string
     // setup TZ prior to time actions.
 #if !MESHTASTIC_EXCLUDE_TZ
@@ -872,6 +922,8 @@ void setup()
                     LOG_DEBUG("Run without GPS");
                 }
             }
+        } else {
+            LOG_INFO("NO GPS: %d", HAS_GPS);
         }
 #ifdef SENSOR_GPS_CONFLICT
     }
@@ -980,7 +1032,7 @@ void setup()
 
 #ifndef ARCH_PORTDUINO
 
-        // Initialize Wifi
+    // Initialize Wifi
 #if HAS_WIFI
     initWifi();
 #endif
@@ -1029,14 +1081,24 @@ void setup()
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-    LOG_DEBUG("Free heap  : %7d bytes", ESP.getFreeHeap());
-    LOG_DEBUG("Free PSRAM : %7d bytes", ESP.getFreePsram());
+    LOG_INFO("CPU frequency  : %7u MHz", ESP.getCpuFreqMHz());
+
+    const uint32_t freeHeap = ESP.getFreeHeap();
+    const uint32_t maxBlock = ESP.getMaxAllocHeap();
+    const uint32_t minFree = ESP.getMinFreeHeap();
+    const uint32_t fragPct = (freeHeap > 0) ? (100U - (maxBlock * 100U / freeHeap)) : 0U;
+
+    LOG_DEBUG("Heap free      : %7u bytes", freeHeap);
+    LOG_DEBUG("Heap max block : %7u bytes", maxBlock);
+    LOG_DEBUG("Heap min free  : %7u bytes", minFree);
+    LOG_DEBUG("Heap frag      : %7u %%", fragPct);
+    LOG_DEBUG("Free PSRAM     : %7u bytes", ESP.getFreePsram());
 #endif
 
-    // We manually run this to update the NodeStatus
-    nodeDB->notifyObservers(true);
+#if defined(RED_BANK_S3)
+    redBankController->setup();
+#endif
 }
-
 #endif
 uint32_t rebootAtMsec;     // If not zero we will reboot at this time (used to reboot shortly after the update completes)
 uint32_t shutdownAtMsec;   // If not zero we will shutdown at this time (used to shutdown from python or mobile client)
@@ -1125,7 +1187,6 @@ void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, Scan
 void loop()
 {
     runASAP = false;
-
 #ifdef ARCH_ESP32
     esp32Loop();
 #endif
@@ -1148,6 +1209,15 @@ void loop()
             RadioLibInterface::instance->resetAGC();
         }
     }
+
+#if defined(RED_BANK_S3)
+    redBankController->loop();
+#endif
+
+#if defined(REDCOAST_SOLO_915)
+    if (fiveWayInput)
+        fiveWayInput->loop();
+#endif
 
 #ifdef DEBUG_STACK
     static uint32_t lastPrint = 0;
@@ -1209,7 +1279,6 @@ void loop()
     messageStoreAutosaveTick();
 #endif
     long delayMsec = mainController.runOrDelay();
-
     // We want to sleep as long as possible here - because it saves power
     if (!runASAP && loopCanSleep()) {
 #ifdef DEBUG_LOOP_TIMING

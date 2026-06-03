@@ -43,6 +43,11 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     // Notify any observers (e.g. external modules that care about packets)
     notifyObservers(&mp);
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    if (chatHistoryStore)
+        chatHistoryStore->saveMeshPacket(mp);
+#endif
+
     return ProcessMessage::CONTINUE; // Let others look at this message also if they want
 }
 

@@ -73,6 +73,13 @@ extern uint16_t TFT_MESH;
 #else
 uint16_t TFT_MESH = COLOR565(0x67, 0xEA, 0x94);
 #endif
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#ifdef RED_BANK_S3
+#include "red_bank_s3/RedBankController.h"
+#endif
+#include "graphics/draw/ChannelMessageRenderer.h"
+#include "graphics/draw/DirectMsgRenderer.h"
+#endif
 
 #if HAS_WIFI && !defined(ARCH_PORTDUINO)
 #include "mesh/wifi/WiFiAPClient.h"
@@ -295,6 +302,7 @@ float Screen::estimatedHeading(double lat, double lon)
 
 /// We will skip one node - the one for us, so we just blindly loop over all
 /// nodes
+static size_t nodeIndex;
 static int8_t prevFrame = -1;
 
 // Combined dynamic node list frame cycling through LastHeard, HopSignal, and Distance modes
@@ -420,6 +428,7 @@ Screen::~Screen()
  */
 void Screen::doDeepSleep()
 {
+    LOG_INFO("doDeepSleep");
 #ifdef USE_EINK
     setOn(false, graphics::UIRenderer::drawDeepSleepFrame);
 #else
@@ -560,7 +569,28 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
         screenOn = on;
     }
 }
+// 每个频道都显示为单独的页面
+// #ifdef RED_BANK_S3
+//     void onFrameFixed(uint8_t currentFrame)
+//     {
+//         if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame))
+//         {
+//             return;
+//         }
 
+//         channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(currentFrame);
+
+//         uint16_t packetListSize = redBankController->_getMeshPacketListSize(channelIndex);
+//         if (packetListSize == 0)
+//         {
+//             LOG_INFO("packetListSize = %d\n", packetListSize);
+//             channelPacketBrowseIndex = 0;
+//             return;
+//         }
+
+//         channelPacketBrowseIndex = packetListSize - 1;
+//     }
+// #endif
 void Screen::setup()
 {
 
@@ -576,6 +606,7 @@ void Screen::setup()
         brightness = BRIGHTNESS_DEFAULT;
 #endif
     } else {
+        dispdev->setBrightness(71);
         brightness = uiconfig.screen_brightness;
     }
 
@@ -741,6 +772,7 @@ void Screen::forceDisplay(bool forceUiUpdate)
 #ifdef USE_EINK
     // If requested, make sure queued commands are run, and UI has rendered a new frame
     if (forceUiUpdate) {
+        LOG_INFO("Force E-Ink display update");
         // Force a display refresh, in addition to the UI update
         // Changing the GPS status bar icon apparently doesn't register as a change in image
         // (False negative of the image hashing algorithm used to skip identical frames)
@@ -878,6 +910,15 @@ int32_t Screen::runOnce()
                 showFrame(FrameDirection::NEXT);
             }
             break;
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        case Cmd::SHOW_PREV_PACKET:
+            handleShowPrevPacket();
+            break;
+        case Cmd::SHOW_NEXT_PACKET:
+            handleShowNextPacket();
+            break;
+#endif
+
         case Cmd::START_ALERT_FRAME: {
             showingBootScreen = false; // this should avoid the edge case where an alert triggers before the boot screen goes away
             showingNormalScreen = false;
@@ -917,6 +958,7 @@ int32_t Screen::runOnce()
     if (!screenOn) { // If we didn't just wake and the screen is still off, then
                      // stop updating until it is on again
         enabled = false;
+        LOG_WARN("Screen is off");
         return 0;
     }
 
@@ -1025,7 +1067,7 @@ void Screen::setScreensaverFrames(FrameCallback einkScreensaver)
 #ifdef EINK_HASQUIRK_GHOSTING
     EINK_ADD_FRAMEFLAG(dispdev, COSMETIC); // Really ugly to see ghosting from "screen paused"
 #else
-    EINK_ADD_FRAMEFLAG(dispdev, RESPONSIVE);              // Really nice to wake screen with a fast-refresh
+    EINK_ADD_FRAMEFLAG(dispdev, RESPONSIVE); // Really nice to wake screen with a fast-refresh
 #endif
 }
 #endif
@@ -1079,9 +1121,62 @@ void Screen::setFrames(FrameFocus focus)
         indicatorIcons.push_back(icon_home);
     }
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+    // RED_BANK_S3 / REDCOAST_SOLO_915: 为频道历史消息构建“单一页面 + 频道列表”
+    validChannelCount = 0;
+
+    int numChannels = channelFile.channels_count;
+    LOG_DEBUG("Found %d channels in channelFile", numChannels);
+
+    int primaryChannelIndex = -1;
+    for (int i = 0; i < numChannels && validChannelCount < MAX_VALID_CHANNELS; i++) {
+        if (channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY ||
+            channelFile.channels[i].role == meshtastic_Channel_Role_SECONDARY) {
+            validChannelIndices[validChannelCount] = i;
+            LOG_DEBUG("Added channel %d (role: %d) at index %d", i, channelFile.channels[i].role, validChannelCount);
+
+            if (primaryChannelIndex == -1 && channelFile.channels[i].role == meshtastic_Channel_Role_PRIMARY) {
+                primaryChannelIndex = static_cast<int>(i);
+            }
+
+            validChannelCount++;
+        }
+    }
+
+    // 初始化当前浏览的频道：优先 Primary Channel（第一个 PRIMARY），否则使用第一个有效频道
+    if (primaryChannelIndex >= 0) {
+        channelIndex = static_cast<size_t>(primaryChannelIndex);
+    } else if (validChannelCount > 0) {
+        channelIndex = static_cast<size_t>(validChannelIndices[0]);
+    } else {
+        channelIndex = 0;
+    }
+
+    // 初始化当前频道的浏览消息索引（默认最新一条）
+    if (chatHistoryStore) {
+        uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(static_cast<uint8_t>(channelIndex));
+        channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
+    } else {
+        channelPacketBrowseIndex = 0;
+    }
+
+    // 只有一个“频道消息”页面，作为导航栏中的一页
+    fsi.positions.channelMessage = numframes;
+    channelFrameBeginIndex = numframes; // 用于 isBrowsingChannelPacketFrame 判断
+    normalFrames[numframes++] = graphics::ChannelMessageRenderer::drawChannelTextMessageFrame;
+    indicatorIcons.push_back(icon_CH);
+
+    LOG_DEBUG("Channel message frame at %d, validChannelCount=%d, total frames: %d", fsi.positions.channelMessage,
+              validChannelCount, numframes);
+
+    fsi.positions.textMessage = numframes;
+    normalFrames[numframes++] = graphics::DirectMsgRenderer::drawDirectMessageFrame;
+    indicatorIcons.push_back(icon_DM);
+#else
     fsi.positions.textMessage = numframes;
     normalFrames[numframes++] = graphics::MessageRenderer::drawTextMessageFrame;
     indicatorIcons.push_back(icon_mail);
+#endif
 
 #ifndef USE_EINK
     if (!hiddenFrames.nodelist_nodes) {
@@ -1231,8 +1326,9 @@ void Screen::setFrames(FrameFocus focus)
     static OverlayCallback overlays[] = {graphics::UIRenderer::drawNavigationBar, NotificationRenderer::drawBannercallback};
     ui->setOverlays(overlays, sizeof(overlays) / sizeof(overlays[0]));
 
-    prevFrame = -1; // Force drawNodeInfo to pick a new node (because our list just changed)
-
+    prevFrame = -1; // Force drawNodeInfo to pick a new node (because our list
+    // just changed)
+    uint8_t frameIndex = 0;
     // Focus on a specific frame, in the frame set we just created
     switch (focus) {
     case FOCUS_DEFAULT:
@@ -1256,14 +1352,31 @@ void Screen::setFrames(FrameFocus focus)
         break;
 
     case FOCUS_PRESERVE:
-        //  No more adjustment — force stay on same index
-        if (previousFrameCount > fsi.frameCount) {
-            ui->switchToFrame(originalPosition - 1);
-        } else if (previousFrameCount < fsi.frameCount) {
-            ui->switchToFrame(originalPosition + 1);
-        } else {
-            ui->switchToFrame(originalPosition);
+        // If we can identify which type of frame "originalPosition" was, can move directly to it in the new frameset
+        const FramesetInfo &oldFsi = this->framesetInfo;
+        if (originalPosition == oldFsi.positions.log)
+            ui->switchToFrame(fsi.positions.log);
+        else if (originalPosition == oldFsi.positions.settings)
+            ui->switchToFrame(fsi.positions.settings);
+        else if (originalPosition == oldFsi.positions.wifi)
+            ui->switchToFrame(fsi.positions.wifi);
+
+        // If frame count has decreased
+        else if (fsi.frameCount < oldFsi.frameCount) {
+            uint8_t numDropped = oldFsi.frameCount - fsi.frameCount;
+            // Move n frames backwards
+            if (numDropped <= originalPosition)
+                ui->switchToFrame(originalPosition - numDropped);
+            // Unless that would put us "out of bounds" (< 0)
+            else
+                ui->switchToFrame(0);
         }
+
+        // If we're not sure exactly which frame we were on, at least return to the same frame number
+        // (node frames; module frames)
+        else
+            ui->switchToFrame(originalPosition);
+
         break;
     }
 
@@ -1510,6 +1623,67 @@ void Screen::showFrame(FrameDirection direction)
     }
 }
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+void Screen::handleShowPrevPacket(void)
+{
+    if (ui->getUiState()->frameState != FIXED) {
+        return;
+    }
+
+    if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame)) {
+        return;
+    }
+
+    channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+
+    if (!chatHistoryStore) {
+        return;
+    }
+
+    uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(channelIndex);
+    if (packetListSize == 0) {
+        return;
+    }
+
+    if (channelPacketBrowseIndex == 0 || channelPacketBrowseIndex > packetListSize) {
+        channelPacketBrowseIndex = (packetListSize - 1);
+    } else {
+        --channelPacketBrowseIndex;
+    }
+
+    setFastFramerate();
+}
+
+void Screen::handleShowNextPacket(void)
+{
+    if (ui->getUiState()->frameState != FIXED) {
+        return;
+    }
+
+    if (!graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(ui->getUiState()->currentFrame)) {
+        return;
+    }
+
+    channelIndex = graphics::ChannelMessageRenderer::getBrowsingChannelIndex(ui->getUiState()->currentFrame);
+
+    if (!chatHistoryStore) {
+        return;
+    }
+
+    uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(channelIndex);
+    if (packetListSize == 0) {
+        return;
+    }
+
+    if (channelPacketBrowseIndex >= (packetListSize - 1)) {
+        channelPacketBrowseIndex = 0;
+    } else {
+        ++channelPacketBrowseIndex;
+    }
+
+    setFastFramerate();
+}
+#endif
 #ifndef SCREEN_TRANSITION_FRAMERATE
 #define SCREEN_TRANSITION_FRAMERATE 30 // fps
 #endif
@@ -1747,6 +1921,18 @@ int Screen::handleInputEvent(const InputEvent *event)
         ui->update();
 
         menuHandler::handleMenuSwitch(dispdev);
+#ifdef RED_BANK_S3
+        // 检查菜单是否仍然显示，如果不显示则退出菜单状态
+        if (redBankController && redBankController->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
+            redBankController->setMenuActive(false); // setMenuActive 内部会处理刷新
+        }
+#elif defined(REDCOAST_SOLO_915)
+        // Keep REDCOAST menu state in sync with overlay lifetime so
+        // transitions between nested menus do not leave stale state behind.
+        if (fiveWayInput && fiveWayInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
+            fiveWayInput->setMenuActive(false);
+        }
+#endif
         return 0;
     }
     // UP/DOWN in message screen scrolls through message threads
@@ -1802,6 +1988,58 @@ int Screen::handleInputEvent(const InputEvent *event)
                 inputIntercepted = true;
         }
 
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+        // RED_BANK_S3 / REDCOAST_SOLO_915: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
+        // 检查当前帧是否在频道消息帧范围内
+        if (!inputIntercepted && (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN)) {
+            uint8_t currentFrame = ui->getUiState()->currentFrame;
+            bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+            bool isDirectMessageFrame = (currentFrame == framesetInfo.positions.textMessage);
+
+            if (isChannelFrame) {
+                if (event->inputEvent == INPUT_BROKER_UP) {
+                    showPrevPacket();
+                    LOG_INFO("Screen: UP - Previous packet in channel frame");
+                } else if (event->inputEvent == INPUT_BROKER_DOWN) {
+                    showNextPacket();
+                    LOG_INFO("Screen: DOWN - Next packet in channel frame");
+                }
+                // 已处理，直接返回
+                return 0;
+            } else if (isDirectMessageFrame && chatHistoryStore) {
+                // 在私信页面浏览当前节点的历史消息
+                NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
+                if (currentNode != 0) {
+                    int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
+                    if (msgCount > 0) {
+                        uint8_t currentIndex = chatHistoryStore->getCurrentDirectMessageIndex();
+                        if (event->inputEvent == INPUT_BROKER_UP) {
+                            // 向上浏览（更旧的消息）
+                            if (currentIndex > 0) {
+                                chatHistoryStore->setCurrentDirectMessageIndex(currentIndex - 1);
+                            } else {
+                                // 循环到最新消息
+                                chatHistoryStore->setCurrentDirectMessageIndex(msgCount - 1);
+                            }
+                            setFastFramerate();
+                            LOG_INFO("Screen: UP - Previous direct message");
+                        } else if (event->inputEvent == INPUT_BROKER_DOWN) {
+                            // 向下浏览（更新的消息）
+                            if (currentIndex < msgCount - 1) {
+                                chatHistoryStore->setCurrentDirectMessageIndex(currentIndex + 1);
+                            } else {
+                                // 循环到最旧消息
+                                chatHistoryStore->setCurrentDirectMessageIndex(0);
+                            }
+                            setFastFramerate();
+                            LOG_INFO("Screen: DOWN - Next direct message");
+                        }
+                        return 0;
+                    }
+                }
+            }
+        }
+#endif
         // If no modules are using the input, move between frames
         if (!inputIntercepted) {
 #if defined(INPUTDRIVER_ENCODER_TYPE) && INPUTDRIVER_ENCODER_TYPE == 2
@@ -1824,6 +2062,7 @@ int Screen::handleInputEvent(const InputEvent *event)
                 return 0;
             }
 #endif
+            LOG_INFO("Screen::handleInputEvent: event->inputEvent=%d", event->inputEvent);
             if (event->inputEvent == INPUT_BROKER_LEFT || event->inputEvent == INPUT_BROKER_ALT_PRESS) {
                 showFrame(FrameDirection::PREVIOUS);
             } else if (event->inputEvent == INPUT_BROKER_RIGHT || event->inputEvent == INPUT_BROKER_USER_PRESS) {
@@ -1873,19 +2112,33 @@ int Screen::handleInputEvent(const InputEvent *event)
                        this->ui->getUiState()->currentFrame == framesetInfo.positions.home) {
                 cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST);
             } else if (event->inputEvent == INPUT_BROKER_SELECT) {
-                if (this->ui->getUiState()->currentFrame == framesetInfo.positions.home) {
+                uint8_t currentFrame = this->ui->getUiState()->currentFrame;
+
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+                // 在频道消息页面长按 ENTER，弹出频道消息操作菜单（交由 MenuHandler 控制）
+                if (currentFrame == framesetInfo.positions.channelMessage) {
+                    menuHandler::menuQueue = menuHandler::channel_message_action_menu;
+                    menuHandler::handleMenuSwitch(dispdev);
+                } else
+#endif
+                    if (currentFrame == framesetInfo.positions.home) {
                     menuHandler::homeBaseMenu();
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.system) {
+                } else if (currentFrame == framesetInfo.positions.system) {
                     menuHandler::systemBaseMenu();
 #if HAS_GPS
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.gps && gps) {
+                } else if (currentFrame == framesetInfo.positions.gps && gps) {
                     menuHandler::positionBaseMenu();
 #endif
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.clock) {
+                } else if (currentFrame == framesetInfo.positions.clock) {
                     menuHandler::clockMenu();
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.lora) {
+                } else if (currentFrame == framesetInfo.positions.lora) {
                     menuHandler::loraMenu();
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.textMessage) {
+                } else if (currentFrame == framesetInfo.positions.textMessage) {
+#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+                    // 在私信页面长按 ENTER，弹出操作菜单
+                    menuHandler::menuQueue = menuHandler::direct_message_action_menu;
+                    menuHandler::handleMenuSwitch(dispdev);
+#else
                     if (!messageStore.getMessages().empty()) {
                         menuHandler::messageResponseMenu();
                     } else {
@@ -1895,19 +2148,19 @@ int Screen::handleInputEvent(const InputEvent *event)
                             menuHandler::textMessageBaseMenu();
                         }
                     }
-                } else if (framesetInfo.positions.firstFavorite != 255 &&
-                           this->ui->getUiState()->currentFrame >= framesetInfo.positions.firstFavorite &&
-                           this->ui->getUiState()->currentFrame <= framesetInfo.positions.lastFavorite) {
+#endif
+                } else if (framesetInfo.positions.firstFavorite != 255 && currentFrame >= framesetInfo.positions.firstFavorite &&
+                           currentFrame <= framesetInfo.positions.lastFavorite) {
                     menuHandler::favoriteBaseMenu();
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_nodes ||
+                } else if (currentFrame == framesetInfo.positions.nodelist_nodes ||
                            this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_location ||
-                           this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_lastheard ||
-                           this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_hopsignal ||
-                           this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_distance ||
-                           this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_hopsignal ||
-                           this->ui->getUiState()->currentFrame == framesetInfo.positions.nodelist_bearings) {
+                           currentFrame == framesetInfo.positions.nodelist_lastheard ||
+                           currentFrame == framesetInfo.positions.nodelist_hopsignal ||
+                           currentFrame == framesetInfo.positions.nodelist_distance ||
+                           currentFrame == framesetInfo.positions.nodelist_hopsignal ||
+                           currentFrame == framesetInfo.positions.nodelist_bearings) {
                     menuHandler::nodeListMenu();
-                } else if (this->ui->getUiState()->currentFrame == framesetInfo.positions.wifi) {
+                } else if (currentFrame == framesetInfo.positions.wifi) {
                     menuHandler::wifiBaseMenu();
                 }
             } else if (event->inputEvent == INPUT_BROKER_BACK) {
