@@ -37,6 +37,23 @@ static bool gExternalFontLoggedReady = false;
 static bool gExternalFontLoggedHit = false;
 static bool gExternalFontLoggedFallback = false;
 
+static uint8_t utf8CharLength(uint8_t c)
+{
+    if (c < 0x80) {
+        return 1;
+    }
+    if ((c & 0xE0) == 0xC0) {
+        return 2;
+    }
+    if ((c & 0xF0) == 0xE0) {
+        return 3;
+    }
+    if ((c & 0xF8) == 0xF0) {
+        return 4;
+    }
+    return 1;
+}
+
 static void makeUtf8Key(const char *utf8, uint8_t out[kUtf8KeySize])
 {
     memset(out, 0, kUtf8KeySize);
@@ -215,7 +232,7 @@ static void drawGlyphBitmap(OLEDDisplay *display, int16_t x, int16_t y, const ui
             const uint32_t byteIndex = row * kBytesPerRow + (col / 8U);
             const uint32_t bitIndex = 7U - (col % 8U);
             if (bitmap[byteIndex] & (1U << bitIndex)) {
-                display->setPixel(x + static_cast<int16_t>(col), y + static_cast<int16_t>(row) + kGlyphYOffset);
+                display->setPixel(x + static_cast<int16_t>(col), y + static_cast<int16_t>(row) + 0);
             }
         }
     }
@@ -291,37 +308,17 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
             currentX += w;
             offset += 1;
         }
-        // 2 字节 UTF-8（欧洲语言常见：é、ö 等）
-        else if ((c & 0xE0) == 0xC0) {
-            if (!str[offset + 1])
-                break; // 防止越界
-
-            char buf[3] = {str[offset], str[offset + 1], 0};
-
-            // 注意：OLEDDisplay 的字体实现通常按“单字节字符”计算宽度，
-            // 但这里的 UTF-8 特殊字符占用 2 个字节。
-            // 如果直接用 getStringWidth(buf)，会按两个字符的宽度计算，导致我们手动推进的 X 位置比真实视觉宽度大一倍，
-            // 看起来就像多出一个字符的空白。
-            //
-            // 为了在逻辑上把它当作“一个字符”处理，这里用一个普通 ASCII 字符的宽度作为近似值。
-            int16_t w = display->getStringWidth("A");
-            if (currentX + w > screenWidth) {
-                currentX = x;
-                currentY += lineHeight;
+        // 多字节 UTF-8：先尝试外部/内置点阵字库，命中后按一个 16x16 字符绘制。
+        else {
+            const uint8_t charLen = utf8CharLength(c);
+            char buf[5] = {0};
+            for (uint8_t i = 0; i < charLen; ++i) {
+                if (!str[offset + i]) {
+                    return;
+                }
+                buf[i] = str[offset + i];
             }
 
-            display->drawString(currentX, currentY, buf);
-            currentX += w;
-            offset += 2;
-        }
-        // 3 字节 UTF-8（中文等）
-        else if ((c & 0xF0) == 0xE0) {
-            if (!str[offset + 1] || !str[offset + 2])
-                break; // 防止越界
-
-            char buf[4] = {str[offset], str[offset + 1], str[offset + 2], 0};
-
-            // 先尝试按内置汉字点阵绘制
             if (currentX + static_cast<int16_t>(kGlyphWidth) > screenWidth) {
                 currentX = x;
                 currentY += lineHeight;
@@ -331,31 +328,18 @@ void drawChineseStringWithLineBreak(OLEDDisplay *display, int16_t x, int16_t y, 
             if (drawn) {
                 currentX += static_cast<int16_t>(kGlyphWidth);
             } else {
-                // 未找到对应汉字，退回到字体库绘制（比如其它 3 字节字符）
-                // int16_t w = display->getStringWidth(buf);
-                // if (currentX + w > screenWidth)
-                // {
-                //     currentX = x;
-                //     currentY += lineHeight;
-                // }
-                // display->drawString(currentX, currentY, buf);
-                // currentX += w;
-                currentX += static_cast<int16_t>(kGlyphWidth); // 按汉字宽度占位
+                int16_t w = (charLen == 2) ? display->getStringWidth("A") : static_cast<int16_t>(kGlyphWidth);
+                if (currentX + w > screenWidth) {
+                    currentX = x;
+                    currentY += lineHeight;
+                }
+                if (charLen == 2) {
+                    display->drawString(currentX, currentY, buf);
+                }
+                currentX += w;
             }
 
-            offset += 3;
-        } else {
-            // 其他情况（4 字节 emoji 等），简单跳过或按单字节回退
-            // 这里按单字节占位显示，避免死循环
-            char buf[2] = {static_cast<char>(c), 0};
-            int16_t w = display->getStringWidth(buf);
-            if (currentX + w > screenWidth) {
-                currentX = x;
-                currentY += lineHeight;
-            }
-            display->drawString(currentX, currentY, buf);
-            currentX += w;
-            offset += 1;
+            offset += charLen;
         }
     }
 }
