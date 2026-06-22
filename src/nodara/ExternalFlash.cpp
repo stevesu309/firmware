@@ -15,7 +15,7 @@
 #define NODARA_EXT_FLASH_QSPI 1
 #endif
 
-namespace redcoast915
+namespace nodara
 {
 
 static constexpr uint32_t CNFONT_EXT_ADDR = CNFONT_CFG_EXT_ADDR;
@@ -284,13 +284,13 @@ bool ExtFlashFinishChineseFontUpload(uint32_t)
 void ExtFlashAbortChineseFontUpload() {}
 #endif
 
-} // namespace redcoast915
+} // namespace nodara
 
 #else // !ARCH_NRF52
 
 #include "ExternalFlash.h"
 
-namespace redcoast915
+namespace nodara
 {
 
 void ExtFlashSelfTest() {}
@@ -324,6 +324,6 @@ bool ExtFlashFinishChineseFontUpload(uint32_t)
 }
 void ExtFlashAbortChineseFontUpload() {}
 
-} // namespace redcoast915
+} // namespace nodara
 
 #endif // ARCH_NRF52

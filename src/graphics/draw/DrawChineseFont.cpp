@@ -1,6 +1,6 @@
 #include "DrawChineseFont.h"
 #include "DebugConfiguration.h"
-#include "redcoast915/ExternalFlash.h"
+#include "nodara/ExternalFlash.h"
 #include <new>
 #include <string.h>
 
@@ -80,13 +80,13 @@ static bool exportChineseFontToExternal()
         return false;
     }
 
-    if (!redcoast915::ExtFlashRawErase(kChineseFontBaseAddr, totalBytes)) {
+    if (!nodara::ExtFlashRawErase(kChineseFontBaseAddr, totalBytes)) {
         LOG_WARN("[CNFONT][EXT] erase failed base=0x%08lx len=%lu", (unsigned long)kChineseFontBaseAddr,
                  (unsigned long)totalBytes);
         return false;
     }
 
-    if (!redcoast915::ExtFlashRawWrite(kChineseFontBaseAddr, &header, sizeof(header))) {
+    if (!nodara::ExtFlashRawWrite(kChineseFontBaseAddr, &header, sizeof(header))) {
         LOG_WARN("[CNFONT][EXT] write header failed");
         return false;
     }
@@ -101,7 +101,7 @@ static bool exportChineseFontToExternal()
         makeUtf8Key(chineseFont[i].utf8, keyTable + i * kUtf8KeySize);
     }
 
-    if (!redcoast915::ExtFlashRawWrite(kChineseFontBaseAddr + sizeof(header), keyTable, keyBytes)) {
+    if (!nodara::ExtFlashRawWrite(kChineseFontBaseAddr + sizeof(header), keyTable, keyBytes)) {
         delete[] keyTable;
         LOG_WARN("[CNFONT][EXT] write key table failed");
         return false;
@@ -110,7 +110,7 @@ static bool exportChineseFontToExternal()
 
     uint32_t bitmapAddr = kChineseFontBaseAddr + sizeof(header) + keyBytes;
     for (uint32_t i = 0; i < chineseFontCount; ++i) {
-        if (!redcoast915::ExtFlashRawWrite(bitmapAddr, chineseFont[i].bitmap, kBitmapSize)) {
+        if (!nodara::ExtFlashRawWrite(bitmapAddr, chineseFont[i].bitmap, kBitmapSize)) {
             LOG_WARN("[CNFONT][EXT] write bitmap failed at index=%lu", (unsigned long)i);
             return false;
         }
@@ -130,13 +130,13 @@ static bool ensureExternalChineseFont()
     }
     gExternalFontTriedInit = true;
 
-    if (!redcoast915::ExtFlashRawReady()) {
+    if (!nodara::ExtFlashRawReady()) {
         LOG_WARN("[CNFONT][EXT] raw flash not ready");
         return false;
     }
 
     ChineseFontFileHeader header;
-    if (!redcoast915::ExtFlashRawRead(kChineseFontBaseAddr, &header, sizeof(header))) {
+    if (!nodara::ExtFlashRawRead(kChineseFontBaseAddr, &header, sizeof(header))) {
         LOG_WARN("[CNFONT][EXT] read header failed");
         return false;
     }
@@ -156,7 +156,7 @@ static bool ensureExternalChineseFont()
             LOG_WARN("[CNFONT][EXT] rebuild failed");
             return false;
         }
-        if (!redcoast915::ExtFlashRawRead(kChineseFontBaseAddr, &header, sizeof(header))) {
+        if (!nodara::ExtFlashRawRead(kChineseFontBaseAddr, &header, sizeof(header))) {
             LOG_WARN("[CNFONT][EXT] read header after rebuild failed");
             return false;
         }
@@ -183,7 +183,7 @@ static bool ensureExternalChineseFont()
         return false;
     }
 
-    if (!redcoast915::ExtFlashRawRead(kChineseFontBaseAddr + sizeof(header), gExternalKeys, keyBytes)) {
+    if (!nodara::ExtFlashRawRead(kChineseFontBaseAddr + sizeof(header), gExternalKeys, keyBytes)) {
         delete[] gExternalKeys;
         gExternalKeys = nullptr;
         LOG_WARN("[CNFONT][EXT] read key table failed");
@@ -222,7 +222,7 @@ static bool lookupExternalChineseBitmap(const char *utf8, uint8_t outBitmap[kBit
 
     const uint32_t keyBytes = gExternalFontCount * kUtf8KeySize;
     const uint32_t bitmapOffset = sizeof(ChineseFontFileHeader) + keyBytes + (static_cast<uint32_t>(foundIndex) * kBitmapSize);
-    return redcoast915::ExtFlashRawRead(kChineseFontBaseAddr + bitmapOffset, outBitmap, kBitmapSize);
+    return nodara::ExtFlashRawRead(kChineseFontBaseAddr + bitmapOffset, outBitmap, kBitmapSize);
 }
 
 static void drawGlyphBitmap(OLEDDisplay *display, int16_t x, int16_t y, const uint8_t *bitmap)

@@ -46,7 +46,7 @@
 #define CNFONT_CFG_Y_OFFSET (-2)
 #endif
 
-namespace redcoast915
+namespace nodara
 {
 
 void ExtFlashSelfTest();
@@ -61,4 +61,4 @@ bool ExtFlashWriteChineseFontUploadChunk(uint32_t offset, const void *buf, uint3
 bool ExtFlashFinishChineseFontUpload(uint32_t totalBytes);
 void ExtFlashAbortChineseFontUpload();
 
-} // namespace redcoast915
+} // namespace nodara

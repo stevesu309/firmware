@@ -166,8 +166,8 @@ RedBankS3::RedBankController *redBankController = nullptr;
 #endif
 
 #if defined(Nodara)
-#include "redcoast915/FiveWayGpioInput.h"
-redcoast915::FiveWayGpioInput *fiveWayInput = nullptr;
+#include "nodara/FiveWayGpioInput.h"
+nodara::FiveWayGpioInput *fiveWayInput = nullptr;
 #endif
 
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
@@ -492,7 +492,7 @@ void setup()
 #endif
 
 #if defined(Nodara)
-    fiveWayInput = new redcoast915::FiveWayGpioInput();
+    fiveWayInput = new nodara::FiveWayGpioInput();
     fiveWayInput->setup();
 #endif
 

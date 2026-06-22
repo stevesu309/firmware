@@ -50,7 +50,7 @@
 
 #include "xmodem.h"
 #include "SPILock.h"
-#include "redcoast915/ExternalFlash.h"
+#include "nodara/ExternalFlash.h"
 #include <cstring>
 
 #ifdef FSCom
@@ -131,7 +131,7 @@ void XModemAdapter::handlePacket(meshtastic_XModem xmodemPacket)
 
             if (xmodemPacket.control == meshtastic_XModem_Control_SOH) { // Receive this file and put to Flash
                 if (strcmp(filename, kExternalChineseFontTarget) == 0) {
-                    if (redcoast915::ExtFlashBeginChineseFontUpload()) {
+                    if (nodara::ExtFlashBeginChineseFontUpload()) {
                         sendControl(meshtastic_XModem_Control_ACK);
                         isReceiving = true;
                         packetno = 1;
@@ -197,7 +197,7 @@ void XModemAdapter::handlePacket(meshtastic_XModem xmodemPacket)
                     // valid packet
                     bool ok = false;
                     if (receiveTarget == ReceiveTarget::ExternalChineseFont) {
-                        ok = redcoast915::ExtFlashWriteChineseFontUploadChunk(receiveOffset, xmodemPacket.buffer.bytes,
+                        ok = nodara::ExtFlashWriteChineseFontUploadChunk(receiveOffset, xmodemPacket.buffer.bytes,
                                                                                 xmodemPacket.buffer.size);
                     } else if (receiveTarget == ReceiveTarget::Filesystem) {
                         spiLock->lock();
@@ -227,8 +227,8 @@ void XModemAdapter::handlePacket(meshtastic_XModem xmodemPacket)
     case meshtastic_XModem_Control_EOT:
         // End of transmission
         if (receiveTarget == ReceiveTarget::ExternalChineseFont) {
-            if (!redcoast915::ExtFlashFinishChineseFontUpload(receiveOffset)) {
-                redcoast915::ExtFlashAbortChineseFontUpload();
+            if (!nodara::ExtFlashFinishChineseFontUpload(receiveOffset)) {
+                nodara::ExtFlashAbortChineseFontUpload();
                 sendControl(meshtastic_XModem_Control_CAN);
                 isReceiving = false;
                 receiveTarget = ReceiveTarget::None;
@@ -251,7 +251,7 @@ void XModemAdapter::handlePacket(meshtastic_XModem xmodemPacket)
         // Cancel transmission and remove file
         sendControl(meshtastic_XModem_Control_ACK);
         if (receiveTarget == ReceiveTarget::ExternalChineseFont) {
-            redcoast915::ExtFlashAbortChineseFontUpload();
+            nodara::ExtFlashAbortChineseFontUpload();
         } else {
             spiLock->lock();
             file.flush();

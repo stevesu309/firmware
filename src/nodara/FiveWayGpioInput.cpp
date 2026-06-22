@@ -5,7 +5,7 @@
 #include "input/InputBroker.h"
 #include "main.h"
 
-namespace redcoast915
+namespace nodara
 {
 
 namespace
@@ -220,4 +220,4 @@ void FiveWayGpioInput::loop()
     lastKeys = keys;
 }
 #endif
-} // namespace redcoast915
+} // namespace nodara

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace redcoast915
+namespace nodara
 {
 class FiveWayGpioInput
 {
@@ -45,4 +45,4 @@ class FiveWayGpioInput
 
     bool menuActive = false;
 };
-} // namespace redcoast915
+} // namespace nodara
