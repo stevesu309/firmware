@@ -1933,12 +1933,68 @@ int Screen::handleInputEvent(const InputEvent *event)
 #elif defined(Nodara)
         // Keep Nodara menu state in sync with overlay lifetime so
         // transitions between nested menus do not leave stale state behind.
-        if (fiveWayInput && fiveWayInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
-            fiveWayInput->setMenuActive(false);
+        if (gpioButtonInput && gpioButtonInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
+            gpioButtonInput->setMenuActive(false);
         }
 #endif
         return 0;
     }
+
+    bool inputIntercepted = false;
+    if (showingNormalScreen) {
+        // Ask any MeshModules if they're handling keyboard input right now.
+        for (MeshModule *module : moduleFrames) {
+            if (module && module->interceptingKeyboardInput())
+                inputIntercepted = true;
+        }
+    }
+
+#if defined(RED_BANK_S3) || defined(Nodara)
+    // RED_BANK_S3 / Nodara: CH and DM pages consume UP/DOWN before the generic textMessage handler.
+    if (showingNormalScreen && !inputIntercepted && (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN)) {
+        uint8_t currentFrame = ui->getUiState()->currentFrame;
+        bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+        bool isDirectMessageFrame = (currentFrame == framesetInfo.positions.textMessage);
+
+        if (isChannelFrame) {
+            if (event->inputEvent == INPUT_BROKER_UP) {
+                showPrevPacket();
+                LOG_INFO("Screen: UP - Previous packet in channel frame");
+            } else if (event->inputEvent == INPUT_BROKER_DOWN) {
+                showNextPacket();
+                LOG_INFO("Screen: DOWN - Next packet in channel frame");
+            }
+            return 0;
+        } else if (isDirectMessageFrame && chatHistoryStore) {
+            NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
+            if (currentNode != 0) {
+                int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
+                if (msgCount > 0) {
+                    uint8_t currentIndex = chatHistoryStore->getCurrentDirectMessageIndex();
+                    if (event->inputEvent == INPUT_BROKER_UP) {
+                        if (currentIndex > 0) {
+                            chatHistoryStore->setCurrentDirectMessageIndex(currentIndex - 1);
+                        } else {
+                            chatHistoryStore->setCurrentDirectMessageIndex(msgCount - 1);
+                        }
+                        setFastFramerate();
+                        LOG_INFO("Screen: UP - Previous direct message");
+                    } else if (event->inputEvent == INPUT_BROKER_DOWN) {
+                        if (currentIndex < msgCount - 1) {
+                            chatHistoryStore->setCurrentDirectMessageIndex(currentIndex + 1);
+                        } else {
+                            chatHistoryStore->setCurrentDirectMessageIndex(0);
+                        }
+                        setFastFramerate();
+                        LOG_INFO("Screen: DOWN - Next direct message");
+                    }
+                }
+                return 0;
+            }
+        }
+    }
+#endif
+
     // UP/DOWN in message screen scrolls through message threads
     if (ui->getUiState()->currentFrame == framesetInfo.positions.textMessage) {
 
@@ -1984,66 +2040,6 @@ int Screen::handleInputEvent(const InputEvent *event)
     // Use left or right input from a keyboard to move between frames,
     // so long as a mesh module isn't using these events for some other purpose
     if (showingNormalScreen) {
-
-        // Ask any MeshModules if they're handling keyboard input right now
-        bool inputIntercepted = false;
-        for (MeshModule *module : moduleFrames) {
-            if (module && module->interceptingKeyboardInput())
-                inputIntercepted = true;
-        }
-
-#if defined(RED_BANK_S3) || defined(Nodara)
-        // RED_BANK_S3 / Nodara: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
-        // 检查当前帧是否在频道消息帧范围内
-        if (!inputIntercepted && (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN)) {
-            uint8_t currentFrame = ui->getUiState()->currentFrame;
-            bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
-            bool isDirectMessageFrame = (currentFrame == framesetInfo.positions.textMessage);
-
-            if (isChannelFrame) {
-                if (event->inputEvent == INPUT_BROKER_UP) {
-                    showPrevPacket();
-                    LOG_INFO("Screen: UP - Previous packet in channel frame");
-                } else if (event->inputEvent == INPUT_BROKER_DOWN) {
-                    showNextPacket();
-                    LOG_INFO("Screen: DOWN - Next packet in channel frame");
-                }
-                // 已处理，直接返回
-                return 0;
-            } else if (isDirectMessageFrame && chatHistoryStore) {
-                // 在私信页面浏览当前节点的历史消息
-                NodeNum currentNode = chatHistoryStore->getCurrentDirectMessageNode();
-                if (currentNode != 0) {
-                    int msgCount = chatHistoryStore->getDirectMessageListSizeForNode(currentNode);
-                    if (msgCount > 0) {
-                        uint8_t currentIndex = chatHistoryStore->getCurrentDirectMessageIndex();
-                        if (event->inputEvent == INPUT_BROKER_UP) {
-                            // 向上浏览（更旧的消息）
-                            if (currentIndex > 0) {
-                                chatHistoryStore->setCurrentDirectMessageIndex(currentIndex - 1);
-                            } else {
-                                // 循环到最新消息
-                                chatHistoryStore->setCurrentDirectMessageIndex(msgCount - 1);
-                            }
-                            setFastFramerate();
-                            LOG_INFO("Screen: UP - Previous direct message");
-                        } else if (event->inputEvent == INPUT_BROKER_DOWN) {
-                            // 向下浏览（更新的消息）
-                            if (currentIndex < msgCount - 1) {
-                                chatHistoryStore->setCurrentDirectMessageIndex(currentIndex + 1);
-                            } else {
-                                // 循环到最旧消息
-                                chatHistoryStore->setCurrentDirectMessageIndex(0);
-                            }
-                            setFastFramerate();
-                            LOG_INFO("Screen: DOWN - Next direct message");
-                        }
-                        return 0;
-                    }
-                }
-            }
-        }
-#endif
         // If no modules are using the input, move between frames
         if (!inputIntercepted) {
 #if defined(INPUTDRIVER_ENCODER_TYPE) && INPUTDRIVER_ENCODER_TYPE == 2

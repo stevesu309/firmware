@@ -1,4 +1,4 @@
-#include "FiveWayGpioInput.h"
+#include "GpioButtonInput.h"
 #include "Arduino.h"
 #include "graphics/EInkDynamicDisplay.h"
 #include "graphics/Screen.h"
@@ -10,7 +10,7 @@ namespace nodara
 
 namespace
 {
-constexpr const char *kInputSource = "FiveWayGpioInput";
+constexpr const char *kInputSource = "GpioButtonInput";
 
 void injectInputEvent(input_broker_event eventType)
 {
@@ -48,11 +48,11 @@ KeyState readKeys()
     return keys;
 }
 
-void handleDirectionRepeat(bool pressed, bool &held, uint32_t &nextRepeatAt, input_broker_event eventType, const char *label)
+void handleNavigationRepeat(bool pressed, bool &held, uint32_t &nextRepeatAt, input_broker_event eventType, const char *label)
 {
     if (pressed && !held) {
         held = true;
-        nextRepeatAt = millis() + FiveWayGpioInput::DIRECTION_REPEAT_DELAY;
+        nextRepeatAt = millis() + GpioButtonInput::NAVIGATION_REPEAT_DELAY;
         injectInputEvent(eventType);
         LOG_INFO("%s: press", label);
     } else if (!pressed && held) {
@@ -61,19 +61,19 @@ void handleDirectionRepeat(bool pressed, bool &held, uint32_t &nextRepeatAt, inp
         uint32_t now = millis();
         if (now >= nextRepeatAt) {
             injectInputEvent(eventType);
-            nextRepeatAt = now + FiveWayGpioInput::DIRECTION_REPEAT_INTERVAL;
+            nextRepeatAt = now + GpioButtonInput::NAVIGATION_REPEAT_INTERVAL;
             LOG_INFO("%s: repeat", label);
         }
     }
 }
 } // namespace
 
-FiveWayGpioInput::FiveWayGpioInput() {}
+GpioButtonInput::GpioButtonInput() {}
 
-FiveWayGpioInput::~FiveWayGpioInput() {}
+GpioButtonInput::~GpioButtonInput() {}
 
 #ifdef Nodara
-void FiveWayGpioInput::setup()
+void GpioButtonInput::setup()
 {
     pinMode(SW_F1, INPUT_PULLUP);  // UP
     pinMode(SW_F2, INPUT_PULLUP);  // LEFT
@@ -85,7 +85,7 @@ void FiveWayGpioInput::setup()
     digitalWrite(GPS_ONOFF_PIN, HIGH);
 }
 
-void FiveWayGpioInput::setMenuActive(bool active)
+void GpioButtonInput::setMenuActive(bool active)
 {
     bool wasActive = menuActive;
     menuActive = active;
@@ -97,7 +97,7 @@ void FiveWayGpioInput::setMenuActive(bool active)
     }
 }
 
-void FiveWayGpioInput::handleEnterKey(bool enter, bool lastEnter, bool isOverlayActive)
+void GpioButtonInput::handleEnterKey(bool enter, bool lastEnter, bool isOverlayActive)
 {
     const bool inMenuFlow = isOverlayActive || menuActive;
 
@@ -142,7 +142,7 @@ void FiveWayGpioInput::handleEnterKey(bool enter, bool lastEnter, bool isOverlay
     }
 }
 
-void FiveWayGpioInput::handleCancelKey(bool cancel, bool lastCancel, bool isOverlayActive)
+void GpioButtonInput::handleCancelKey(bool cancel, bool lastCancel, bool isOverlayActive)
 {
     if (cancel && !lastCancel) {
         cancelButtonPressed = true;
@@ -172,7 +172,7 @@ void FiveWayGpioInput::handleCancelKey(bool cancel, bool lastCancel, bool isOver
     }
 }
 
-void FiveWayGpioInput::loop()
+void GpioButtonInput::loop()
 {
     static KeyState lastKeys{};
     static bool initialized = false;
@@ -212,10 +212,10 @@ void FiveWayGpioInput::loop()
     handleEnterKey(keys.enter, lastKeys.enter, isOverlayActive);
     handleCancelKey(keys.cancel, lastKeys.cancel, isOverlayActive);
 
-    handleDirectionRepeat(keys.left, leftButtonPressed, leftButtonNextRepeatAt, INPUT_BROKER_LEFT, "LEFT");
-    handleDirectionRepeat(keys.right, rightButtonPressed, rightButtonNextRepeatAt, INPUT_BROKER_RIGHT, "RIGHT");
-    handleDirectionRepeat(keys.up, upButtonPressed, upButtonNextRepeatAt, INPUT_BROKER_UP, "UP");
-    handleDirectionRepeat(keys.down, downButtonPressed, downButtonNextRepeatAt, INPUT_BROKER_DOWN, "DOWN");
+    handleNavigationRepeat(keys.left, leftButtonPressed, leftButtonNextRepeatAt, INPUT_BROKER_LEFT, "LEFT");
+    handleNavigationRepeat(keys.right, rightButtonPressed, rightButtonNextRepeatAt, INPUT_BROKER_RIGHT, "RIGHT");
+    handleNavigationRepeat(keys.up, upButtonPressed, upButtonNextRepeatAt, INPUT_BROKER_UP, "UP");
+    handleNavigationRepeat(keys.down, downButtonPressed, downButtonNextRepeatAt, INPUT_BROKER_DOWN, "DOWN");
 
     lastKeys = keys;
 }

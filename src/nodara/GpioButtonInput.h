@@ -2,11 +2,11 @@
 
 namespace nodara
 {
-class FiveWayGpioInput
+class GpioButtonInput
 {
   public:
-    FiveWayGpioInput();
-    ~FiveWayGpioInput();
+    GpioButtonInput();
+    ~GpioButtonInput();
 
     void setup();
     void loop();
@@ -14,8 +14,8 @@ class FiveWayGpioInput
     bool isMenuActive() const { return menuActive; }
     void setMenuActive(bool active);
 
-    static const uint32_t DIRECTION_REPEAT_DELAY = 500;
-    static const uint32_t DIRECTION_REPEAT_INTERVAL = 150;
+    static const uint32_t NAVIGATION_REPEAT_DELAY = 500;
+    static const uint32_t NAVIGATION_REPEAT_INTERVAL = 150;
 
   private:
     void handleEnterKey(bool enter, bool lastEnter, bool isOverlayActive);
@@ -30,7 +30,7 @@ class FiveWayGpioInput
     bool cancelButtonPressed = false;
     uint32_t cancelButtonPressTime = 0;
 
-    // SW_F1-F4 direction keys with auto-repeat while held
+    // SW_F1-F4 GPIO navigation buttons with auto-repeat while held
     bool leftButtonPressed = false;
     bool rightButtonPressed = false;
     bool upButtonPressed = false;
