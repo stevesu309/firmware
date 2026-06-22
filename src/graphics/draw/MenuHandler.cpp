@@ -22,7 +22,7 @@
 #include "modules/CannedMessageModule.h"
 #include "modules/ExternalNotificationModule.h"
 #include "modules/KeyVerificationModule.h"
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 #include "graphics/draw/ChannelMessageRenderer.h"
 #include "graphics/draw/NotificationRenderer.h"
 #endif
@@ -91,7 +91,7 @@ void menuHandler::loraMenu()
     screen->showOverlayBanner(bannerOptions);
 }
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 static menuHandler::screenMenus pendingOverlayMenu = menuHandler::MenuNone;
 static char pendingConfirmMessage[256];
 static std::function<void()> pendingConfirmCallback;
@@ -101,7 +101,7 @@ static void setHardwareMenuActive(bool active)
 #ifdef RED_BANK_S3
     if (redBankController)
         redBankController->setMenuActive(active);
-#elif defined(REDCOAST_SOLO_915)
+#elif defined(Nodara)
     if (fiveWayInput)
         fiveWayInput->setMenuActive(active);
 #endif
@@ -110,7 +110,7 @@ static void setHardwareMenuActive(bool active)
 
 static void requestMenuSwitch(menuHandler::screenMenus targetMenu)
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     if (screen && NotificationRenderer::isOverlayBannerShowing()) {
         pendingOverlayMenu = targetMenu;
         screen->runNow();
@@ -431,8 +431,8 @@ void menuHandler::showConfirmationBanner(const char *message, std::function<void
 {
     LOG_INFO("showConfirmationBanner called with message: %s", message);
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-    // RED_BANK_S3 / REDCOAST_SOLO_915: 如果在菜单回调中调用（有 overlay banner 显示），
+#if defined(RED_BANK_S3) || defined(Nodara)
+    // RED_BANK_S3 / Nodara: 如果在菜单回调中调用（有 overlay banner 显示），
     // 使用 menuQueue 机制延迟显示，避免当前 overlay 的 resetBanner() 抹掉新菜单。
     if (NotificationRenderer::isOverlayBannerShowing()) {
         LOG_INFO("showConfirmationBanner: Overlay banner showing, using menuQueue mechanism");
@@ -1132,8 +1132,8 @@ void menuHandler::textMessageBaseMenu()
     screen->showOverlayBanner(bannerOptions);
 }
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-// RED_BANK_S3 / REDCOAST_SOLO_915: 频道历史消息页面的频道选择菜单
+#if defined(RED_BANK_S3) || defined(Nodara)
+// RED_BANK_S3 / Nodara: 频道历史消息页面的频道选择菜单
 void menuHandler::channelHistoryMenu()
 {
     LOG_INFO("channelHistoryMenu() called, validChannelCount=%d", validChannelCount);
@@ -2415,7 +2415,7 @@ void menuHandler::traceRouteMenu()
 
 void menuHandler::directMessageNodePickerMenu()
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     screen->showNodePicker("Select Node for DM", 0,
                            [](uint32_t nodenum) -> void
 #else
@@ -2425,7 +2425,7 @@ void menuHandler::directMessageNodePickerMenu()
                            {
                                LOG_INFO("Menu: Direct message node picker selected node 0x%08x", nodenum);
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
                                if (chatHistoryStore) {
                                    chatHistoryStore->setCurrentDirectMessageNode(nodenum);
                                    screen->setFrames(graphics::Screen::FOCUS_PRESERVE);
@@ -2436,7 +2436,7 @@ void menuHandler::directMessageNodePickerMenu()
 
 void menuHandler::directMessageActionMenu()
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     enum optionsNumbers { Back = 0, SelectNode = 1, Preset = 2, DelThis = 3, DelAll = 4, enumEnd = 5 };
 
     static const char *optionsArray[enumEnd] = {"Back", "Select Node", "Send Preset", "Del This", "Del All"};
@@ -2507,7 +2507,7 @@ void menuHandler::directMessageActionMenu()
 
 void menuHandler::channelMessageActionMenu()
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     enum optionsNumbers { Back = 0, SelectChannel = 1, Preset = 2, DelThis = 3, DelAll = 4, enumEnd = 5 };
 
     static const char *optionsArray[enumEnd] = {"Back", "Select Channel", "Send Preset", "Del This", "Del All"};
@@ -3041,7 +3041,7 @@ void menuHandler::messageBubblesMenu()
 
 void menuHandler::handleMenuSwitch(OLEDDisplay *display)
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     bool processedDeferredOverlayMenu = false;
     if (menuQueue == MenuNone && pendingOverlayMenu != MenuNone && !NotificationRenderer::isOverlayBannerShowing()) {
         menuQueue = pendingOverlayMenu;
@@ -3199,7 +3199,7 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     case MessageBubblesMenu:
         messageBubblesMenu();
         break;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     case confirmation_dialog_menu:
         LOG_INFO("handleMenuSwitch: Processing confirmation_dialog_menu");
         showConfirmationBanner(pendingConfirmMessage, pendingConfirmCallback);
@@ -3220,7 +3220,7 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
 #endif
     }
     menuQueue = MenuNone;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     if (screen && screen->isOverlayBannerShowing())
         setHardwareMenuActive(true);
 

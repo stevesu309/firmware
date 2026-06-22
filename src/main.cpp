@@ -161,11 +161,11 @@ void setupNicheGraphics();
 RedBankS3::RedBankController *redBankController = nullptr;
 #endif
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 #include "mesh/ChatHistoryStore.h"
 #endif
 
-#if defined(REDCOAST_SOLO_915)
+#if defined(Nodara)
 #include "redcoast915/FiveWayGpioInput.h"
 redcoast915::FiveWayGpioInput *fiveWayInput = nullptr;
 #endif
@@ -491,7 +491,7 @@ void setup()
 #endif
 #endif
 
-#if defined(REDCOAST_SOLO_915)
+#if defined(Nodara)
     fiveWayInput = new redcoast915::FiveWayGpioInput();
     fiveWayInput->setup();
 #endif
@@ -882,7 +882,7 @@ void setup()
 #if defined(RED_BANK_S3)
     redBankController = new RedBankS3::RedBankController();
 #endif
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     chatHistoryStore = new ChatHistoryStore();
     chatHistoryStore->loadFromDisk();
 #endif
@@ -1214,7 +1214,7 @@ void loop()
     redBankController->loop();
 #endif
 
-#if defined(REDCOAST_SOLO_915)
+#if defined(Nodara)
     if (fiveWayInput)
         fiveWayInput->loop();
 #endif

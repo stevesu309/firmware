@@ -73,7 +73,7 @@ extern uint16_t TFT_MESH;
 #else
 uint16_t TFT_MESH = COLOR565(0x67, 0xEA, 0x94);
 #endif
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 #ifdef RED_BANK_S3
 #include "red_bank_s3/RedBankController.h"
 #endif
@@ -461,7 +461,7 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
 #endif
             delay(100);
 #endif
-#if defined(REDCOAST_SOLO_915) && defined(PIN_EINK_EN)
+#if defined(Nodara) && defined(PIN_EINK_EN)
             digitalWrite(PIN_EINK_EN, HIGH);
             delay(PIN_PWR_DELAY_MS);
 #endif
@@ -914,7 +914,7 @@ int32_t Screen::runOnce()
                 showFrame(FrameDirection::NEXT);
             }
             break;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
         case Cmd::SHOW_PREV_PACKET:
             handleShowPrevPacket();
             break;
@@ -1125,8 +1125,8 @@ void Screen::setFrames(FrameFocus focus)
         indicatorIcons.push_back(icon_home);
     }
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-    // RED_BANK_S3 / REDCOAST_SOLO_915: 为频道历史消息构建“单一页面 + 频道列表”
+#if defined(RED_BANK_S3) || defined(Nodara)
+    // RED_BANK_S3 / Nodara: 为频道历史消息构建“单一页面 + 频道列表”
     validChannelCount = 0;
 
     int numChannels = channelFile.channels_count;
@@ -1627,7 +1627,7 @@ void Screen::showFrame(FrameDirection direction)
     }
 }
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 void Screen::handleShowPrevPacket(void)
 {
     if (ui->getUiState()->frameState != FIXED) {
@@ -1930,8 +1930,8 @@ int Screen::handleInputEvent(const InputEvent *event)
         if (redBankController && redBankController->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
             redBankController->setMenuActive(false); // setMenuActive 内部会处理刷新
         }
-#elif defined(REDCOAST_SOLO_915)
-        // Keep REDCOAST menu state in sync with overlay lifetime so
+#elif defined(Nodara)
+        // Keep Nodara menu state in sync with overlay lifetime so
         // transitions between nested menus do not leave stale state behind.
         if (fiveWayInput && fiveWayInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
             fiveWayInput->setMenuActive(false);
@@ -1992,8 +1992,8 @@ int Screen::handleInputEvent(const InputEvent *event)
                 inputIntercepted = true;
         }
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-        // RED_BANK_S3 / REDCOAST_SOLO_915: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
+#if defined(RED_BANK_S3) || defined(Nodara)
+        // RED_BANK_S3 / Nodara: 在频道消息帧或私信页面使用UP/DOWN浏览消息包
         // 检查当前帧是否在频道消息帧范围内
         if (!inputIntercepted && (event->inputEvent == INPUT_BROKER_UP || event->inputEvent == INPUT_BROKER_DOWN)) {
             uint8_t currentFrame = ui->getUiState()->currentFrame;
@@ -2118,7 +2118,7 @@ int Screen::handleInputEvent(const InputEvent *event)
             } else if (event->inputEvent == INPUT_BROKER_SELECT) {
                 uint8_t currentFrame = this->ui->getUiState()->currentFrame;
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
                 // 在频道消息页面长按 ENTER，弹出频道消息操作菜单（交由 MenuHandler 控制）
                 if (currentFrame == framesetInfo.positions.channelMessage) {
                     menuHandler::menuQueue = menuHandler::channel_message_action_menu;
@@ -2138,7 +2138,7 @@ int Screen::handleInputEvent(const InputEvent *event)
                 } else if (currentFrame == framesetInfo.positions.lora) {
                     menuHandler::loraMenu();
                 } else if (currentFrame == framesetInfo.positions.textMessage) {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
                     // 在私信页面长按 ENTER，弹出操作菜单
                     menuHandler::menuQueue = menuHandler::direct_message_action_menu;
                     menuHandler::handleMenuSwitch(dispdev);

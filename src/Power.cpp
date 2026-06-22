@@ -26,7 +26,7 @@
 #include "power/SGM41562.h"
 #include "sleep.h"
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 #include "mesh/ChatHistoryStore.h"
 #endif
 
@@ -765,7 +765,7 @@ void Power::powerCommandsCheck()
 
 void Power::reboot()
 {
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     if (chatHistoryStore)
         chatHistoryStore->persistToDisk();
 #endif
@@ -820,7 +820,7 @@ void Power::shutdown()
 #if !defined(ARCH_STM32WL)
     playShutdownMelody();
 #endif
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     if (chatHistoryStore)
         chatHistoryStore->persistToDisk();
 #endif

@@ -9,7 +9,7 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 
 namespace
 {

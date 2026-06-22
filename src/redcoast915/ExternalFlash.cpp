@@ -12,7 +12,7 @@
 #include "SPILock.h"
 #include <Adafruit_SPIFlash.h>
 #include <flash_devices.h>
-#define REDCOAST_EXT_FLASH_QSPI 1
+#define NODARA_EXT_FLASH_QSPI 1
 #endif
 
 namespace redcoast915
@@ -34,7 +34,7 @@ struct ChineseFontImageHeader {
 };
 #pragma pack(pop)
 
-#if defined(REDCOAST_EXT_FLASH_QSPI)
+#if defined(NODARA_EXT_FLASH_QSPI)
 static Adafruit_FlashTransport_QSPI extFlashTransport;
 static Adafruit_SPIFlash extFlash(&extFlashTransport);
 static bool extFlashInitDone = false;

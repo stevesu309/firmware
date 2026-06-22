@@ -72,7 +72,7 @@ FiveWayGpioInput::FiveWayGpioInput() {}
 
 FiveWayGpioInput::~FiveWayGpioInput() {}
 
-#ifdef REDCOAST_SOLO_915
+#ifdef Nodara
 void FiveWayGpioInput::setup()
 {
     pinMode(SW_F1, INPUT_PULLUP);  // UP

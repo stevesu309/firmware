@@ -117,7 +117,7 @@
 // #define FONT_LARGE chinese_font22
 #endif
 
-#if defined(REDCOAST_SOLO_915) && defined(USE_EINK)
+#if defined(Nodara) && defined(USE_EINK)
 #undef FONT_SMALL
 #undef FONT_MEDIUM
 #undef FONT_LARGE
@@ -136,7 +136,7 @@
 // #define FONT_LARGE chinese_font22
 #endif
 
-#if defined(REDCOAST_SOLO_915) && defined(USE_EINK)
+#if defined(Nodara) && defined(USE_EINK)
 #undef FONT_SMALL
 #undef FONT_MEDIUM
 #undef FONT_LARGE

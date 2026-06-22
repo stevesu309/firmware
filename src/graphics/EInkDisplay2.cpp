@@ -275,7 +275,7 @@ bool EInkDisplay::connect()
         // adafruitDisplay->setPartialWindow(0, 0, displayWidth, displayHeight);
         LOG_DEBUG("Display initialized successfully");
     }
-#elif defined(REDCOAST_SOLO_915)
+#elif defined(Nodara)
     {
         digitalWrite(PIN_EINK_EN, HIGH);
         delay(10);

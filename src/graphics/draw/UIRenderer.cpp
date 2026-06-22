@@ -1036,7 +1036,7 @@ void UIRenderer::drawScreensaverOverlay(OLEDDisplay *display, OLEDDisplayUiState
     LOG_DEBUG("Draw screensaver overlay");
 
     EINK_ADD_FRAMEFLAG(display, COSMETIC); // Full refresh for screensaver
-#if defined(REDCOAST_SOLO_915)
+#if defined(Nodara)
     EINK_ADD_FRAMEFLAG(display, BLOCKING); // Keep power on until the paused overlay reaches the panel
 #endif
 

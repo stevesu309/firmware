@@ -88,7 +88,7 @@ void drawChannelTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state
     static char tempBuf[237];
     int width = display->getWidth();
     int height = display->getHeight();
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 
 #if HAS_SCREEN
 #ifdef RED_BANK_S3

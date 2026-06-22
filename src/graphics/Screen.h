@@ -16,8 +16,8 @@ enum notificationTypeEnum { none, text_banner, selection_picker, node_picker, nu
 
 struct BannerOverlayOptions {
     const char *message;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
-    uint32_t durationMs = 0; // RED_BANK_S3 / REDCOAST_SOLO_915: 0 = 永不超时
+#if defined(RED_BANK_S3) || defined(Nodara)
+    uint32_t durationMs = 0; // RED_BANK_S3 / Nodara: 0 = 永不超时
 #else
     uint32_t durationMs = 30000; // 默认30秒超时
 #endif
@@ -683,7 +683,7 @@ class Screen : public concurrency::OSThread
     uint16_t getCurrentWidth() { return displayWidth; }
     uint16_t getCurrentHeight() { return displayHeight; }
 #endif
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     bool getScreenOn() const { return screenOn; }
 #endif
   protected:
@@ -726,7 +726,7 @@ class Screen : public concurrency::OSThread
     void handleOnPress();
     void handleShowNextFrame();
     void handleShowPrevFrame();
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     void handleShowNextPacket();
     void handleShowPrevPacket();
 #endif

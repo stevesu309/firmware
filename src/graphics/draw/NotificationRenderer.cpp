@@ -199,9 +199,9 @@ void NotificationRenderer::drawNumberPicker(OLEDDisplay *display, OLEDDisplayUiS
         curSelected++;
     } else if (inEvent.inputEvent == INPUT_BROKER_LEFT) {
         curSelected--;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
-        // RED_BANK_S3 / REDCOAST_SOLO_915: ESC键直接关闭数字选择器（无需返回上一级）
+        // RED_BANK_S3 / Nodara: ESC键直接关闭数字选择器（无需返回上一级）
         resetBanner();
         return;
 #else
@@ -281,9 +281,9 @@ void NotificationRenderer::drawNodePicker(OLEDDisplay *display, OLEDDisplayUiSta
         alertBannerCallback(selectedNodenum);
         resetBanner();
         return;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
-        // RED_BANK_S3 / REDCOAST_SOLO_915: ESC键直接关闭节点选择器（无需返回上一级）
+        // RED_BANK_S3 / Nodara: ESC键直接关闭节点选择器（无需返回上一级）
         resetBanner();
         return;
 #else
@@ -429,9 +429,9 @@ void NotificationRenderer::drawAlertBannerOverlay(OLEDDisplay *display, OLEDDisp
             }
             resetBanner();
             return;
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
         } else if (inEvent.inputEvent == INPUT_BROKER_CANCEL || inEvent.inputEvent == INPUT_BROKER_ALT_LONG) {
-            // RED_BANK_S3 / REDCOAST_SOLO_915: ESC键直接触发"Back"选项（索引0），返回上一级菜单
+            // RED_BANK_S3 / Nodara: ESC键直接触发"Back"选项（索引0），返回上一级菜单
             if (optionsEnumPtr != nullptr) {
                 alertBannerCallback(optionsEnumPtr[0]);  // 触发"Back"选项
                 optionsEnumPtr = nullptr;

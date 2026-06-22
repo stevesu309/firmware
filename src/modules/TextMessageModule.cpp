@@ -43,7 +43,7 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     // Notify any observers (e.g. external modules that care about packets)
     notifyObservers(&mp);
 
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
     if (chatHistoryStore)
         chatHistoryStore->saveMeshPacket(mp);
 #endif

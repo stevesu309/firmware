@@ -66,7 +66,7 @@ extern UdpMulticastHandler *udpHandler;
 extern graphics::Screen *screen;
 
 // Global chat history store singleton.
-#if defined(RED_BANK_S3) || defined(REDCOAST_SOLO_915)
+#if defined(RED_BANK_S3) || defined(Nodara)
 #include "mesh/ChatHistoryStore.h"
 #endif
 
@@ -76,7 +76,7 @@ extern graphics::Screen *screen;
 extern RedBankS3::RedBankController *redBankController;
 #endif
 
-#if defined(REDCOAST_SOLO_915)
+#if defined(Nodara)
 #include "redcoast915/FiveWayGpioInput.h"
 extern redcoast915::FiveWayGpioInput *fiveWayInput;
 #endif
