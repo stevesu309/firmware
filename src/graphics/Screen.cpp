@@ -610,7 +610,6 @@ void Screen::setup()
         brightness = BRIGHTNESS_DEFAULT;
 #endif
     } else {
-        dispdev->setBrightness(71);
         brightness = uiconfig.screen_brightness;
     }
 
@@ -1903,6 +1902,12 @@ int Screen::handleInputEvent(const InputEvent *event)
 
     // Handle text input notifications specially - pass input to virtual keyboard
     if (NotificationRenderer::current_notification_type == notificationTypeEnum::text_input) {
+#ifdef Nodara
+#ifdef USE_EINK
+        EINK_ADD_FRAMEFLAG(dispdev, DEMAND_FAST);
+        EINK_ADD_FRAMEFLAG(dispdev, BLOCKING);
+#endif
+#endif
         NotificationRenderer::inEvent = *event;
         static OverlayCallback overlays[] = {graphics::UIRenderer::drawNavigationBar, NotificationRenderer::drawBannercallback};
         ui->setOverlays(overlays, sizeof(overlays) / sizeof(overlays[0]));
@@ -2115,10 +2120,10 @@ int Screen::handleInputEvent(const InputEvent *event)
                 uint8_t currentFrame = this->ui->getUiState()->currentFrame;
 
 #if defined(RED_BANK_S3) || defined(Nodara)
-                // 在频道消息页面长按 ENTER，弹出频道消息操作菜单（交由 MenuHandler 控制）
                 if (currentFrame == framesetInfo.positions.channelMessage) {
-                    menuHandler::menuQueue = menuHandler::channel_message_action_menu;
-                    menuHandler::handleMenuSwitch(dispdev);
+                    graphics::MessageRenderer::setThreadMode(graphics::MessageRenderer::ThreadMode::CHANNEL,
+                                                             static_cast<int>(channelIndex));
+                    menuHandler::replyMenu();
                 } else
 #endif
                     if (currentFrame == framesetInfo.positions.home) {
@@ -2135,9 +2140,13 @@ int Screen::handleInputEvent(const InputEvent *event)
                     menuHandler::loraMenu();
                 } else if (currentFrame == framesetInfo.positions.textMessage) {
 #if defined(RED_BANK_S3) || defined(Nodara)
-                    // 在私信页面长按 ENTER，弹出操作菜单
-                    menuHandler::menuQueue = menuHandler::direct_message_action_menu;
-                    menuHandler::handleMenuSwitch(dispdev);
+                    NodeNum currentNode = chatHistoryStore ? chatHistoryStore->getCurrentDirectMessageNode() : 0;
+                    if (currentNode != 0) {
+                        graphics::MessageRenderer::setThreadMode(graphics::MessageRenderer::ThreadMode::DIRECT, -1, currentNode);
+                        menuHandler::replyMenu();
+                    } else {
+                        menuHandler::textMessageBaseMenu();
+                    }
 #else
                     if (!messageStore.getMessages().empty()) {
                         menuHandler::messageResponseMenu();

@@ -730,6 +730,9 @@ void menuHandler::replyMenu()
 
         // Preset reply
         if (selected == ReplyPreset) {
+#if defined(RED_BANK_S3) || defined(Nodara)
+            setHardwareMenuActive(false);
+#endif
 
             if (mode == graphics::MessageRenderer::ThreadMode::CHANNEL) {
                 cannedMessageModule->LaunchWithDestination(NODENUM_BROADCAST, ch);
@@ -751,6 +754,9 @@ void menuHandler::replyMenu()
 
         // Freetext reply
         if (selected == ReplyFreetext) {
+#if defined(RED_BANK_S3) || defined(Nodara)
+            setHardwareMenuActive(false);
+#endif
 
             if (mode == graphics::MessageRenderer::ThreadMode::CHANNEL) {
                 cannedMessageModule->LaunchFreetextWithDestination(NODENUM_BROADCAST, ch);
