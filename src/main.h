@@ -77,8 +77,7 @@ extern RedBankS3::RedBankController *redBankController;
 #endif
 
 #if defined(Nodara)
-#include "nodara/GpioButtonInput.h"
-extern nodara::GpioButtonInput *gpioButtonInput;
+#include "nodara/Nodara.h"
 #endif
 
 #if !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C && !MESHTASTIC_EXCLUDE_ACCELEROMETER

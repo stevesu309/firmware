@@ -102,8 +102,7 @@ static void setHardwareMenuActive(bool active)
     if (redBankController)
         redBankController->setMenuActive(active);
 #elif defined(Nodara)
-    if (gpioButtonInput)
-        gpioButtonInput->setMenuActive(active);
+    nodara::setMenuActive(active);
 #endif
 }
 #endif

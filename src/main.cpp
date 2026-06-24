@@ -166,8 +166,7 @@ RedBankS3::RedBankController *redBankController = nullptr;
 #endif
 
 #if defined(Nodara)
-#include "nodara/GpioButtonInput.h"
-nodara::GpioButtonInput *gpioButtonInput = nullptr;
+#include "nodara/Nodara.h"
 #endif
 
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
@@ -492,8 +491,7 @@ void setup()
 #endif
 
 #if defined(Nodara)
-    gpioButtonInput = new nodara::GpioButtonInput();
-    gpioButtonInput->setup();
+    nodara::setup();
 #endif
 
     initSPI();
@@ -1215,8 +1213,7 @@ void loop()
 #endif
 
 #if defined(Nodara)
-    if (gpioButtonInput)
-        gpioButtonInput->loop();
+    nodara::loop();
 #endif
 
 #ifdef DEBUG_STACK

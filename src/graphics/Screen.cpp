@@ -1938,8 +1938,8 @@ int Screen::handleInputEvent(const InputEvent *event)
 #elif defined(Nodara)
         // Keep Nodara menu state in sync with overlay lifetime so
         // transitions between nested menus do not leave stale state behind.
-        if (gpioButtonInput && gpioButtonInput->isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
-            gpioButtonInput->setMenuActive(false);
+        if (nodara::isMenuActive() && !NotificationRenderer::isOverlayBannerShowing()) {
+            nodara::setMenuActive(false);
         }
 #endif
         return 0;
