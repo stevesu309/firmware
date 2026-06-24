@@ -1,0 +1,15 @@
+#pragma once
+
+namespace nodara
+{
+class McuDataInput
+{
+  public:
+    void setup();
+    void loop();
+
+  private:
+    void handleCommand03();
+    void handleCommand05();
+};
+} // namespace nodara

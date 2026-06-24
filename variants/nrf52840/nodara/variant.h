@@ -59,6 +59,8 @@ extern "C" {
 #define SW_F5 (0 + 10)  // 取消键
 #define SW_BUT (0 + 11) // 确认键
 
+#define MCU_DATA_PIN (32 + 0) // P1.00
+
 // #define BUTTON_PIN SW_BUT
 /*
  * Analog pins
@@ -163,6 +165,8 @@ External serial flash GD25Q32C
 
 #define PIN_SERIAL1_RX GPS_TX_PIN
 #define PIN_SERIAL1_TX GPS_RX_PIN
+#define PIN_SERIAL2_RX MCU_DATA_PIN
+#define PIN_SERIAL2_TX (-1)
 
 // PCF8563 RTC Module
 #define PCF8563_RTC 0x51
