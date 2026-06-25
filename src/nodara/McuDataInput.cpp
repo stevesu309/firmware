@@ -192,6 +192,8 @@ void McuDataInput::loop()
 void McuDataInput::handleCommand03()
 {
     LOG_INFO("MCU_DATA command 0x0003 received");
+    shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+    LOG_INFO("MCU_DATA command 0x0003 - shutdown in %u seconds", static_cast<unsigned>(DEFAULT_SHUTDOWN_SECONDS));
 }
 
 void McuDataInput::handleCommand05()

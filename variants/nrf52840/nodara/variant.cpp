@@ -62,3 +62,9 @@ void initVariant()
     digitalWrite(SX126X_POWER_EN, HIGH);
 #endif
 }
+
+void variant_shutdown()
+{
+    nrf_gpio_cfg_input(SW_BUT, NRF_GPIO_PIN_PULLUP);
+    nrf_gpio_cfg_sense_set(SW_BUT, NRF_GPIO_PIN_SENSE_LOW);
+}
