@@ -2,7 +2,9 @@
 
 #include "Arduino.h"
 #include "main.h"
+#include "MessageStore.h"
 #include "mesh/Throttle.h"
+#include "mesh/NodeDB.h"
 
 #include <cstdio>
 #include <cstring>
@@ -26,6 +28,8 @@ constexpr const char *kMcuDataSerialConfigName = "8N1";
 constexpr uint32_t kMcuDataBaud = MCU_DATA_BAUD;
 constexpr uint32_t kMcuDataFrameGapMs = 100;
 constexpr uint32_t kMcuDataPinLogIntervalMs = 1000;
+constexpr uint32_t kPowerOffBannerMs = 5000;
+constexpr uint32_t kLedBlinkMs = 100;
 constexpr size_t kMcuDataMaxFrameSize = 32;
 constexpr uint8_t kMcuDataAddress = 0x01;
 constexpr uint16_t kMcuDataRegister = 0x1000;
@@ -87,6 +91,32 @@ void logMcuDataFrame(const uint8_t *data, size_t size)
     }
 
     LOG_INFO("MCU_DATA RX (%u bytes): %s", static_cast<unsigned>(size), hex);
+}
+
+void blinkPowerOffLed()
+{
+#ifdef PIN_LED2
+    for (uint8_t i = 0; i < 8; i++) {
+        digitalWrite(PIN_LED2, LED_STATE_ON);
+        pinMode(PIN_LED2, OUTPUT);
+        delay(kLedBlinkMs);
+        ledOff(PIN_LED2);
+        delay(kLedBlinkMs);
+    }
+#endif
+}
+
+void persistBeforePowerCut()
+{
+#if defined(RED_BANK_S3) || defined(Nodara)
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
+#endif
+    if (nodeDB)
+        nodeDB->saveToDisk();
+#if HAS_SCREEN
+    messageStore.saveToFlash();
+#endif
 }
 
 #if defined(MCU_DATA_PIN_DEBUG)
@@ -199,5 +229,12 @@ void McuDataInput::handleCommand03()
 void McuDataInput::handleCommand05()
 {
     LOG_INFO("MCU_DATA command 0x0005 received");
+#if HAS_SCREEN
+    if (screen)
+        screen->showSimpleBanner("Power Off", kPowerOffBannerMs);
+#endif
+    blinkPowerOffLed();
+    persistBeforePowerCut();
+    LOG_INFO("MCU_DATA command 0x0005 - power off preparation complete");
 }
 } // namespace nodara
