@@ -1686,6 +1686,25 @@ void Screen::handleShowNextPacket(void)
 
     setFastFramerate();
 }
+
+void Screen::handleChatHistoryUpdated(const meshtastic_MeshPacket &packet)
+{
+    if (!showingNormalScreen || !chatHistoryStore) {
+        return;
+    }
+
+    const uint8_t currentFrame = ui->getUiState()->currentFrame;
+    const bool isChannelFrame = graphics::ChannelMessageRenderer::isBrowsingChannelPacketFrame(currentFrame);
+    const bool isDirectMessageFrame = (currentFrame == framesetInfo.positions.textMessage);
+
+    if (packet.to == NODENUM_BROADCAST && isChannelFrame && static_cast<uint8_t>(channelIndex) == packet.channel) {
+        const uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(packet.channel);
+        channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
+        setFastFramerate();
+    } else if (packet.to != NODENUM_BROADCAST && isDirectMessageFrame) {
+        setFastFramerate();
+    }
+}
 #endif
 #ifndef SCREEN_TRANSITION_FRAMERATE
 #define SCREEN_TRANSITION_FRAMERATE 30 // fps

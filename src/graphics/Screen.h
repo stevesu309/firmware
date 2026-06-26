@@ -368,6 +368,10 @@ class Screen : public concurrency::OSThread
         enqueueCmd(ScreenCmd{.cmd = Cmd::NOOP});
     }
 
+#if defined(RED_BANK_S3) || defined(Nodara)
+    void handleChatHistoryUpdated(const meshtastic_MeshPacket &packet);
+#endif
+
     /// Overrides the default utf8 character conversion, to replace empty space with question marks
     static char customFontTableLookup(const uint8_t ch)
     {

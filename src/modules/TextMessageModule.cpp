@@ -44,8 +44,11 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     notifyObservers(&mp);
 
 #if defined(RED_BANK_S3) || defined(Nodara)
-    if (chatHistoryStore)
+    if (chatHistoryStore) {
         chatHistoryStore->saveMeshPacket(mp);
+        if (screen)
+            screen->handleChatHistoryUpdated(mp);
+    }
 #endif
 
     return ProcessMessage::CONTINUE; // Let others look at this message also if they want
