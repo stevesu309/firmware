@@ -1689,7 +1689,15 @@ void Screen::handleShowNextPacket(void)
 
 void Screen::handleChatHistoryUpdated(const meshtastic_MeshPacket &packet)
 {
-    if (!showingNormalScreen || !chatHistoryStore) {
+    if (!chatHistoryStore) {
+        return;
+    }
+
+    if (shouldWakeOnReceivedMessage()) {
+        setOn(true);
+    }
+
+    if (!showingNormalScreen) {
         return;
     }
 
@@ -1700,9 +1708,9 @@ void Screen::handleChatHistoryUpdated(const meshtastic_MeshPacket &packet)
     if (packet.to == NODENUM_BROADCAST && isChannelFrame && static_cast<uint8_t>(channelIndex) == packet.channel) {
         const uint16_t packetListSize = chatHistoryStore->getMeshPacketListSize(packet.channel);
         channelPacketBrowseIndex = (packetListSize > 0) ? (packetListSize - 1) : 0;
-        setFastFramerate();
+        runNow();
     } else if (packet.to != NODENUM_BROADCAST && isDirectMessageFrame) {
-        setFastFramerate();
+        runNow();
     }
 }
 #endif
