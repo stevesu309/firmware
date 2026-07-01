@@ -2148,9 +2148,7 @@ int Screen::handleInputEvent(const InputEvent *event)
 
 #if defined(RED_BANK_S3) || defined(Nodara)
                 if (currentFrame == framesetInfo.positions.channelMessage) {
-                    graphics::MessageRenderer::setThreadMode(graphics::MessageRenderer::ThreadMode::CHANNEL,
-                                                             static_cast<int>(channelIndex));
-                    menuHandler::replyMenu();
+                    menuHandler::channelMessageActionMenu();
                 } else
 #endif
                     if (currentFrame == framesetInfo.positions.home) {
@@ -2167,13 +2165,7 @@ int Screen::handleInputEvent(const InputEvent *event)
                     menuHandler::loraMenu();
                 } else if (currentFrame == framesetInfo.positions.textMessage) {
 #if defined(RED_BANK_S3) || defined(Nodara)
-                    NodeNum currentNode = chatHistoryStore ? chatHistoryStore->getCurrentDirectMessageNode() : 0;
-                    if (currentNode != 0) {
-                        graphics::MessageRenderer::setThreadMode(graphics::MessageRenderer::ThreadMode::DIRECT, -1, currentNode);
-                        menuHandler::replyMenu();
-                    } else {
-                        menuHandler::textMessageBaseMenu();
-                    }
+                    menuHandler::directMessageActionMenu();
 #else
                     if (!messageStore.getMessages().empty()) {
                         menuHandler::messageResponseMenu();

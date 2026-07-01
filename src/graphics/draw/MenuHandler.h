@@ -57,9 +57,7 @@ class menuHandler
         DisplayUnits,
         MessageBubblesMenu,
         direct_message_node_picker,
-        direct_message_action_menu,
         channel_message_channel_picker,
-        channel_message_action_menu,
         confirmation_dialog_menu,
     };
     static screenMenus menuQueue;

@@ -92,7 +92,6 @@ void menuHandler::loraMenu()
 }
 
 #if defined(RED_BANK_S3) || defined(Nodara)
-static menuHandler::screenMenus pendingOverlayMenu = menuHandler::MenuNone;
 static char pendingConfirmMessage[256];
 static std::function<void()> pendingConfirmCallback;
 
@@ -106,20 +105,6 @@ static void setHardwareMenuActive(bool active)
 #endif
 }
 #endif
-
-static void requestMenuSwitch(menuHandler::screenMenus targetMenu)
-{
-#if defined(RED_BANK_S3) || defined(Nodara)
-    if (screen && NotificationRenderer::isOverlayBannerShowing()) {
-        pendingOverlayMenu = targetMenu;
-        screen->runNow();
-        return;
-    }
-#endif
-    menuHandler::menuQueue = targetMenu;
-    if (screen)
-        screen->runNow();
-}
 
 void menuHandler::OnboardMessage()
 {
@@ -3046,16 +3031,6 @@ void menuHandler::messageBubblesMenu()
 
 void menuHandler::handleMenuSwitch(OLEDDisplay *display)
 {
-#if defined(RED_BANK_S3) || defined(Nodara)
-    bool processedDeferredOverlayMenu = false;
-    if (menuQueue == MenuNone && pendingOverlayMenu != MenuNone && !NotificationRenderer::isOverlayBannerShowing()) {
-        menuQueue = pendingOverlayMenu;
-        pendingOverlayMenu = MenuNone;
-        processedDeferredOverlayMenu = true;
-    } else if (menuQueue != MenuNone) {
-        pendingOverlayMenu = MenuNone;
-    }
-#endif
     if (menuQueue != MenuNone)
         test_count = 0;
     switch (menuQueue) {
@@ -3213,14 +3188,8 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
     case direct_message_node_picker:
         directMessageNodePickerMenu();
         break;
-    case direct_message_action_menu:
-        directMessageActionMenu();
-        break;
     case channel_message_channel_picker:
         channelHistoryMenu();
-        break;
-    case channel_message_action_menu:
-        channelMessageActionMenu();
         break;
 #endif
     }
@@ -3228,17 +3197,6 @@ void menuHandler::handleMenuSwitch(OLEDDisplay *display)
 #if defined(RED_BANK_S3) || defined(Nodara)
     if (screen && screen->isOverlayBannerShowing())
         setHardwareMenuActive(true);
-
-    if (processedDeferredOverlayMenu && screen) {
-        // Overlay-to-overlay switches can update the menu state without
-        // pushing a visible refresh on E-Ink until the next key event.
-#ifdef USE_EINK
-        if (screen->getDisplayDevice()) {
-            EINK_ADD_FRAMEFLAG(screen->getDisplayDevice(), COSMETIC);
-        }
-#endif
-        screen->forceDisplay(true);
-    }
 #endif
 }
 
