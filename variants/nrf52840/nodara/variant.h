@@ -68,7 +68,8 @@ extern "C" {
 #define PIN_A0 (4) // Battery ADC
 
 #define BATTERY_PIN PIN_A0
-
+#define ADC_CTRL (0 + 15) // P0.15, ADC control pin
+#define ADC_CTRL_ENABLED HIGH
 // static const uint8_t A0 = PIN_A0;
 
 #define ADC_RESOLUTION 14
