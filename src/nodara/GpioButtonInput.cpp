@@ -4,6 +4,7 @@
 #include "graphics/Screen.h"
 #include "input/InputBroker.h"
 #include "main.h"
+#include "nodara/BurstTestModule.h"
 
 namespace nodara
 {
@@ -160,14 +161,30 @@ void GpioButtonInput::handleCancelKey(bool cancel, bool lastCancel, bool isOverl
                 setMenuActive(false);
                 LOG_INFO("CANCEL: short press - close menu");
             }
+            cancelTapCount = 0;
             return;
         }
 
         if (pressDuration >= SHUTDOWN_PRESS_THRESHOLD) {
             shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+            cancelTapCount = 0;
             LOG_INFO("CANCEL: long press - shutdown");
-        } else {
-            LOG_INFO("CANCEL: short press");
+            return;
+        }
+
+        if (pressDuration < LONG_PRESS_THRESHOLD) {
+            const uint32_t now = millis();
+            if (cancelTapCount > 0 && (now - cancelLastShortReleaseMs) <= DOUBLE_TAP_WINDOW_MS) {
+                cancelTapCount = 0;
+                if (burstTestModule) {
+                    burstTestModule->toggle();
+                    LOG_INFO("CANCEL: double tap - BurstTest %s", burstTestModule->isEnabled() ? "ON" : "OFF");
+                }
+            } else {
+                cancelTapCount = 1;
+                cancelLastShortReleaseMs = now;
+                LOG_INFO("CANCEL: short press");
+            }
         }
     }
 }

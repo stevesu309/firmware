@@ -26,9 +26,11 @@ class GpioButtonInput
     bool enterLongPressTriggered = false;
     uint32_t enterButtonPressTime = 0;
 
-    // SW_F5 (CANCEL): short-press closes menu; long-press in normal mode triggers shutdown
+    // SW_F5 (CANCEL): short-press closes menu; double-tap toggles BurstTest; long-press triggers shutdown
     bool cancelButtonPressed = false;
     uint32_t cancelButtonPressTime = 0;
+    uint32_t cancelLastShortReleaseMs = 0;
+    uint8_t cancelTapCount = 0;
 
     // SW_F1-F4 GPIO navigation buttons with auto-repeat while held
     bool leftButtonPressed = false;
@@ -42,6 +44,7 @@ class GpioButtonInput
 
     static const uint32_t LONG_PRESS_THRESHOLD = 2000;
     static const uint32_t SHUTDOWN_PRESS_THRESHOLD = 6000;
+    static const uint32_t DOUBLE_TAP_WINDOW_MS = 400;
 
     bool menuActive = false;
 };

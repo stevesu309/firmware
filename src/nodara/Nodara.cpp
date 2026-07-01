@@ -2,6 +2,9 @@
 
 #include "GpioButtonInput.h"
 #include "McuDataInput.h"
+#ifdef Nodara
+#include "BurstTestModule.h"
+#endif
 
 namespace nodara
 {
@@ -15,6 +18,9 @@ void setup()
 {
     gpioButtonInput.setup();
     mcuDataInput.setup();
+#ifdef Nodara
+    burstTestModule = new BurstTestModule();
+#endif
 }
 
 void loop()
