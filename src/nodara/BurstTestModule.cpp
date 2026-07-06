@@ -10,7 +10,7 @@
 
 BurstTestModule *burstTestModule = nullptr;
 
-static constexpr size_t BURST_TEST_PAYLOAD_LEN = 150;
+static constexpr size_t BURST_TEST_PAYLOAD_LEN = 200;
 
 BurstTestModule::BurstTestModule() : concurrency::OSThread("BurstTest") {}
 
@@ -37,7 +37,8 @@ void BurstTestModule::sendOnePacket()
     p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
     p->to = BURST_TEST_DM_TARGET;
     p->want_ack = false;
-    p->hop_limit = Default::getConfiguredOrDefaultHopLimit(config.lora.hop_limit);
+    // p->hop_limit = Default::getConfiguredOrDefaultHopLimit(config.lora.hop_limit);
+    p->hop_limit = 0;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 
     memset(p->decoded.payload.bytes, 'A' + (packetsSent % 26), BURST_TEST_PAYLOAD_LEN);
@@ -67,7 +68,7 @@ int32_t BurstTestModule::runOnce()
     }
 
     sendOnePacket();
-    return 3000;
+    return 600;
 }
 
 #endif
