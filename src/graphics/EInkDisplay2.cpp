@@ -169,6 +169,9 @@ bool EInkDisplay::connect()
     // T-Mini Epaper S3 requires panel power rail enabled before SPI transfer.
     digitalWrite(PIN_EINK_EN, HIGH);
     delay(10);
+#elif defined(Nodara)
+    // This pin is the power pin in Nodara.
+    digitalWrite(PIN_EINK_EN, HIGH);
 #else
     digitalWrite(PIN_EINK_EN, LOW);
 #endif
@@ -277,7 +280,7 @@ bool EInkDisplay::connect()
     }
 #elif defined(Nodara)
     {
-        digitalWrite(PIN_EINK_EN, HIGH);
+        digitalWrite(PIN_EINK_EN, LOW);
         delay(10);
         SPI1.begin();
         auto lowLevel = new EINK_DISPLAY_MODEL(PIN_EINK_CS, PIN_EINK_DC, PIN_EINK_RES, PIN_EINK_BUSY, SPI1);

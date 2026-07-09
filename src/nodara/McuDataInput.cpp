@@ -93,15 +93,15 @@ void logMcuDataFrame(const uint8_t *data, size_t size)
     LOG_INFO("MCU_DATA RX (%u bytes): %s", static_cast<unsigned>(size), hex);
 }
 
-void blinkPowerOffLed()
+void blinkPowerOffLed(const uint8_t pin = PIN_LED2, const uint32_t blinkCount = 4, const uint32_t blinkMs = kLedBlinkMs)
 {
 #ifdef PIN_LED2
-    for (uint8_t i = 0; i < 8; i++) {
-        digitalWrite(PIN_LED2, LED_STATE_ON);
-        pinMode(PIN_LED2, OUTPUT);
-        delay(kLedBlinkMs);
-        ledOff(PIN_LED2);
-        delay(kLedBlinkMs);
+    for (uint8_t i = 0; i < blinkCount; i++) {
+        digitalWrite(pin, LED_STATE_ON);
+        pinMode(pin, OUTPUT);
+        delay(blinkMs);
+        digitalWrite(pin, LED_STATE_OFF);
+        delay(blinkMs);
     }
 #endif
 }
@@ -222,8 +222,8 @@ void McuDataInput::loop()
 void McuDataInput::handleCommand03()
 {
     LOG_INFO("MCU_DATA command 0x0003 received");
+    blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
     shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
-    LOG_INFO("MCU_DATA command 0x0003 - shutdown in %u seconds", static_cast<unsigned>(DEFAULT_SHUTDOWN_SECONDS));
 }
 
 void McuDataInput::handleCommand05()
@@ -233,7 +233,7 @@ void McuDataInput::handleCommand05()
     if (screen)
         screen->showSimpleBanner("Power Off", kPowerOffBannerMs);
 #endif
-    blinkPowerOffLed();
+    blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
     persistBeforePowerCut();
     LOG_INFO("MCU_DATA command 0x0005 - power off preparation complete");
 }

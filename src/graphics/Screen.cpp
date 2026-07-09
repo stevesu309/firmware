@@ -462,7 +462,7 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
             delay(100);
 #endif
 #if defined(Nodara) && defined(PIN_EINK_EN)
-            digitalWrite(PIN_EINK_EN, HIGH);
+            digitalWrite(PIN_EINK_EN, LOW);
             delay(PIN_PWR_DELAY_MS);
 #endif
 #if !ARCH_PORTDUINO
@@ -471,7 +471,11 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
 
 #ifdef PIN_EINK_EN
             if (uiconfig.screen_brightness == 1)
+            #ifdef Nodara
+                digitalWrite(PIN_EINK_EN, LOW);
+            #else
                 digitalWrite(PIN_EINK_EN, HIGH);
+            #endif
 #elif defined(PCA_PIN_EINK_EN)
             if (uiconfig.screen_brightness > 0)
                 io.digitalWrite(PCA_PIN_EINK_EN, HIGH);
@@ -519,7 +523,11 @@ void Screen::handleSetOn(bool on, FrameCallback einkScreensaver)
 #endif
 
 #ifdef PIN_EINK_EN
+#ifdef Nodara
+            digitalWrite(PIN_EINK_EN, HIGH);
+#else
             digitalWrite(PIN_EINK_EN, LOW);
+#endif
 #elif defined(PCA_PIN_EINK_EN)
             io.digitalWrite(PCA_PIN_EINK_EN, LOW);
 #endif

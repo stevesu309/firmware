@@ -37,20 +37,24 @@ extern "C" {
 #define NUM_ANALOG_INPUTS (1)
 #define NUM_ANALOG_OUTPUTS (0)
 
-// LEDs
-#define PIN_LED1 (32 + 3) // 13 red (confirmed on 1.0 board)
-// Unused(by firmware) LEDs:
-#define PIN_LED2 (14)     // 14 blue
-#define PIN_LED3 (32 + 1) // 15 green
+// Status LEDs (active low): red=charge, blue=USB/full, green=BLE
+#define PIN_LED1 (32 + 3) // P1.03 red
+#define PIN_LED2 (14)     // P0.14 green
+#define PIN_LED3 (32 + 1) // P1.01 blue
 
-#define LED_RED PIN_LED3
-#define LED_BLUE PIN_LED1
+#define LED_POWER PIN_LED1   // red: charging blink / low-battery warn
+#define LED_USB PIN_LED2     // green: USB connected / charge complete
+#define LED_PAIRING PIN_LED3 // blue: BLE pairing / connected
+
+// Legacy Bluefruit color aliases (do not match physical LED colors)
+#define LED_RED PIN_LED1
+#define LED_BLUE PIN_LED3
 #define LED_GREEN PIN_LED2
-
-// #define LED_BUILTIN LED_BLUE
-#define LED_CONN PIN_GREEN
+#define LED_CONN LED_PAIRING
 
 #define LED_STATE_ON 0 // State when LED is lit
+
+// #define NRF_APM // native nRF52840 USB VBUS detection
 
 #define SW_F1 (32 + 11) // 上键
 #define SW_F2 (0 + 9)   // 左键
