@@ -325,8 +325,12 @@ void setup()
     powerHAL_init();
 
 #ifdef LED_POWER
+#ifndef Nodara
     pinMode(LED_POWER, OUTPUT);
     digitalWrite(LED_POWER, LED_STATE_ON);
+#else
+    ledOff(PIN_LED1);
+#endif
 #endif
 
     // prevent booting if device is in power failure mode
@@ -1095,6 +1099,10 @@ void setup()
 
 #if defined(RED_BANK_S3)
     redBankController->setup();
+#endif
+
+#if defined(Nodara)
+    ledOff(PIN_LED1);
 #endif
 }
 #endif

@@ -11,5 +11,7 @@ class McuDataInput
   private:
     void handleCommand03();
     void handleCommand05();
+    void handlePowerOnConfirm();
+    void processCompletedFrame();
 };
 } // namespace nodara

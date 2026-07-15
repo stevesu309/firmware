@@ -7,7 +7,8 @@
 #include "mesh/NodeDB.h"
 
 #include <cstdio>
-#include <cstring>
+#include <graphics/draw/UIRenderer.h>
+#include <OLEDDisplay.h>
 
 namespace nodara
 {
@@ -25,26 +26,38 @@ constexpr uint16_t kMcuDataSerialConfig = SERIAL_8N1;
 constexpr const char *kMcuDataSerialConfigName = "8N1";
 #endif
 
+#if defined(Nodara) && defined(PIN_SERIAL2_RX) && defined(PIN_SERIAL2_TX)
+#define MCU_DATA_SERIAL_ENABLED 1
+#else
+#define MCU_DATA_SERIAL_ENABLED 0
+#endif
+
 constexpr uint32_t kMcuDataBaud = MCU_DATA_BAUD;
-constexpr uint32_t kMcuDataFrameGapMs = 100;
+constexpr uint32_t kMcuDataFrameGapMs = 200;
 constexpr uint32_t kMcuDataPinLogIntervalMs = 1000;
-constexpr uint32_t kPowerOffBannerMs = 5000;
 constexpr uint32_t kLedBlinkMs = 100;
 constexpr size_t kMcuDataMaxFrameSize = 32;
 constexpr uint8_t kMcuDataAddress = 0x01;
 constexpr uint16_t kMcuDataRegister = 0x1000;
+constexpr uint16_t kMcuDataCommandShutdownDelayed = 0x0003;
+constexpr uint16_t kMcuDataCommandPower = 0x0005;
+constexpr uint16_t kMcuDataPowerOnValue = 0x0001;
+constexpr uint16_t kMcuDataPowerOffValue = 0x0000;
 constexpr size_t kMcuDataWriteSingleFrameSize = 8;
 constexpr size_t kMcuDataWriteMultipleFrameSize = 13;
-constexpr uint8_t kMcuDataWriteMultipleCommand03[kMcuDataWriteMultipleFrameSize] = {0x01, 0x10, 0x10, 0x00, 0x00,
-                                                                                    0x02, 0x04, 0x00, 0x03, 0x00,
-                                                                                    0x00, 0xCE, 0x6F};
-constexpr uint8_t kMcuDataWriteMultipleCommand05[kMcuDataWriteMultipleFrameSize] = {0x01, 0x10, 0x10, 0x00, 0x00,
-                                                                                    0x02, 0x04, 0x00, 0x05, 0x00,
-                                                                                    0x00, 0x2E, 0x6E};
+
+enum class McuParsedCommand {
+    InvalidCrc,
+    Unsupported,
+    PowerOnConfirm,
+    ShutdownDelayed,
+    ShutdownNow,
+};
 
 uint8_t frame[kMcuDataMaxFrameSize] = {};
 size_t frameSize = 0;
 uint32_t lastByteMs = 0;
+bool powerOnConfirmed = false;
 
 uint16_t readBe16(const uint8_t *data)
 {
@@ -93,85 +106,76 @@ void logMcuDataFrame(const uint8_t *data, size_t size)
     LOG_INFO("MCU_DATA RX (%u bytes): %s", static_cast<unsigned>(size), hex);
 }
 
-void blinkPowerOffLed(const uint8_t pin = PIN_LED2, const uint32_t blinkCount = 4, const uint32_t blinkMs = kLedBlinkMs)
+McuParsedCommand resolveMcuCommand(uint16_t command, uint16_t value)
 {
-#ifdef PIN_LED2
-    for (uint8_t i = 0; i < blinkCount; i++) {
-        digitalWrite(pin, LED_STATE_ON);
-        pinMode(pin, OUTPUT);
-        delay(blinkMs);
-        digitalWrite(pin, LED_STATE_OFF);
-        delay(blinkMs);
-    }
-#endif
-}
+    if (command == kMcuDataCommandShutdownDelayed)
+        return McuParsedCommand::ShutdownDelayed;
 
-void persistBeforePowerCut()
-{
-#if defined(RED_BANK_S3) || defined(Nodara)
-    if (chatHistoryStore)
-        chatHistoryStore->persistToDisk();
-#endif
-    if (nodeDB)
-        nodeDB->saveToDisk();
-#if HAS_SCREEN
-    messageStore.saveToFlash();
-#endif
-}
-
-#if defined(MCU_DATA_PIN_DEBUG)
-void processMcuDataPinDebug()
-{
-    static bool initialized = false;
-    static bool lastLevel = true;
-    static uint32_t lastLogMs = 0;
-    static uint32_t samples = 0;
-    static uint32_t lowSamples = 0;
-    static uint32_t edges = 0;
-
-    const bool level = digitalRead(MCU_DATA_PIN) == HIGH;
-    if (!initialized) {
-        initialized = true;
-        lastLevel = level;
-        lastLogMs = millis();
+    if (command != kMcuDataCommandPower) {
+        LOG_WARN("MCU_DATA unknown command value 0x%04X", command);
+        return McuParsedCommand::Unsupported;
     }
 
-    samples++;
-    if (!level)
-        lowSamples++;
-    if (level != lastLevel) {
-        edges++;
-        lastLevel = level;
-    }
+    if (value == kMcuDataPowerOnValue)
+        return McuParsedCommand::PowerOnConfirm;
+    if (value == kMcuDataPowerOffValue)
+        return McuParsedCommand::ShutdownNow;
 
-    if (!Throttle::isWithinTimespanMs(lastLogMs, kMcuDataPinLogIntervalMs)) {
-        if (edges > 0 || lowSamples > 0) {
-            LOG_INFO("MCU_DATA pin level=%s samples=%u low=%u edges=%u", level ? "HIGH" : "LOW",
-                     static_cast<unsigned>(samples), static_cast<unsigned>(lowSamples), static_cast<unsigned>(edges));
-        }
-
-        lastLogMs = millis();
-        samples = 0;
-        lowSamples = 0;
-        edges = 0;
-    }
-}
-#endif
-} // namespace
-
-void McuDataInput::setup()
-{
-#if defined(Nodara) && defined(PIN_SERIAL2_RX) && defined(PIN_SERIAL2_TX)
-    pinMode(MCU_DATA_PIN, INPUT_PULLUP);
-    Serial2.begin(kMcuDataBaud, kMcuDataSerialConfig);
-    LOG_INFO("MCU_DATA serial RX initialized on pin %u at %u baud %s", static_cast<unsigned>(MCU_DATA_PIN),
-             static_cast<unsigned>(kMcuDataBaud), kMcuDataSerialConfigName);
-#endif
+    LOG_WARN("MCU_DATA unknown 0x0005 parameter 0x%04X", value);
+    return McuParsedCommand::Unsupported;
 }
 
-void McuDataInput::loop()
+McuParsedCommand parseMcuDataPayload(const uint8_t *data, size_t size)
 {
-#if defined(Nodara) && defined(PIN_SERIAL2_RX) && defined(PIN_SERIAL2_TX)
+    if (size == kMcuDataWriteSingleFrameSize && data[0] == kMcuDataAddress && data[1] == 0x06 &&
+        readBe16(&data[2]) == kMcuDataRegister)
+        return resolveMcuCommand(readBe16(&data[4]), kMcuDataPowerOffValue);
+
+    if (size == kMcuDataWriteMultipleFrameSize && data[0] == kMcuDataAddress && data[1] == 0x10 &&
+        readBe16(&data[2]) == kMcuDataRegister && readBe16(&data[4]) == 0x0002 && data[6] == 0x04)
+        return resolveMcuCommand(readBe16(&data[7]), readBe16(&data[9]));
+
+    return McuParsedCommand::Unsupported;
+}
+
+McuParsedCommand parseMcuDataFrame(const uint8_t *data, size_t size)
+{
+    bool sawValidCrc = false;
+
+    for (size_t offset = 0; offset < size; offset++) {
+        if (data[offset] != kMcuDataAddress)
+            continue;
+        if (offset + 1 >= size)
+            break;
+
+        const uint8_t func = data[offset + 1];
+        if (func != 0x06 && func != 0x10)
+            continue;
+
+        const size_t frameLen = (func == 0x06) ? kMcuDataWriteSingleFrameSize : kMcuDataWriteMultipleFrameSize;
+        if (offset + frameLen > size)
+            continue;
+
+        if (!hasValidModbusCrc(data + offset, frameLen))
+            continue;
+
+        sawValidCrc = true;
+        const McuParsedCommand cmd = parseMcuDataPayload(data + offset, frameLen);
+        if (cmd == McuParsedCommand::Unsupported)
+            continue;
+
+        if (offset > 0)
+            LOG_DEBUG("MCU_DATA resynced frame at offset %u", static_cast<unsigned>(offset));
+
+        return cmd;
+    }
+
+    return sawValidCrc ? McuParsedCommand::Unsupported : McuParsedCommand::InvalidCrc;
+}
+
+void readSerialIntoFrame()
+{
+#if MCU_DATA_SERIAL_ENABLED
     while (Serial2.available() > 0) {
         const int value = Serial2.read();
         if (value < 0)
@@ -185,56 +189,118 @@ void McuDataInput::loop()
         frame[frameSize++] = static_cast<uint8_t>(value);
         lastByteMs = millis();
     }
+#endif
+}
 
-    if (frameSize > 0 && !Throttle::isWithinTimespanMs(lastByteMs, kMcuDataFrameGapMs)) {
-        logMcuDataFrame(frame, frameSize);
-        if (!hasValidModbusCrc(frame, frameSize)) {
-            LOG_WARN("MCU_DATA invalid CRC");
-        } else if (frameSize == kMcuDataWriteSingleFrameSize && frame[0] == kMcuDataAddress && frame[1] == 0x06 &&
-                   readBe16(&frame[2]) == kMcuDataRegister) {
-            const uint16_t command = readBe16(&frame[4]);
-            if (command == 0x0003)
-                handleCommand03();
-            else if (command == 0x0005)
-                handleCommand05();
-            else
-                LOG_WARN("MCU_DATA unknown command value 0x%04X", command);
-        } else if (frameSize == kMcuDataWriteMultipleFrameSize &&
-                   memcmp(frame, kMcuDataWriteMultipleCommand03, frameSize) == 0) {
-            handleCommand03();
-        } else if (frameSize == kMcuDataWriteMultipleFrameSize &&
-                   memcmp(frame, kMcuDataWriteMultipleCommand05, frameSize) == 0) {
-            handleCommand05();
-        } else {
-            LOG_WARN("MCU_DATA unsupported Modbus frame");
-        }
+void blinkPowerOffLed(const uint8_t pin = PIN_LED2, const uint32_t blinkCount = 4, const uint32_t blinkMs = kLedBlinkMs)
+{
+#ifdef PIN_LED2
+    for (uint8_t i = 0; i < blinkCount; i++) {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, LED_STATE_ON);
+        delay(blinkMs);
+        digitalWrite(pin, LED_STATE_OFF);
+        delay(blinkMs);
+    }
+#endif
+}
 
-        frameSize = 0;
-        lastByteMs = 0;
+void showPowerOffScreen()
+{
+#if HAS_SCREEN
+    if (!screen)
+        return;
+
+    screen->startAlert([](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) {
+        EINK_ADD_FRAMEFLAG(display, COSMETIC);
+        EINK_ADD_FRAMEFLAG(display, BLOCKING);
+        graphics::UIRenderer::drawIconScreen("Power Off", display, state, x, y);
+    });
+    screen->forceDisplay(true);
+#endif
+}
+} // namespace
+
+void McuDataInput::setup()
+{
+#if MCU_DATA_SERIAL_ENABLED
+    pinMode(MCU_DATA_PIN, INPUT_PULLUP);
+    Serial2.begin(kMcuDataBaud, kMcuDataSerialConfig);
+    LOG_INFO("MCU_DATA serial RX initialized on pin %u at %u baud %s", static_cast<unsigned>(MCU_DATA_PIN),
+             static_cast<unsigned>(kMcuDataBaud), kMcuDataSerialConfigName);
+#endif
+}
+
+void McuDataInput::processCompletedFrame()
+{
+    if (frameSize == 0 || Throttle::isWithinTimespanMs(lastByteMs, kMcuDataFrameGapMs))
+        return;
+
+    logMcuDataFrame(frame, frameSize);
+    const McuParsedCommand parsed = parseMcuDataFrame(frame, frameSize);
+    frameSize = 0;
+    lastByteMs = 0;
+
+    switch (parsed) {
+    case McuParsedCommand::InvalidCrc:
+        LOG_WARN("MCU_DATA invalid CRC");
+        break;
+    case McuParsedCommand::Unsupported:
+        LOG_WARN("MCU_DATA unsupported Modbus frame");
+        break;
+    case McuParsedCommand::PowerOnConfirm:
+        handlePowerOnConfirm();
+        break;
+    case McuParsedCommand::ShutdownDelayed:
+        handleCommand03();
+        break;
+    case McuParsedCommand::ShutdownNow:
+        handleCommand05();
+        break;
+    }
+}
+
+void McuDataInput::loop()
+{
+#if MCU_DATA_SERIAL_ENABLED
+    readSerialIntoFrame();
+    processCompletedFrame();
+#endif
+}
+
+void McuDataInput::handlePowerOnConfirm()
+{
+    if (powerOnConfirmed) {
+        LOG_DEBUG("MCU_DATA duplicate power-on confirm ignored");
+        return;
     }
 
-#if defined(MCU_DATA_PIN_DEBUG)
-    processMcuDataPinDebug();
-#endif
-#endif
+    powerOnConfirmed = true;
+    LOG_INFO("MCU_DATA power-on confirmed (0x0005/0x0001)");
+    blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
 }
 
 void McuDataInput::handleCommand03()
 {
     LOG_INFO("MCU_DATA command 0x0003 received");
-    blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
     shutdownAtMsec = millis() + DEFAULT_SHUTDOWN_SECONDS * 1000;
+    blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
 }
 
 void McuDataInput::handleCommand05()
 {
-    LOG_INFO("MCU_DATA command 0x0005 received");
-#if HAS_SCREEN
-    if (screen)
-        screen->showSimpleBanner("Power Off", kPowerOffBannerMs);
-#endif
+    LOG_INFO("MCU_DATA command 0x0005/0x0000 received");
+    screen->showSimpleBanner("Power Off...",
+                                 2250); // dismiss after 3 seconds to avoid the
     blinkPowerOffLed(PIN_LED2, 4, kLedBlinkMs);
-    persistBeforePowerCut();
-    LOG_INFO("MCU_DATA command 0x0005 - power off preparation complete");
+    if (chatHistoryStore)
+        chatHistoryStore->persistToDisk();
+
+    if (nodeDB)
+        nodeDB->saveToDisk();
+#if HAS_SCREEN
+    messageStore.saveToFlash();
+#endif
+    showPowerOffScreen();
 }
 } // namespace nodara

@@ -78,6 +78,12 @@ int StatusLEDModule::handleStatusUpdate(const meshtastic::Status *arg)
         case meshtastic::BluetoothStatus::ConnectionState::PAIRING: {
             ble_state = pairing;
             PAIRING_LED_starttime = millis();
+            PAIRING_LED_state = LED_STATE_ON;
+            setInterval(0);
+            runASAP = true;
+#ifdef Nodara
+            digitalWrite(LED_PAIRING, LED_STATE_ON);
+#endif
             break;
         }
         case meshtastic::BluetoothStatus::ConnectionState::CONNECTED: {
@@ -154,10 +160,12 @@ int32_t StatusLEDModule::runOnce()
     }
 #endif
 #endif
-    if (!config.bluetooth.enabled || PAIRING_LED_starttime + 30 * 1000 < millis() || doing_fast_blink) {
+    if (!config.bluetooth.enabled || doing_fast_blink) {
         PAIRING_LED_state = LED_STATE_OFF;
     } else if (ble_state == unpaired) {
-        if (slowTrack) {
+        if (PAIRING_LED_starttime + 30 * 1000 < millis()) {
+            PAIRING_LED_state = LED_STATE_OFF;
+        } else if (slowTrack) {
             PAIRING_LED_state = !PAIRING_LED_state;
             slowTrack = false;
         } else {
@@ -165,6 +173,9 @@ int32_t StatusLEDModule::runOnce()
         }
     } else if (ble_state == pairing) {
         PAIRING_LED_state = !PAIRING_LED_state;
+        my_interval = 100;
+    } else if (PAIRING_LED_starttime + 30 * 1000 < millis()) {
+        PAIRING_LED_state = LED_STATE_OFF;
     } else {
         PAIRING_LED_state = LED_STATE_ON;
     }
@@ -208,30 +219,13 @@ int32_t StatusLEDModule::runOnce()
 #ifdef PCA_LED_ENABLE
     io.digitalWrite(PCA_LED_ENABLE, CHARGE_LED_state);
 #endif
-#ifdef Nodara
-    {
-        uint8_t redState = LED_STATE_OFF;   // PIN_LED1: charge / low-battery
-        uint8_t blueState = LED_STATE_OFF;  // PIN_LED3: USB connected / charge complete
-        uint8_t greenState = LED_STATE_OFF; // PIN_LED2: BLE pairing / connected
-        if (power_state == charging) {
-            redState = CHARGE_LED_state;
-        } else if (power_state == charged) {
-            blueState = LED_STATE_ON;
-        } else if (power_state == critical && doing_fast_blink) {
-            redState = CHARGE_LED_state;
-        }
-
-        digitalWrite(LED_POWER, redState);
-        digitalWrite(LED_USB, blueState);
-        digitalWrite(LED_PAIRING, greenState);
-    }
-#else
+#ifndef Nodara
 #ifdef LED_POWER
     digitalWrite(LED_POWER, CHARGE_LED_state);
 #endif
+#endif
 #ifdef LED_PAIRING
     digitalWrite(LED_PAIRING, PAIRING_LED_state);
-#endif
 #endif
 #ifdef NEOPIXEL_STATUS_POWER_PIN
     writeStatusPixel(powerPixel, NEOPIXEL_STATUS_POWER_COLOR, CHARGE_LED_state == LED_STATE_ON);
@@ -282,17 +276,13 @@ void StatusLEDModule::setPowerLED(bool LEDon)
 #ifdef PCA_LED_ENABLE
     io.digitalWrite(PCA_LED_ENABLE, ledState);
 #endif
-#ifdef Nodara
-    digitalWrite(LED_POWER, ledState);
-    digitalWrite(LED_USB, ledState);
-    digitalWrite(LED_PAIRING, ledState);
-#else
 #ifdef LED_POWER
+#ifndef Nodara
     digitalWrite(LED_POWER, ledState);
+#endif
 #endif
 #ifdef LED_PAIRING
     digitalWrite(LED_PAIRING, ledState);
-#endif
 #endif
 #ifdef NEOPIXEL_STATUS_POWER_PIN
     writeStatusPixel(powerPixel, NEOPIXEL_STATUS_POWER_COLOR, LEDon);

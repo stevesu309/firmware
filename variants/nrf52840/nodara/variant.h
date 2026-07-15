@@ -54,7 +54,7 @@ extern "C" {
 
 #define LED_STATE_ON 0 // State when LED is lit
 
-// #define NRF_APM // native nRF52840 USB VBUS detection
+#define NRF_APM // native nRF52840 USB VBUS detection
 
 #define SW_F1 (32 + 11) // 上键
 #define SW_F2 (0 + 9)   // 左键
