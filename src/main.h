@@ -65,7 +65,23 @@ extern UdpMulticastHandler *udpHandler;
 // Global Screen singleton.
 extern graphics::Screen *screen;
 
-#if !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C && !MESHTASTIC_EXCLUDE_ACCELEROMETER
+// Global chat history store singleton.
+#if defined(RED_BANK_S3) || defined(Nodara)
+#include "mesh/ChatHistoryStore.h"
+#endif
+
+// Global RedBankS3Controller singleton.
+#if defined(RED_BANK_S3)
+#include "red_bank_s3/RedBankController.h"
+extern RedBankS3::RedBankController *redBankController;
+#endif
+
+#if defined(Nodara)
+#include "nodara/Nodara.h"
+#endif
+
+#if !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C && !MESHTASTIC_EXCLUDE_ACCELEROMETER
+
 #include "motion/AccelerometerThread.h"
 extern AccelerometerThread *accelerometerThread;
 #endif

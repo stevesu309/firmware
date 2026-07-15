@@ -18,6 +18,10 @@
 #define OCV_ARRAY 4190, 4050, 3990, 3890, 3800, 3720, 3630, 3530, 3420, 3300, 3100
 #endif
 
+#if defined(RED_BANK_S3)
+#define OCV_ARRAY 4030, 3947, 3864, 3781, 3698, 3615, 3532, 3449, 3366, 3283, 3200
+#endif
+
 /*Note: 12V lead acid is 6 cells, most board accept only 1 cell LiIon/LiPo*/
 #ifndef NUM_CELLS
 #define NUM_CELLS 1
