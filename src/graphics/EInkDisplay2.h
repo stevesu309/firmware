@@ -104,6 +104,10 @@ protected:
     // Connect to the display
     virtual bool connect() override;
 
+#ifdef EINK_DUMP_BUFFER
+    void dumpBuffer();
+#endif
+
 #ifdef GXEPD2_DRIVER_0
     // AdafruitGFX display object - wrapper for multiple drivers
     // Allows runtime detection of multiple displays

@@ -49,6 +49,35 @@ EInkDisplay::EInkDisplay(uint8_t address, int sda, int scl, OLEDDISPLAY_GEOMETRY
     this->displayBufferSize = longSide * (shortSide / 8);
 }
 
+#ifdef EINK_DUMP_BUFFER
+// Serial log is capped at ~160 chars/line on nRF52; 64 payload bytes stay inside that.
+void EInkDisplay::dumpBuffer()
+{
+    if (!buffer || displayBufferSize == 0)
+        return;
+
+    uint16_t nz = 0;
+    for (uint16_t i = 0; i < displayBufferSize; i++) {
+        if (buffer[i])
+            nz++;
+    }
+    LOG_INFO("EINK_BUFFER_BEGIN w=%u h=%u size=%u nz=%u", displayWidth, displayHeight, displayBufferSize, nz);
+
+    char line[140];
+    for (uint16_t i = 0; i < displayBufferSize; i += 64) {
+        uint16_t n = displayBufferSize - i;
+        if (n > 64)
+            n = 64;
+        char *p = line;
+        p += snprintf(p, sizeof(line), "%04x:", i);
+        for (uint16_t j = 0; j < n; j++)
+            p += snprintf(p, (size_t)(line + sizeof(line) - p), "%02x", buffer[i + j]);
+        LOG_INFO("%s", line);
+    }
+    LOG_INFO("EINK_BUFFER_END");
+}
+#endif
+
 /**
  * Force a display update if we haven't drawn within the specified msecLimit
  */
@@ -67,6 +96,10 @@ bool EInkDisplay::forceDisplay(uint32_t msecLimit)
         lastDrawMsec = now;
     else
         return false;
+
+#ifdef EINK_DUMP_BUFFER
+    dumpBuffer();
+#endif
 
     // FIXME - only draw bits have changed (use backbuf similar to the other displays)
     const bool flipped = config.display.flip_screen;
