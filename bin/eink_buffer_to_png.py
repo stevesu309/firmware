@@ -12,9 +12,12 @@ Dump format (enabled with -DEINK_DUMP_BUFFER):
   EINK_BUFFER_END
 
 Examples:
-  python3 bin/eink_buffer_to_png.py serial.log -o eink.png
-  python3 bin/eink_buffer_to_png.py --port /dev/tty.usbmodemXXXX -o eink.png
+  python3 bin/eink_buffer_to_png.py --port /dev/tty.usbmodemXXXX
+  python3 bin/eink_buffer_to_png.py serial.log
   python3 bin/eink_buffer_to_png.py --bin buffer.bin --width 250 --height 122 -o eink.png
+
+Live capture writes eink_001.png, eink_002.png, ... without overwriting.
+Ctrl-C to stop. Raw .bin is not written.
 """
 
 from __future__ import annotations
@@ -143,6 +146,41 @@ def pick_dump(
     return width, height, buf
 
 
+def numbered_path(base: Path, n: int) -> Path:
+    suffix = base.suffix or ".png"
+    return base.with_name(f"{base.stem}_{n:03d}{suffix}")
+
+
+def next_free_index(base: Path) -> int:
+    suffix = base.suffix or ".png"
+    parent = base.parent
+    pattern = re.compile(rf"^{re.escape(base.stem)}_(\d+){re.escape(suffix)}$")
+    n = 1
+    if parent.exists():
+        for path in parent.iterdir():
+            match = pattern.match(path.name)
+            if match:
+                n = max(n, int(match.group(1)) + 1)
+    return n
+
+
+def apply_flip(pixels: list[int], width: int, height: int) -> list[int]:
+    flipped = [0] * len(pixels)
+    for y in range(height):
+        for x in range(width):
+            flipped[(height - 1 - y) * width + (width - 1 - x)] = pixels[y * width + x]
+    return flipped
+
+
+def write_frame(base: Path, n: int, buf: bytes, width: int, height: int, scale: int, flip: bool) -> Path:
+    pixels = buffer_to_pixels(buf, width, height)
+    if flip:
+        pixels = apply_flip(pixels, width, height)
+    out = numbered_path(base, n)
+    write_png(out, pixels, width, height, max(1, scale))
+    return out
+
+
 def _open_serial(port: str, baud: int):
     try:
         import serial  # type: ignore
@@ -156,9 +194,9 @@ def _open_serial(port: str, baud: int):
     return ser
 
 
-def read_serial(port: str, baud: int, timeout: float, skip_empty: bool) -> str:
+def iter_serial_dumps(port: str, baud: int, timeout: float, skip_empty: bool):
     print(
-        f"waiting for EINK_BUFFER dump on {port} (do not send protobuf; press a key to refresh)...",
+        f"capturing on {port} → numbered PNGs (Ctrl-C to stop; do not send protobuf)...",
         file=sys.stderr,
         flush=True,
     )
@@ -166,20 +204,22 @@ def read_serial(port: str, baud: int, timeout: float, skip_empty: bool) -> str:
     acc = bytearray()
     seen_begin = 0
     skipped = 0
+    parsed = 0
+    last_activity = time.time()
     last_report = time.time()
     try:
-        start = time.time()
         while True:
             now = time.time()
-            if timeout and (now - start) > timeout:
+            if timeout and (now - last_activity) > timeout:
                 extra = f", skipped {skipped} empty" if skipped else ""
                 raise SystemExit(
-                    f"timed out after {timeout}s ({len(acc)} bytes received, {seen_begin} BEGIN{extra}). "
+                    f"idle timeout after {timeout}s ({len(acc)} bytes received, {seen_begin} BEGIN{extra}). "
                     "If bytes stay 0, another process may still own the port, or this firmware "
                     "was not built with -DEINK_DUMP_BUFFER."
                 )
             chunk = ser.read(4096)
             if chunk:
+                last_activity = now
                 acc.extend(chunk)
                 if len(acc) > 512 * 1024:
                     acc = acc[-256 * 1024 :]
@@ -196,29 +236,30 @@ def read_serial(port: str, baud: int, timeout: float, skip_empty: bool) -> str:
             text = acc.decode("latin-1", errors="ignore")
             seen_begin = text.count("EINK_BUFFER_BEGIN")
             dumps = parse_dumps(text)
-            if not dumps:
+            if len(dumps) <= parsed:
                 continue
-            width, height, buf = dumps[-1]
-            nz = nonzero_count(buf)
-            if skip_empty and nz == 0:
-                skipped += 1
+            new_dumps = dumps[parsed:]
+            parsed = len(dumps)
+            last_end = text.rfind("EINK_BUFFER_END")
+            if last_end >= 0:
+                acc = bytearray(acc[last_end + len("EINK_BUFFER_END") :])
+                parsed = 0
+            for width, height, buf in new_dumps:
+                nz = nonzero_count(buf)
+                if skip_empty and nz == 0:
+                    skipped += 1
+                    print(
+                        f"empty dump ({width}x{height}, {len(buf)} bytes); waiting...",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    continue
                 print(
-                    f"got dump {len(dumps)} ({width}x{height}, {len(buf)} bytes, 0 nonzero); "
-                    "waiting for a drawn frame...",
+                    f"got dump ({width}x{height}, {len(buf)} bytes, {nz} nonzero)",
                     file=sys.stderr,
                     flush=True,
                 )
-                # Drop completed dumps so we don't keep re-parsing the empty one.
-                last_end = text.rfind("EINK_BUFFER_END")
-                if last_end >= 0:
-                    acc = bytearray(acc[last_end + len("EINK_BUFFER_END") :])
-                continue
-            print(
-                f"got dump {len(dumps)} ({width}x{height}, {len(buf)} bytes, {nz} nonzero)",
-                file=sys.stderr,
-                flush=True,
-            )
-            return text
+                yield width, height, buf
     finally:
         ser.close()
 
@@ -249,34 +290,37 @@ def self_test() -> None:
     mashed = b"\x94\xc3junk" + real.encode() + b"\x00"
     mashed_dumps = parse_dumps(mashed.decode("latin-1"))
     assert mashed_dumps[-1][2] == bytes(buf)
+    assert numbered_path(Path("eink.png"), 1) == Path("eink_001.png")
+    assert numbered_path(Path("shots/frame.png"), 12) == Path("shots/frame_012.png")
     print("self-test ok")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Convert an E-Ink buffer dump to PNG")
+    parser = argparse.ArgumentParser(description="Convert an E-Ink buffer dump to numbered PNGs")
     parser.add_argument("log", nargs="?", help="serial log containing EINK_BUFFER_* markers")
     parser.add_argument("--bin", dest="bin_path", help="raw buffer file (needs --width/--height)")
-    parser.add_argument("--port", help="wait for the next dump on this serial port")
+    parser.add_argument("--port", help="capture dumps from this serial port until Ctrl-C")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--timeout", type=float, default=120, help="seconds to wait on --port")
+    parser.add_argument("--timeout", type=float, default=0, help="idle seconds before exit; 0 = wait forever")
     parser.add_argument("--width", type=int, default=250, help="used with --bin (nodara default 250)")
     parser.add_argument("--height", type=int, default=122, help="used with --bin (nodara default 122)")
-    parser.add_argument("-o", "--output", default="eink_buffer.png")
-    parser.add_argument("--save-bin", help="also write the raw buffer bytes")
+    parser.add_argument("-o", "--output", default="eink.png", help="base name; files are stem_001.png, stem_002.png, ...")
     parser.add_argument("--scale", type=int, default=4)
     parser.add_argument("--flip", action="store_true", help="mirror both axes (config.display.flip_screen)")
-    parser.add_argument("--index", type=int, default=None, help="which dump in a log to use (default: last non-empty)")
+    parser.add_argument("--index", type=int, default=None, help="which dump in a log to use (default: all non-empty)")
     parser.add_argument("--accept-empty", action="store_true", help="allow an all-zero dump")
+    parser.add_argument("--keep-dupes", action="store_true", help="save consecutive identical frames")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     skip_empty = not args.accept_empty
+    base = Path(args.output)
+    scale = max(1, args.scale)
 
     if args.self_test:
         self_test()
         return 0
 
-    width = height = None
-    buf = None
+    frames: list[tuple[int, int, bytes]] = []
 
     if args.bin_path:
         data = Path(args.bin_path).read_bytes()
@@ -285,30 +329,48 @@ def main() -> int:
         print(f"raw bin {width}x{height}, {len(buf)} bytes, {nz} nonzero", file=sys.stderr)
         if skip_empty and nz == 0:
             raise SystemExit("bin file is all zeros; pass --accept-empty to render it anyway")
+        frames = [(width, height, buf)]
     elif args.port:
-        text = read_serial(args.port, args.baud, args.timeout, skip_empty)
-        dumps = parse_dumps(text)
-        width, height, buf = pick_dump(dumps, None, skip_empty)
+        n = next_free_index(base)
+        last_buf: bytes | None = None
+        saved = 0
+        try:
+            for width, height, buf in iter_serial_dumps(args.port, args.baud, args.timeout, skip_empty):
+                if not args.keep_dupes and buf == last_buf:
+                    print("unchanged frame, skip", file=sys.stderr, flush=True)
+                    continue
+                out = write_frame(base, n, buf, width, height, scale, args.flip)
+                print(f"wrote {out} ({width}x{height} @ {scale}x)")
+                last_buf = buf
+                n += 1
+                saved += 1
+        except KeyboardInterrupt:
+            print(f"\nstopped, {saved} PNG(s) saved", file=sys.stderr)
+        return 0
     elif args.log:
         dumps = parse_dumps(Path(args.log).read_text(errors="replace"))
-        width, height, buf = pick_dump(dumps, args.index, skip_empty)
+        if args.index is not None:
+            width, height, buf = pick_dump(dumps, args.index, skip_empty)
+            frames = [(width, height, buf)]
+        else:
+            for width, height, buf in dumps:
+                if skip_empty and nonzero_count(buf) == 0:
+                    continue
+                frames.append((width, height, buf))
+            if not frames:
+                raise SystemExit(f"no EINK_BUFFER dump found in {args.log}")
     else:
         parser.error("provide a log file, --bin, or --port")
 
-    pixels = buffer_to_pixels(buf, width, height)
-    if args.flip:
-        flipped = [0] * len(pixels)
-        for y in range(height):
-            for x in range(width):
-                flipped[(height - 1 - y) * width + (width - 1 - x)] = pixels[y * width + x]
-        pixels = flipped
-
-    out = Path(args.output)
-    write_png(out, pixels, width, height, max(1, args.scale))
-    print(f"wrote {out} ({width}x{height} @ {args.scale}x)")
-    if args.save_bin:
-        Path(args.save_bin).write_bytes(buf)
-        print(f"wrote {args.save_bin} ({len(buf)} bytes)")
+    n = next_free_index(base)
+    last_buf = None
+    for width, height, buf in frames:
+        if not args.keep_dupes and buf == last_buf:
+            continue
+        out = write_frame(base, n, buf, width, height, scale, args.flip)
+        print(f"wrote {out} ({width}x{height} @ {scale}x)")
+        last_buf = buf
+        n += 1
     return 0
 
 
